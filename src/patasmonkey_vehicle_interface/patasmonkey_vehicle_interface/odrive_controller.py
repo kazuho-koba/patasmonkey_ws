@@ -33,7 +33,7 @@ class MotorController:
         """Initialize motor: closed-loop control & ramped velocity mode."""
         self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
         self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
-        self.axis.controller.config.vel_ramp_rate = 5
+        self.axis.controller.config.vel_ramp_rate = 10
         self.axis.controller.config.input_mode = INPUT_MODE_VEL_RAMP
         self.axis.controller.config.pos_gain = 20
         self.axis.controller.config.vel_gain = 0.3
