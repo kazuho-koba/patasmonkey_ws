@@ -12,7 +12,7 @@ class VehicleInterfaceNode(Node):
         super().__init__("vehicle_interface")  # register the node
 
         # load parameters from yaml (passed via launch file)
-        self.whl_rad = self.get_parameter_or("whl_rad", 0.1)  # wheel diameter [m]
+        self.whl_rad = self.get_parameter_or("whl_rad", 0.1)  # wheel radius [m]
         self.whl_sep = self.get_parameter_or(
             "whl_sep", 0.4
         )  # wheel separation betwee L\R [m]
