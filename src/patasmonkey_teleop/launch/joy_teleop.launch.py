@@ -38,6 +38,7 @@ def generate_launch_description():
                 'scale_angular_turbo.yaw': 2.0,
                 'enable_turbo_button': 4
             }],  # <ｰ apply .yaml file directly as a dictionary
+            # parameters=[teleop_twist_joy_params_path],
             remappings=[('/joy', '/patasmonkey/joy'),
                         ('/cmd_vel', '/cmd_vel_joy')],
             output='screen'
