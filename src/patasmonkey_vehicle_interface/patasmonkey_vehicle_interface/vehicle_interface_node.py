@@ -62,16 +62,23 @@ class VehicleInterfaceNode(Node):
         self.create_subscription(
             Bool, self.emergency_stop_topic, self.emergency_stop_callback, 10
         )
+
+        # other params
+        self.current_vel_left = 0.0
+        self.last_vel_left = 0.0
+        self.current_vel_right = 0.0
+        self.last_vel_right = 0.0
+        self.accumerated_ver_err_left = 0.0
+        self.accumerated_ver_err_right = 0.0
+
         # timer for control loop
-        self._timer = self.create_timer(0.1, self.command_selector)
+        self._timer = self.create_timer(0.02, self.command_selector)
 
         # publihser config
         self.motor_cmd_pub = self.create_publisher(
             Float32MultiArray, self.mtr_output_topic, 10
         )
-        self.sim_cmd_vel_pub = self.create_publisher(
-            Twist, "/sim_cmd_vel", 10
-        )
+        self.sim_cmd_vel_pub = self.create_publisher(Twist, "/sim_cmd_vel", 10)
 
     def cmd_vel_callback(self, msg):
         """callback function when /cmd_vel from autnomous driving software has been recieved"""
@@ -111,7 +118,6 @@ class VehicleInterfaceNode(Node):
         except Exception as e:
             self.get_logger().error(f"Exception in command_selector: {e}")
 
-
     def motor_control(self, cmd):
         """convert command to motor speed and send to ODrive"""
         if cmd is not None:
@@ -145,6 +151,34 @@ class VehicleInterfaceNode(Node):
         # send command to ODrive
         self.left_motor.set_velocity(mtr_left_rps)
         self.right_motor.set_velocity(mtr_right_rps)
+
+        # # get current and past motor velocity with low pass filter
+        # self.last_vel_left = self.current_vel_left
+        # self.last_vel_right = self.current_vel_right
+        # self.current_vel_left = (
+        #     0.2 * self.left_motor.get_velocity() + 0.8 * self.last_vel_left
+        # )
+        # self.current_vel_right = (
+        #     0.2 * self.right_motor.get_velocity() + 0.8 * self.last_vel_right
+        # )
+
+        # # velocity feedback torque control
+        # vel_err_left = mtr_left_rps - self.current_vel_left             # for P control
+        # vel_err_right = mtr_right_rps - self.current_vel_right          # for P control
+        # delta_vel_left = self.current_vel_left - self.last_vel_left     # for D control
+        # delta_vel_right = self.current_vel_right - self.last_vel_right  # for D control
+        # self.accumerated_ver_err_left = max(
+        #     self.accumerated_ver_err_left + self.current_vel_left - mtr_left_rps, 5
+        # )                                                               # for I control
+        # self.accumerated_ver_err_right = max(
+        #     self.accumerated_ver_err_right + self.current_vel_right - mtr_right_rps, 5
+        # )                                                               # for I control
+        # self.left_motor.velfb_torque_control(   
+        #     vel_err_left, delta_vel_left, self.accumerated_ver_err_left
+        # )
+        # self.right_motor.velfb_torque_control(
+        #     vel_err_right, delta_vel_right, self.accumerated_ver_err_right
+        # )
 
         # publish /motor_cmd
         msg_out = Float32MultiArray()
