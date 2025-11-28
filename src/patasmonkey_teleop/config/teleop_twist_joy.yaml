@@ -1,4 +1,4 @@
-teleop_twist_joy_node:
+joy_teleop:
   ros__parameters:
     require_enable_button: true  # if true, do not work unless you push a particular button.
     enable_button: 1  # enable if you push this button (default: 0 -> always enabled)

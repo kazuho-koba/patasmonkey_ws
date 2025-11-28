@@ -27,18 +27,7 @@ def generate_launch_description():
             package='teleop_twist_joy',
             executable='teleop_node',
             name='joy_teleop',
-            parameters=[{
-                'require_enable_button': True,
-                'enable_button': 1,
-                'axis_linear.x': 1,
-                'scale_linear.x': 1.0,
-                'scale_linear_turbo.x': 2.0,
-                'axis_angular.yaw': 0,
-                'scale_angular.yaw': 1.0,
-                'scale_angular_turbo.yaw': 2.0,
-                'enable_turbo_button': 4
-            }],  # <ｰ apply .yaml file directly as a dictionary
-            # parameters=[teleop_twist_joy_params_path],
+            parameters=[teleop_twist_joy_params_path],
             remappings=[('/joy', '/patasmonkey/joy'),
                         ('/cmd_vel', '/cmd_vel_joy')],
             output='screen'
