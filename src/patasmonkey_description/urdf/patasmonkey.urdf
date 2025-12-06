@@ -248,13 +248,13 @@
 	</joint>
 	<joint name="rev7" type="continuous">
 		<parent link="wheel_arm_frontright"/>
-		<child link="wheel_frontright"/>
+		<child link="wheel_rearright"/>
 		<origin rpy="0 0 0" xyz="0.1503508193257454 0.009999999999999953 -0.05472322293210703"/>
 		<axis xyz="0.0 -0.9999999999999981 0.0"/>
 	</joint>
 	<joint name="rev8" type="continuous">
 		<parent link="wheel_arm_rearright"/>
-		<child link="wheel_rearright"/>
+		<child link="wheel_frontright"/>
 		<origin rpy="0 0 0" xyz="-0.15035081932574537 0.009999999999999981 -0.054723222932107005"/>
 		<axis xyz="0.0 -0.9999999999999982 0.0"/>
 	</joint>
