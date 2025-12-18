@@ -1,222 +1,233 @@
 <?xml version="1.0" encoding="utf-8"?>
-<robot name="patasmonkey_ugv">
-	<link name="base_link">
+<robot name="patasmonkey">
+
+	<link name="base_link"/>
+	<!-- 最初は車体主要部をbase_linkとしていたが、CADと座標系を合わせるために回したりしたいので大きさゼロの仮想base_linkを定義し、車体主要部リンク（body）をぶら下げる形とした -->
+
+	<link name="body">
 		<inertial>
-			<mass value="8.831101767270535"/>
-			<origin rpy="0 0 0" xyz="-1.81258320570242e-17 -1.105675755478476e-14 0.05"/>
-			<inertia ixx="0.12469815720580205" ixy="1.7698669850161582e-30" ixz="4.802132025361061e-18" iyy="0.03701157230674019" iyz="-3.2014213502403547e-18" izz="0.1470395638968317"/>
+			<mass value="8.878175441817634"/>
+			<origin rpy="0 0 0" xyz="3.605945130529295e-17 -1.370259149601132e-15 0.061700238722655266"/>
+			<inertia ixx="0.180154674257629" ixy="5.122274160385088e-17" ixz="1.9752846156165697e-17" iyy="0.0824654290636114" iyz="4.531262737562093e-16" izz="0.22992441349024134"/>
 		</inertial>
-		<collision name="base_link_collision">
+		<collision name="body_collision">
 			<origin rpy="0.0 -0.0 0.0" xyz="0.0 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/body.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
-		<visual name="base_link_visual">
+		<visual name="body_visual">
 			<origin rpy="0.0 -0.0 0.0" xyz="0.0 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/body.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
-	<link name="wheel_arm_leftfront">
+	<link name="wheelarm_1_v3:1">
 		<inertial>
-			<mass value="0.34336062020263136"/>
-			<origin rpy="0 0 0" xyz="0.02499999999999998 -0.07517540966220515 -0.027361611465810554"/>
-			<inertia ixx="0.0008415169388259798" ixy="0.0" ixz="-1.7763568394002505e-19" iyy="0.0002078693447820342" iyz="-0.00023865888799549638" izz="0.0007767145191283802"/>
+			<mass value="0.11129201234266223"/>
+			<origin rpy="0 0 0" xyz="0.011864073144704071 -0.11539021627920214 -0.057812154810178235"/>
+			<inertia ixx="0.00044081613489392916" ixy="1.3004019884530748e-05" ixz="1.1126423064250356e-05" iyy="0.00011346844003993653" iyz="-0.0001751098519904491" izz="0.00034575987847753427"/>
 		</inertial>
-		<collision name="wheel_arm_leftfront_collision">
-			<origin rpy="0.0 -0.349065850398866 1.5707963267948966" xyz="0.05000000000000002 6.938893903907228e-18 -6.938893903907228e-18"/>
+		<collision name="wheelarm_1_v3:1_collision">
+			<origin rpy="0.0 0.4363323129985771 -1.5707963267948966" xyz="1.3877787807814457e-17 7.50720839698537e-18 -1.3877787807814457e-17"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel_arm.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheelarm_1_v3.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
-		<visual name="wheel_arm_leftfront_visual">
-			<origin rpy="0.0 -0.349065850398866 1.5707963267948966" xyz="0.05000000000000002 6.938893903907228e-18 -6.938893903907228e-18"/>
+		<visual name="wheelarm_1_v3:1_visual">
+			<origin rpy="0.0 0.4363323129985771 -1.5707963267948966" xyz="1.3877787807814457e-17 7.50720839698537e-18 -1.3877787807814457e-17"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel_arm.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheelarm_1_v3.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
-	<link name="wheel_arm_leftrear">
+	<link name="wheelarm_2_v4:1">
 		<inertial>
-			<mass value="0.34336062020263136"/>
-			<origin rpy="0 0 0" xyz="0.02499999999999998 0.07517540966354021 -0.027361611466296464"/>
-			<inertia ixx="0.0008415169388259806" ixy="-7.105427357601002e-19" ixz="1.7763568394002505e-19" iyy="0.0002078693447820342" iyz="0.00023865888799549638" izz="0.0007767145191283774"/>
+			<mass value="0.1112920123426623"/>
+			<origin rpy="0 0 0" xyz="0.002309209808224133 0.11539021627920193 -0.05781215481017842"/>
+			<inertia ixx="0.00044081613489390466" ixy="-7.771667430638374e-06" ixz="8.488137973844268e-06" iyy="0.00011326169495537535" iyz="0.00017510985199043966" izz="0.00034555313339295284"/>
 		</inertial>
-		<collision name="wheel_arm_leftrear_collision">
-			<origin rpy="0.0 0.3490658503988659 1.5707963267948966" xyz="0.05000000000000002 0.15035081932574534 -0.054723222932107"/>
+		<collision name="wheelarm_2_v4:1_collision">
+			<origin rpy="3.141592653589793 0.4363323129985816 1.5707963267948966" xyz="0.010000000000000009 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel_arm.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheelarm_2_v4.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
-		<visual name="wheel_arm_leftrear_visual">
-			<origin rpy="0.0 0.3490658503988659 1.5707963267948966" xyz="0.05000000000000002 0.15035081932574534 -0.054723222932107"/>
+		<visual name="wheelarm_2_v4:1_visual">
+			<origin rpy="3.141592653589793 0.4363323129985816 1.5707963267948966" xyz="0.010000000000000009 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel_arm.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheelarm_2_v4.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
-	<link name="wheel_arm_rightrear">
+	<link name="wheelarm_1_v3:2">
 		<inertial>
-			<mass value="0.34336062020263136"/>
-			<origin rpy="0 0 0" xyz="-0.024999999999999994 0.07517540966354021 -0.027361611466296464"/>
-			<inertia ixx="0.0008415169388259806" ixy="0.0" ixz="0.0" iyy="0.0002078693447820335" iyz="0.00023865888799549638" izz="0.000776714519128376"/>
+			<mass value="0.11129201234266223"/>
+			<origin rpy="0 0 0" xyz="-0.011864073144703974 0.115390216279202 -0.057812154810178505"/>
+			<inertia ixx="0.0004408161348938993" ixy="1.3004019884530748e-05" ixz="-1.1126423064250356e-05" iyy="0.00011346844003993298" iyz="0.00017510985199043798" izz="0.0003457598784775087"/>
 		</inertial>
-		<collision name="wheel_arm_rightrear_collision">
-			<origin rpy="0.0 0.3490658503988659 1.5707963267948966" xyz="0.0 0.15035081932574534 -0.054723222932107"/>
+		<collision name="wheelarm_1_v3:2_collision">
+			<origin rpy="0.0 0.4363323129985823 1.5707963267948966" xyz="0.0 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel_arm.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheelarm_1_v3.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
-		<visual name="wheel_arm_rightrear_visual">
-			<origin rpy="0.0 0.3490658503988659 1.5707963267948966" xyz="0.0 0.15035081932574534 -0.054723222932107"/>
+		<visual name="wheelarm_1_v3:2_visual">
+			<origin rpy="0.0 0.4363323129985823 1.5707963267948966" xyz="0.0 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel_arm.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheelarm_1_v3.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
-	<link name="wheel_arm_rightfront">
+	<link name="wheelarm_2_v4:2">
 		<inertial>
-			<mass value="0.34336062020263136"/>
-			<origin rpy="0 0 0" xyz="-0.02499999999999998 -0.07517540966220515 -0.027361611465810554"/>
-			<inertia ixx="0.0008415169388259798" ixy="0.0" ixz="-1.7763568394002505e-19" iyy="0.0002078693447820335" iyz="-0.00023865888799549638" izz="0.0007767145191283774"/>
+			<mass value="0.1112920123426623"/>
+			<origin rpy="0 0 0" xyz="-0.002309209808224133 -0.11539021627920193 -0.05781215481017848"/>
+			<inertia ixx="0.00044081613489389967" ixy="-7.771667430638374e-06" ixz="-8.488137973844356e-06" iyy="0.00011326169495537428" iyz="-0.00017510985199043806" izz="0.00034555313339294997"/>
 		</inertial>
-		<collision name="wheel_arm_rightfront_collision">
-			<origin rpy="0.0 -0.349065850398866 1.5707963267948966" xyz="1.3877787807814457e-17 6.938893903907228e-18 -6.938893903907228e-18"/>
+		<collision name="wheelarm_2_v4:2_collision">
+			<origin rpy="3.141592653589793 0.4363323129985823 -1.5707963267948966" xyz="-0.010000000000000009 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel_arm.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheelarm_2_v4.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
-		<visual name="wheel_arm_rightfront_visual">
-			<origin rpy="0.0 -0.349065850398866 1.5707963267948966" xyz="1.3877787807814457e-17 6.938893903907228e-18 -6.938893903907228e-18"/>
+		<visual name="wheelarm_2_v4:2_visual">
+			<origin rpy="3.141592653589793 0.4363323129985823 -1.5707963267948966" xyz="-0.010000000000000009 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel_arm.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheelarm_2_v4.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
-	<link name="wheel_leftfront">
-		<inertial>
-			<mass value="0.6459736269326636"/>
-			<origin rpy="0 0 0" xyz="0.02500000000000005 -8.865130851631875e-14 -3.2356062273919406e-14"/>
-			<inertia ixx="0.0038053875071388916" ixy="2.842170943040401e-18" ixz="1.2434497875801753e-18" iyy="0.0020372715927301018" iyz="1.815525507709026e-13" izz="0.002037271592297401"/>
-		</inertial>
-		<collision name="wheel_leftfront_collision">
-			<origin rpy="0.0 -0.349065850398866 1.5707963267948966" xyz="0.05000000000000002 0.0 0.0"/>
-			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
-			</geometry>
-		</collision>
-		<visual name="wheel_leftfront_visual">
-			<origin rpy="0.0 -0.349065850398866 1.5707963267948966" xyz="0.05000000000000002 0.0 0.0"/>
-			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
-			</geometry>
-		</visual>
-	</link>
-	<link name="wheel_leftrear">
+	<link name="wheel_v1:1">
 		<inertial>
 			<mass value="0.6459736269326636"/>
-			<origin rpy="0 0 0" xyz="0.02500000000000005 -8.867906409193438e-14 3.2181722564583737e-14"/>
-			<inertia ixx="0.0038053875071388916" ixy="0.0" ixz="8.881784197001253e-20" iyy="0.002037271592730113" iyz="-1.815356753809283e-13" izz="0.002037271592297384"/>
+			<origin rpy="0 0 0" xyz="0.02500000000000005 -8.548717289613705e-14 -3.995788481992932e-14"/>
+			<inertia ixx="0.0038053875071388916" ixy="2.842170943040401e-18" ixz="1.226796442210798e-18" iyy="0.002037271592695285" iyz="2.1636328284557748e-13" izz="0.0020372715923322174"/>
 		</inertial>
-		<collision name="wheel_leftrear_collision">
-			<origin rpy="0.0 0.3490658503988659 1.5707963267948966" xyz="0.05000000000000002 0.0 0.0"/>
+		<collision name="wheel_v1:1_collision">
+			<origin rpy="0.0 -0.4363323129985797 1.5707963267948966" xyz="0.05000000000000002 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheel_v1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
-		<visual name="wheel_leftrear_visual">
-			<origin rpy="0.0 0.3490658503988659 1.5707963267948966" xyz="0.05000000000000002 0.0 0.0"/>
+		<visual name="wheel_v1:1_visual">
+			<origin rpy="0.0 -0.4363323129985797 1.5707963267948966" xyz="0.05000000000000002 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheel_v1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
-	<link name="wheel_rightrear">
+	<link name="wheel_v1:2">
 		<inertial>
 			<mass value="0.6459736269326636"/>
-			<origin rpy="0 0 0" xyz="-0.024999999999999967 -8.867906409193438e-14 3.2181722564583737e-14"/>
-			<inertia ixx="0.0038053875071388916" ixy="2.842170943040401e-18" ixz="3.552713678800501e-19" iyy="0.002037271592730113" iyz="-1.815356753809283e-13" izz="0.002037271592297384"/>
+			<origin rpy="0 0 0" xyz="0.025000000000000022 -8.554268404736831e-14 3.978946078869727e-14"/>
+			<inertia ixx="0.0038053875071388916" ixy="-2.842170943040401e-18" ixz="4.3021142204224814e-20" iyy="0.002037271592695302" iyz="-2.163487167194944e-13" izz="0.0020372715923322004"/>
 		</inertial>
-		<collision name="wheel_rightrear_collision">
-			<origin rpy="0.0 0.3490658503988659 1.5707963267948966" xyz="0.0 0.0 0.0"/>
+		<collision name="wheel_v1:2_collision">
+			<origin rpy="0.0 0.4363323129985819 1.5707963267948966" xyz="0.04999999999999999 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheel_v1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
-		<visual name="wheel_rightrear_visual">
-			<origin rpy="0.0 0.3490658503988659 1.5707963267948966" xyz="0.0 0.0 0.0"/>
+		<visual name="wheel_v1:2_visual">
+			<origin rpy="0.0 0.4363323129985819 1.5707963267948966" xyz="0.04999999999999999 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheel_v1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
-	<link name="wheel_rightfront">
+	<link name="wheel_v1:3">
 		<inertial>
 			<mass value="0.6459736269326636"/>
-			<origin rpy="0 0 0" xyz="-0.024999999999999967 -8.865130851631875e-14 -3.2356062273919406e-14"/>
-			<inertia ixx="0.0038053875071388916" ixy="2.842170943040401e-18" ixz="1.0658141036401502e-18" iyy="0.0020372715927300987" iyz="1.815525507709026e-13" izz="0.002037271592297401"/>
+			<origin rpy="0 0 0" xyz="-0.02500000000000005 8.545941732052142e-14 -3.9957891596192896e-14"/>
+			<inertia ixx="0.0038053875071388916" ixy="2.842170943040401e-18" ixz="-1.2261025528204072e-18" iyy="0.0020372715926952906" iyz="-2.1636328284557748e-13" izz="0.0020372715923322117"/>
 		</inertial>
-		<collision name="wheel_rightfront_collision">
-			<origin rpy="0.0 -0.349065850398866 1.5707963267948966" xyz="0.0 0.0 0.0"/>
+		<collision name="wheel_v1:3_collision">
+			<origin rpy="0.0 -0.4363323129985824 -1.5707963267948966" xyz="-0.05000000000000002 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheel_v1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
-		<visual name="wheel_rightfront_visual">
-			<origin rpy="0.0 -0.349065850398866 1.5707963267948966" xyz="0.0 0.0 0.0"/>
+		<visual name="wheel_v1:3_visual">
+			<origin rpy="0.0 -0.4363323129985824 -1.5707963267948966" xyz="-0.05000000000000002 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://patasmonkey_description/meshes/wheel_v1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
-	<joint name="rev0" type="continuous">
+	<link name="wheel_v1:4">
+		<inertial>
+			<mass value="0.6459736269326636"/>
+			<origin rpy="0 0 0" xyz="-0.025000000000000022 8.554268404736831e-14 3.9789454012433695e-14"/>
+			<inertia ixx="0.0038053875071388916" ixy="0.0" ixz="-4.3021142204224814e-20" iyy="0.002037271592695305" iyz="2.163487167194944e-13" izz="0.002037271592332195"/>
+		</inertial>
+		<collision name="wheel_v1:4_collision">
+			<origin rpy="0.0 0.4363323129985823 -1.5707963267948966" xyz="-0.04999999999999999 0.0 0.0"/>
+			<geometry>
+				<mesh filename="package://patasmonkey_description/meshes/wheel_v1.stl" scale="0.001 0.001 0.001"/>
+			</geometry>
+		</collision>
+		<visual name="wheel_v1:4_visual">
+			<origin rpy="0.0 0.4363323129985823 -1.5707963267948966" xyz="-0.04999999999999999 0.0 0.0"/>
+			<geometry>
+				<mesh filename="package://patasmonkey_description/meshes/wheel_v1.stl" scale="0.001 0.001 0.001"/>
+			</geometry>
+		</visual>
+	</link>
+
+	<!-- 大きさを持たないbase_linkから車体主要部リンクであるbodyに回転した固定リンクを貼ることで、CADの座標系からROS 2座標系に変換（X座標が車両前方になるようにする） -->
+	<joint name="base_link_to_body" type="fixed">
 		<parent link="base_link"/>
-		<child link="wheel_arm_leftfront"/>
-		<origin rpy="0 0 0" xyz="0.09999999999999998 -0.030000000000000006 0.05000000000000001"/>
+		<child link="body"/>
+		<origin xyz="0 0 0" rpy="0 0 -1.57079632679"/>
+	</joint>
+	<joint name="rev0" type="continuous">
+		<parent link="body"/>
+		<child link="wheelarm_1_v3:1"/>
+		<origin rpy="0 0 0" xyz="0.11999999999999998 -7.50720839698537e-18 0.10000000000000002"/>
 		<axis xyz="-1.0 0.0 0.0"/>
 	</joint>
 	<joint name="rev1" type="continuous">
-		<parent link="base_link"/>
-		<child link="wheel_arm_leftrear"/>
-		<origin rpy="0 0 0" xyz="0.09999999999999998 0.03 0.05"/>
+		<parent link="body"/>
+		<child link="wheelarm_2_v4:1"/>
+		<origin rpy="0 0 0" xyz="0.13 4.440892098500626e-18 0.10000000000000002"/>
 		<axis xyz="-1.0 0.0 0.0"/>
 	</joint>
 	<joint name="rev2" type="continuous">
-		<parent link="base_link"/>
-		<child link="wheel_arm_rightrear"/>
-		<origin rpy="0 0 0" xyz="-0.1 0.03 0.05"/>
+		<parent link="body"/>
+		<child link="wheelarm_1_v3:2"/>
+		<origin rpy="0 0 0" xyz="-0.12 0.0 0.1"/>
 		<axis xyz="1.0 0.0 0.0"/>
 	</joint>
 	<joint name="rev3" type="continuous">
-		<parent link="base_link"/>
-		<child link="wheel_arm_rightfront"/>
-		<origin rpy="0 0 0" xyz="-0.10000000000000002 -0.030000000000000006 0.05000000000000001"/>
+		<parent link="body"/>
+		<child link="wheelarm_2_v4:2"/>
+		<origin rpy="0 0 0" xyz="-0.13 0.0 0.1"/>
 		<axis xyz="1.0 0.0 0.0"/>
 	</joint>
 	<joint name="rev4" type="continuous">
-		<parent link="wheel_arm_leftfront"/>
-		<child link="wheel_leftfront"/>
-		<origin rpy="0 0 0" xyz="0.05000000000000002 -0.15035081932574534 -0.05472322293210703"/>
-		<axis xyz="1.0 0.0 0.0"/>
+		<parent link="wheelarm_1_v3:1"/>
+		<child link="wheel_v1:1"/>
+		<origin rpy="0 0 0" xyz="0.048000000000000306 -0.16012172781242637 -0.10004368005208156"/>
+		<axis xyz="-1.0000000000000064 0.0 0.0"/>
 	</joint>
 	<joint name="rev5" type="continuous">
-		<parent link="wheel_arm_leftrear"/>
-		<child link="wheel_leftrear"/>
-		<origin rpy="0 0 0" xyz="0.05000000000000002 0.15035081932574534 -0.054723222932107"/>
-		<axis xyz="1.0 0.0 0.0"/>
+		<parent link="wheelarm_2_v4:1"/>
+		<child link="wheel_v1:2"/>
+		<origin rpy="0 0 0" xyz="0.03800000000000012 0.16012172781242617 -0.10004368005208177"/>
+		<axis xyz="-1.0000000000000009 0.0 0.0"/>
 	</joint>
 	<joint name="rev6" type="continuous">
-		<parent link="wheel_arm_rightrear"/>
-		<child link="wheel_rightrear"/>
-		<origin rpy="0 0 0" xyz="-0.04999999999999999 0.15035081932574534 -0.054723222932107"/>
+		<parent link="wheelarm_1_v3:2"/>
+		<child link="wheel_v1:3"/>
+		<origin rpy="0 0 0" xyz="-0.04800000000000004 0.16012172781242623 -0.10004368005208186"/>
 		<axis xyz="1.0 0.0 0.0"/>
 	</joint>
 	<joint name="rev7" type="continuous">
-		<parent link="wheel_arm_rightfront"/>
-		<child link="wheel_rightfront"/>
-		<origin rpy="0 0 0" xyz="-0.05 -0.15035081932574534 -0.05472322293210703"/>
+		<parent link="wheelarm_2_v4:2"/>
+		<child link="wheel_v1:4"/>
+		<origin rpy="0 0 0" xyz="-0.038000000000000006 -0.16012172781242623 -0.10004368005208186"/>
 		<axis xyz="1.0 0.0 0.0"/>
 	</joint>
 </robot>
