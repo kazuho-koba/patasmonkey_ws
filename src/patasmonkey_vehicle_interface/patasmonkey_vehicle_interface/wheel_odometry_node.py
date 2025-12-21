@@ -44,3 +44,101 @@ class WheelOdometryNode(Node):
         self.declare_parameter("left_joint_name", "left_wheel_joint")
         self.declare_parameter("right_joint_name", "right_wheel_joint")
         self.declare_parameter("publish_tf", True)
+
+        self.whl_rad = float(self.get_parameter("whl_rad").value)
+        self.whl_sep = float(self.get_parameter("whl_sep").value)
+        self.gear_ratio = float(self.get_parameter("gear_ratio").value)
+
+        self.joint_state_topic = str(self.get_parameter("joint_state_topic").value)
+        self.odom_topic = str(self.get_parameter("odom_topic").value)
+        self.odom_frame = str(self.get_parameter("odom_frame").value)
+        self.base_frame = str(self.get_parameter("base_frame").value)
+        self.left_joint_name = str(self.get_parameter("left_joint_name").value)
+        self.right_joint_name = str(self.get_parameter("right_joint_name").value)
+        self.publish_tf = bool(self.get_parameter("publish.tf").value)
+
+        # state
+        self.prev_stamp: Optional[rclpy.time.Time] = None
+        self.prev_left_pos: Optional[float] = None # [rad] 前フレームのモータ回転角（左）
+        self.prev_right_pos: Optional[float] = None # [rad] 前フレームのモータ回転角（右）
+
+        self.x = 0.0    # [m] in odom frame
+        self.y = 0.0    # [m] in odom frame
+        self.yaw = 0.0  # [rad] in odom frame
+
+        # pub/sub
+        self.sub = self.create_subscription(
+            JointState,
+            self.joint_state_topic,
+            self.on_joint_state,
+            50,
+        )
+        self.odom_pub = self.create_publisher(Odometry, self.odom_topic, 20)
+
+        self.tf_broadcaster = TransformBroadcaster(self)
+
+        self.get_logger().info(
+            f"wheel_odometry_node started. Sub={self.joint_state_topic}, Pub={self.odom_topic}, "
+            f"frames: {self.odom_frame}->{self.base_frame}, joints: "
+            f"{self.left_joint_name}, {self.right_joint_name}"
+        )
+
+    def on_joint_state(self, msg:JointState) -> None:
+        # Find inices of left/right joints in JointState
+        li = self._index_of(msg.name, self.left_joint_name)
+        ri = self._index_of(msg.name, self.right_joint_name)
+        if li is None or ri is None:
+            # Don't spam logs too hard
+            self.get_logger().warn(
+                f"JointState missing required joints. Need "
+                f"'{self.left_joint_name}' and '{self.right_joint_name}'. Got: {msg.name}",
+                throttle_duration_sec=2.0,
+            )
+            return
+        
+        if len(msg.position) <= max(li, ri):
+            self.get_logger().warn("JointState.position is too short.", throttle_duration_sec=2.0)
+            return
+        
+        # Use message stamp if provided; otherwise use current time
+        if msg.header.stamp.sec == 0 and msg.header.stamp.nanosec == 0:
+            now = self.get_clock().now()
+        else:
+            now = rclpy.time.Time.from_msg(msg.header.stamp)
+
+        left_pos = float(msg.position[li])
+        right_pos = float(msg.position[ri])
+
+        # 最初のメッセージ（前回タイヤ位置不定）のとき
+        if self.prev_stamp is None:
+            self.prev_stamp = now
+            self.prev_left_pos = left_pos
+            self.prev_right_pos = right_pos
+            return
+        
+        dt = (now - self.prev_stamp).nanoseconds*1e-9
+        if dt <= 0.0:
+            return
+        
+        # モータ回転角度の差分[rad]
+        d_left = left_pos - float(self.prev_left_pos)
+        d_right = right_pos - float(self.prev_right_pos)
+
+        # モータ回転角度をタイヤ回転角度に変換
+        d_left_wheel = d_left / self.gear_ratio
+        d_right_wheel = d_right / self.gear_ratio
+
+        # タイヤ移動距離
+        dl = d_left_wheel * self.whl_rad
+        dr = d_left_wheel * self.whl_rad
+
+        # スキッドステアの動き
+        ds = 0.5 * (dr+dl)
+        d_yaw = (dr-dl)/self.whl_sep
+
+        # UGV位置の計算
+        yaw_mid = self.yaw + 0.5*d_yaw
+        self.x += ds*math.cos(yaw_mid)
+        self.y += ds*math.sin(yaw_mid)
+        self.yaw = self._wrap_pi(self.yaw + d_yaw)
+
