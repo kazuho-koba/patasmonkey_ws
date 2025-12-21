@@ -1,11 +1,22 @@
-vehicle_interface_node:
+/**:
   ros__parameters:
     # vehicle config
     whl_rad: 0.1        # wheel radius [m]
     whl_sep: 0.4        # dist between L/R wheels [m]
     gear_ratio: 10.0    # gear reduction ratio
     max_whl_rps: 4.0    # max wheel vel [rps]
- 
+
+    # オドメトリノードの設定
+    joint_state_topic: "/joint_states"
+    odom_topic: "/odom"
+    odom_frame: "odom"
+    base_frame: "base_link"
+    left_joint_name: "left_wheel_joint"
+    right_joint_name: "right_wheel_joint"
+    publish_tf: true
+
+vehicle_interface_node:
+  ros__parameters: 
     # odrive config
     odrv_usb_port: "/dev/ttyACM0"   # odrive port
     odrv_baud_rate: 115200          # baud rate for odrive
