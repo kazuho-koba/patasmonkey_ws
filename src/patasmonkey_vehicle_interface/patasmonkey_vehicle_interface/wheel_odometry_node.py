@@ -33,8 +33,8 @@ class WheelOdometryNode(Node):
         super().__init__("wheel_odometry_node")
 
         # Parameters(shared via /**: ros_parameters)
-        self.declare_parameter("whl_rad", 0.1)
-        self.declare_parameter("whl_sep", 0.4)
+        self.declare_parameter("wheel_radius", 0.1)
+        self.declare_parameter("tread_width", 0.36)
         self.declare_parameter("gear_ratio", 10.0)
 
         self.declare_parameter("joint_state_topic", "/joint_states")
@@ -45,8 +45,8 @@ class WheelOdometryNode(Node):
         self.declare_parameter("right_joint_name", "right_wheel_joint")
         self.declare_parameter("publish_tf", True)
 
-        self.whl_rad = float(self.get_parameter("whl_rad").value)
-        self.whl_sep = float(self.get_parameter("whl_sep").value)
+        self.wheel_radius = float(self.get_parameter("wheel_radius").value)
+        self.tread_width = float(self.get_parameter("tread_width").value)
         self.gear_ratio = float(self.get_parameter("gear_ratio").value)
 
         self.joint_state_topic = str(self.get_parameter("joint_state_topic").value)
@@ -130,12 +130,12 @@ class WheelOdometryNode(Node):
         d_right_wheel = d_right / self.gear_ratio
 
         # タイヤ移動距離
-        dl = d_left_wheel * self.whl_rad
-        dr = d_right_wheel * self.whl_rad
+        dl = d_left_wheel * self.wheel_radius
+        dr = d_right_wheel * self.wheel_radius
 
         # スキッドステアの動き
         ds = 0.5 * (dr+dl)
-        d_yaw = (dr-dl)/self.whl_sep
+        d_yaw = (dr-dl)/self.tread_width
 
         # UGV位置の計算
         yaw_mid = self.yaw + 0.5*d_yaw

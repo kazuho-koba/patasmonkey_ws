@@ -12,9 +12,9 @@ class VehicleInterfaceNode(Node):
         super().__init__("vehicle_interface")  # register the node
 
         # load parameters from yaml (passed via launch file)
-        self.whl_rad = self.get_parameter_or("whl_rad", 0.1)  # wheel radius [m]
-        self.whl_sep = self.get_parameter_or(
-            "whl_sep", 0.4
+        self.wheel_radius = self.get_parameter_or("wheel_radius", 0.1)  # wheel radius [m]
+        self.tread_width = self.get_parameter_or(
+            "tread_width", 0.36
         )  # wheel separation betwee L\R [m]
         self.gear_ratio = self.get_parameter_or("gear_ratio", 10.0)  # gear ratio
         self.max_whl_rps = self.get_parameter_or(
@@ -123,11 +123,11 @@ class VehicleInterfaceNode(Node):
         if cmd is not None:
             lin_x = cmd.linear.x  # velocity (forward/backward)
             ang_z = cmd.angular.z  # velocity (turning)
-            whl_diam = self.whl_rad * 2 * math.pi  # wheel diameter
+            wheel_perimeter = self.wheel_radius * 2 * math.pi  # wheel perimeter
 
             # compute rps of L/R wheels
-            v_left = (lin_x - ang_z * self.whl_sep / 2) / whl_diam
-            v_right = (lin_x + ang_z * self.whl_sep / 2) / whl_diam
+            v_left = (lin_x - ang_z * self.tread_width / 2) / wheel_perimeter
+            v_right = (lin_x + ang_z * self.tread_width / 2) / wheel_perimeter
 
             # cap by max speed
             v_left = max(min(v_left, self.max_whl_rps), -self.max_whl_rps)
@@ -203,8 +203,8 @@ class VehicleInterfaceNode(Node):
         separator = "-" * 42
         lines = [header, separator]
         for key, value in [
-            ("whl_rad", self.whl_rad),
-            ("whl_sep", self.whl_sep),
+            ("wheel_radius", self.wheel_radius),
+            ("tread_width", self.tread_width),
             ("gear_ratio", self.gear_ratio),
             ("max_whl_rps", self.max_whl_rps),
             ("odrv_usb_port", self.odrv_usb_port),
