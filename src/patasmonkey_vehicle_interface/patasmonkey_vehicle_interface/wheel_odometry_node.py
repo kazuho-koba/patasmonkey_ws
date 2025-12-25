@@ -12,10 +12,12 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformBroadcaster
 
+
 def yaw_to_quat(z_yaw: float) -> Tuple[float, float, float, float]:
     """ヨー角からクオータニオンを計算"""
     half = 0.5 * z_yaw
     return (0.0, 0.0, math.sin(half), math.cos(half))
+
 
 class WheelOdometryNode(Node):
     """
@@ -25,7 +27,7 @@ class WheelOdometryNode(Node):
 
     前提事項：
     - 左２輪、右２輪はそれぞれ同じ回転数となるスキッドステア車両
-    - JointState.positionはタイヤの累積角度[rad] 
+    - JointState.positionはタイヤの累積角度[rad]
     - JointState velocityがある場合でも基本は無視して角度からオドメトリ計算をする
     """
 
@@ -59,11 +61,11 @@ class WheelOdometryNode(Node):
 
         # state
         self.prev_stamp: Optional[rclpy.time.Time] = None
-        self.prev_left_pos: Optional[float] = None # [rad] 前フレームのモータ回転角（左）
-        self.prev_right_pos: Optional[float] = None # [rad] 前フレームのモータ回転角（右）
+        self.prev_left_pos: Optional[float] = None  # [rad] 前フレームのモータ回転角（左）
+        self.prev_right_pos: Optional[float] = None  # [rad] 前フレームのモータ回転角（右）
 
-        self.x = 0.0    # [m] in odom frame
-        self.y = 0.0    # [m] in odom frame
+        self.x = 0.0  # [m] in odom frame
+        self.y = 0.0  # [m] in odom frame
         self.yaw = 0.0  # [rad] in odom frame
 
         # pub/sub
@@ -83,7 +85,7 @@ class WheelOdometryNode(Node):
             f"{self.left_joint_name}, {self.right_joint_name}"
         )
 
-    def on_joint_state(self, msg:JointState) -> None:
+    def on_joint_state(self, msg: JointState) -> None:
         # Find inices of left/right joints in JointState
         li = self._index_of(msg.name, self.left_joint_name)
         ri = self._index_of(msg.name, self.right_joint_name)
@@ -95,11 +97,13 @@ class WheelOdometryNode(Node):
                 throttle_duration_sec=2.0,
             )
             return
-        
+
         if len(msg.position) <= max(li, ri):
-            self.get_logger().warn("JointState.position is too short.", throttle_duration_sec=2.0)
+            self.get_logger().warn(
+                "JointState.position is too short.", throttle_duration_sec=2.0
+            )
             return
-        
+
         # Use message stamp if provided; otherwise use current time
         if msg.header.stamp.sec == 0 and msg.header.stamp.nanosec == 0:
             now = self.get_clock().now()
@@ -116,11 +120,11 @@ class WheelOdometryNode(Node):
             self.prev_left_pos = left_pos
             self.prev_right_pos = right_pos
             return
-        
-        dt = (now - self.prev_stamp).nanoseconds*1e-9
+
+        dt = (now - self.prev_stamp).nanoseconds * 1e-9
         if dt <= 0.0:
             return
-        
+
         # モータ回転角度の差分[rad]
         d_left = left_pos - float(self.prev_left_pos)
         d_right = right_pos - float(self.prev_right_pos)
@@ -134,12 +138,43 @@ class WheelOdometryNode(Node):
         dr = d_right_wheel * self.wheel_radius
 
         # スキッドステアの動き
-        ds = 0.5 * (dr+dl)
-        d_yaw = (dr-dl)/self.tread_width
+        ds = 0.5 * (dr + dl)
+        d_yaw = (dr - dl) / self.tread_width
 
         # UGV位置の計算
-        yaw_mid = self.yaw + 0.5*d_yaw
-        self.x += ds*math.cos(yaw_mid)
-        self.y += ds*math.sin(yaw_mid)
+        yaw_mid = self.yaw + 0.5 * d_yaw
+        self.x += ds * math.cos(yaw_mid)
+        self.y += ds * math.sin(yaw_mid)
         self.yaw = self._wrap_pi(self.yaw + d_yaw)
 
+        # 速度推定
+        vx = ds / dt
+        wz = d_yaw / dt
+
+        # OdometryのPublish
+        odom = Odometry()
+        odom.header.stamp = now.to_msg()
+        odom.header.frame_id = self.odom_frame
+        odom.child_frame_id = self.base_frame
+
+        odom.pose.pose.position.x = self.x
+        odom.pose.pose.position.y = self.y
+        odom.pose.pose.position.z = 0.0
+
+        qx, qy, qz, qw = yaw_to_quat(self.yaw)
+        odom.pose.pose.orientation.x = qx
+        odom.pose.pose.orientation.y = qy
+        odom.pose.pose.orientation.z = qz
+        odom.pose.pose.orientation.w = qw
+
+        odom.twist.twist.linear.x = vx
+        odom.twist.twist.linear.y = 0.0
+        odom.twist.twist.angular.z = wz
+        # 共分散のデータもあるが今回は省略
+
+        self.odom_pub.publish(odom)
+
+        # odom -> base_link のTFを発行
+        if self.publish_tf:
+            t = TransformStamped()
+            t.header.stamp = odom.header.stamp
