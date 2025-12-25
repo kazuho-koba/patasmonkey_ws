@@ -106,8 +106,9 @@ class WheelOdometryNode(Node):
         else:
             now = rclpy.time.Time.from_msg(msg.header.stamp)
 
-        left_pos = float(msg.position[li])
-        right_pos = float(msg.position[ri])
+        # subscribeしたメッセージから左右モータ角を取得（通算回転数でデータが取れるのでradに変換）
+        left_pos = float(msg.position[li]) * 2.0 * math.pi
+        right_pos = float(msg.position[ri]) * 2.0 * math.pi
 
         # 最初のメッセージ（前回タイヤ位置不定）のとき
         if self.prev_stamp is None:
@@ -130,7 +131,7 @@ class WheelOdometryNode(Node):
 
         # タイヤ移動距離
         dl = d_left_wheel * self.whl_rad
-        dr = d_left_wheel * self.whl_rad
+        dr = d_right_wheel * self.whl_rad
 
         # スキッドステアの動き
         ds = 0.5 * (dr+dl)
