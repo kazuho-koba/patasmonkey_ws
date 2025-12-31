@@ -178,3 +178,42 @@ class WheelOdometryNode(Node):
         if self.publish_tf:
             t = TransformStamped()
             t.header.stamp = odom.header.stamp
+            t.header.frame_id = self.odom_frame
+            t.child_frame_id = self.base_frame
+            t.transform.translation.x = self.x
+            t.transform.translation.y = self.y
+            t.transform.translation.z = 0.0
+            t.transform.rotation.x = qx
+            t.transform.rotation.y = qy
+            t.transform.rotation.z = qz
+            t.transform.rotation.w = qw
+            self.tf_broadcaster.sendTransform(t)
+
+        # 前回時刻情報として保存しておくパラメータの内容を更新
+        self.prev_stamp = now
+        self.prev_left_pos = left_pos
+        self.prev_right_pos = right_pos
+
+    @staticmethod
+    def _wrap_pi(a: float) -> float:
+        # 角度情報を(-pi, pi]の間に収める
+        while a <= -math.pi:
+            a += 2.0 * math.pi
+        while a > math.pi:
+            a -= 2.0 * math.pi
+        return a
+
+
+def main() -> None:
+    rclpy.init()
+    node = WheelOdometryNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
