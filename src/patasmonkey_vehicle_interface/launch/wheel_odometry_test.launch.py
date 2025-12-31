@@ -9,7 +9,7 @@ def generate_launch_description():
             name="dummy_jointstate_pub",
             parameters=[
                 {"left_cycle_per_sec":1.0},
-                {"right_cycle_per_sec":1.0},
+                {"right_cycle_per_sec":0.5},
             ],
             output="screen",
         ),
