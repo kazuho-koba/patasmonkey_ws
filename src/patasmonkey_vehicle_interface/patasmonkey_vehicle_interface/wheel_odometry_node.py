@@ -57,7 +57,7 @@ class WheelOdometryNode(Node):
         self.base_frame = str(self.get_parameter("base_frame").value)
         self.left_joint_name = str(self.get_parameter("left_joint_name").value)
         self.right_joint_name = str(self.get_parameter("right_joint_name").value)
-        self.publish_tf = bool(self.get_parameter("publish.tf").value)
+        self.publish_tf = bool(self.get_parameter("publish_tf").value)
 
         # state
         self.prev_stamp: Optional[rclpy.time.Time] = None
@@ -193,6 +193,13 @@ class WheelOdometryNode(Node):
         self.prev_stamp = now
         self.prev_left_pos = left_pos
         self.prev_right_pos = right_pos
+
+    @staticmethod
+    def _index_of(names: list[str], target:str)->Optional[int]:
+        try:
+            return names.index(target)
+        except ValueError:
+            return None
 
     @staticmethod
     def _wrap_pi(a: float) -> float:
