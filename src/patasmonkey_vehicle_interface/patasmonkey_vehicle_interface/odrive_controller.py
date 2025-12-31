@@ -50,6 +50,12 @@ class MotorController:
         # print(f"Motor {self.axis_index}: Current velocity = {vel:.2f} rps", flush=True)
         return vel
 
+    def get_position(self):
+        """Get the relative position (multi-turns) where the initial position is 0"""
+        pos = self.axis.encoder.pos_estimate
+        return pos
+
+
     def set_velocity(self, velocity):
         """Set target velocity [rps]."""
         try:

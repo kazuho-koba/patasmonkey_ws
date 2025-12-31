@@ -24,7 +24,8 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "vehicle_interface_node = patasmonkey_vehicle_interface.vehicle_interface_node:main"
+            "vehicle_interface_node = patasmonkey_vehicle_interface.vehicle_interface_node:main",
+            "wheel_odometry_node = patasmonkey_vehicle_interface.wheel_odometry_node:main",
         ],
     },
 )

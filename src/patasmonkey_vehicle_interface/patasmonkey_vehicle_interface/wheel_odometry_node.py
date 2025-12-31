@@ -27,7 +27,7 @@ class WheelOdometryNode(Node):
 
     前提事項：
     - 左２輪、右２輪はそれぞれ同じ回転数となるスキッドステア車両
-    - JointState.positionはタイヤの累積角度[rad]
+    - JointState.positionはタイヤの累積回転数[turns](2piかけることで回転角になる)
     - JointState velocityがある場合でも基本は無視して角度からオドメトリ計算をする
     """
 
