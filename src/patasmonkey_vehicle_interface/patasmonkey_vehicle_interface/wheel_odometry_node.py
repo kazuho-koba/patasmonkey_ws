@@ -39,7 +39,7 @@ class WheelOdometryNode(Node):
         self.declare_parameter("tread_width", 0.36)
         self.declare_parameter("gear_ratio", 10.0)
 
-        self.declare_parameter("joint_state_topic", "/joint_states")
+        self.declare_parameter("wheel_state_topic", "/wheel_cycles")
         self.declare_parameter("odom_topic", "/odom")
         self.declare_parameter("odom_frame", "odom")
         self.declare_parameter("base_frame", "base_link")
@@ -51,7 +51,7 @@ class WheelOdometryNode(Node):
         self.tread_width = float(self.get_parameter("tread_width").value)
         self.gear_ratio = float(self.get_parameter("gear_ratio").value)
 
-        self.joint_state_topic = str(self.get_parameter("joint_state_topic").value)
+        self.wheel_state_topic = str(self.get_parameter("wheel_state_topic").value)
         self.odom_topic = str(self.get_parameter("odom_topic").value)
         self.odom_frame = str(self.get_parameter("odom_frame").value)
         self.base_frame = str(self.get_parameter("base_frame").value)
@@ -71,7 +71,7 @@ class WheelOdometryNode(Node):
         # pub/sub
         self.sub = self.create_subscription(
             JointState,
-            self.joint_state_topic,
+            self.wheel_state_topic,
             self.on_joint_state,
             50,
         )
@@ -80,7 +80,7 @@ class WheelOdometryNode(Node):
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.get_logger().info(
-            f"wheel_odometry_node started. Sub={self.joint_state_topic}, Pub={self.odom_topic}, "
+            f"wheel_odometry_node started. Sub={self.wheel_state_topic}, Pub={self.odom_topic}, "
             f"frames: {self.odom_frame}->{self.base_frame}, joints: "
             f"{self.left_joint_name}, {self.right_joint_name}"
         )

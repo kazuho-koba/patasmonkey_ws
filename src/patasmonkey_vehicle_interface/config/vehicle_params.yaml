@@ -7,7 +7,7 @@
     max_whl_rps: 4.0    # max wheel vel [rps]
 
     # オドメトリノードの設定
-    joint_state_topic: "/joint_states"
+    wheel_state_topic: "/wheel_cycles"
     odom_topic: "/odom"
     odom_frame: "odom"
     base_frame: "base_link"
