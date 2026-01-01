@@ -21,7 +21,7 @@ class DummyJointStatePublisher(Node):
         self.left_cps = self.get_parameter("left_cycle_per_sec").value
         self.right_cps = self.get_parameter("right_cycle_per_sec").value
 
-        self.pub = self.create_publisher(JointState, "/joint_states", 10)
+        self.pub = self.create_publisher(JointState, "/wheel_radians", 10)
 
         self.left_cycle = 0.0
         self.right_cycle = 0.0

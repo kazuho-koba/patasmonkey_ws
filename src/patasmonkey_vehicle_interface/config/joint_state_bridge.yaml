@@ -1,0 +1,21 @@
+joint_state_bridge:
+  ros__parameters:
+    in_topioname: "/wheel_radians"
+    out_topicname: "/joint_states"
+
+    # vehicle_interfaceが出しているJointStateトピックの左右の名称
+    left_jointname: "left_wheel_joint"
+    right_jointname: "right_wheel_joint"
+
+    # URDFのジョイント名
+    left_wheel_joints: ["wheelaxis_leftfront", "wheelaxis_leftrear"]
+    right_wheel_joints: ["wheelaxis_rightfront", "wheelaxis_rightrear"]
+
+    # サス/アームは0固定で埋める（URDFのジョイント名に一致させる）
+    static_joints: [
+      "wheelarmjoint_rightrear",
+      "wheelarmjoint_rightfront",
+      "wheelarmjoint_leftfront",
+      "wheelarmjoint_leftrear"
+    ]
+    static_positions: [0.0, 0.0, 0.0, 0.0]

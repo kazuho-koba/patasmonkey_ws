@@ -210,24 +210,24 @@
 		<parent link="wheelarm_rightrear"/>
 		<child link="wheel_rightrear"/>
 		<origin rpy="0 0 0" xyz="0.048000000000000306 -0.16012172781242637 -0.10004368005208156"/>
-		<axis xyz="-1.0000000000000064 0.0 0.0"/>
+		<axis xyz="-1.0 0.0 0.0"/>
 	</joint>
-	<joint name="wheelaxis_rightfromt" type="continuous">
+	<joint name="wheelaxis_rightfront" type="continuous">
 		<parent link="wheelarm_rightfront"/>
 		<child link="wheel_rightfront"/>
 		<origin rpy="0 0 0" xyz="0.03800000000000012 0.16012172781242617 -0.10004368005208177"/>
-		<axis xyz="-1.0000000000000009 0.0 0.0"/>
+		<axis xyz="-1.0 0.0 0.0"/>
 	</joint>
 	<joint name="wheelaxis_leftfront" type="continuous">
 		<parent link="wheelarm_leftfront"/>
 		<child link="wheel_leftfront"/>
 		<origin rpy="0 0 0" xyz="-0.04800000000000004 0.16012172781242623 -0.10004368005208186"/>
-		<axis xyz="1.0 0.0 0.0"/>
+		<axis xyz="-1.0 0.0 0.0"/>
 	</joint>
 	<joint name="wheelaxis_leftrear" type="continuous">
 		<parent link="wheelarm_leftrear"/>
 		<child link="wheel_leftrear"/>
 		<origin rpy="0 0 0" xyz="-0.038000000000000006 -0.16012172781242623 -0.10004368005208186"/>
-		<axis xyz="1.0 0.0 0.0"/>
+		<axis xyz="-1.0 0.0 0.0"/>
 	</joint>
 </robot>

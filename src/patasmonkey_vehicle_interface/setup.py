@@ -27,6 +27,7 @@ setup(
             "vehicle_interface_node = patasmonkey_vehicle_interface.vehicle_interface_node:main",
             "wheel_odometry_node = patasmonkey_vehicle_interface.wheel_odometry_node:main",
             'dummy_jointstate_pub = patasmonkey_vehicle_interface.tools.dummy_jointstate_pub:main',
+            "joint_state_bridge_node = patasmonkey_vehicle_interface.joint_state_bridge_node:main",
         ],
     },
 )
