@@ -13,7 +13,9 @@ class VehicleInterfaceNode(Node):
         super().__init__("vehicle_interface")  # register the node
 
         # load parameters from yaml (passed via launch file)
-        self.wheel_radius = self.get_parameter_or("wheel_radius", 0.1)  # wheel radius [m]
+        self.wheel_radius = self.get_parameter_or(
+            "wheel_radius", 0.1
+        )  # wheel radius [m]
         self.tread_width = self.get_parameter_or(
             "tread_width", 0.36
         )  # wheel separation betwee L\R [m]
@@ -74,14 +76,14 @@ class VehicleInterfaceNode(Node):
 
         # timer for control loop
         self._timer = self.create_timer(0.02, self.command_selector)
-        self._encoder_timer=self.create_timer(0.02, self.publish_encoder)
+        self._encoder_timer = self.create_timer(0.02, self.publish_encoder)
 
         # publihser config
         self.motor_cmd_pub = self.create_publisher(
             Float32MultiArray, self.mtr_output_topic, 10
         )
         self.sim_cmd_vel_pub = self.create_publisher(Twist, "/sim_cmd_vel", 10)
-        self.encoder_pub = self.create_publisher(JointState, "/wheel_cycles", 10)
+        self.encoder_pub = self.create_publisher(JointState, "/wheel_radians", 10)
 
     def cmd_vel_callback(self, msg):
         """callback function when /cmd_vel from autnomous driving software has been recieved"""
@@ -176,7 +178,7 @@ class VehicleInterfaceNode(Node):
         # self.accumerated_ver_err_right = max(
         #     self.accumerated_ver_err_right + self.current_vel_right - mtr_right_rps, 5
         # )                                                               # for I control
-        # self.left_motor.velfb_torque_control(   
+        # self.left_motor.velfb_torque_control(
         #     vel_err_left, delta_vel_left, self.accumerated_ver_err_left
         # )
         # self.right_motor.velfb_torque_control(
@@ -193,21 +195,25 @@ class VehicleInterfaceNode(Node):
         try:
             now = self.get_clock().now().to_msg()
 
-            # モータ通算回転角を取得、ギア比で除してホイール回転角を取得
-            left_cycle = self.left_motor.get_position()/self.gear_ratio
-            right_cycle = self.right_motor.get_position()/self.gear_ratio
+            # モータ通算回転角を取得、2piを乗じradに直してからギア比で除してホイール回転角を取得
+            left_cycle = (
+                2.0 * math.pi * self.left_motor.get_position() / self.gear_ratio
+            )
+            right_cycle = (
+                2.0 * math.pi * self.right_motor.get_position() / self.gear_ratio
+            )
 
             msg = JointState()
             msg.header.stamp = now
 
-            msg.name=["left_wheel_joint", "right_wheel_joint"]
+            msg.name = ["left_wheel_joint", "right_wheel_joint"]
             msg.position = [float(left_cycle), float(right_cycle)]
 
             self.encoder_pub.publish(msg)
 
         except Exception as e:
             self.get_logger().error(f"Exception in publish_encoder: {e}")
-    
+
     def emergency_stop_callback(self, msg):
         """emefgency stop: stop motors immediately"""
         if msg.data:

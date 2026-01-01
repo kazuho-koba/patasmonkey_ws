@@ -39,7 +39,7 @@ class WheelOdometryNode(Node):
         self.declare_parameter("tread_width", 0.36)
         self.declare_parameter("gear_ratio", 10.0)
 
-        self.declare_parameter("wheel_state_topic", "/wheel_cycles")
+        self.declare_parameter("wheel_state_topic", "/wheel_radians")
         self.declare_parameter("odom_topic", "/odom")
         self.declare_parameter("odom_frame", "odom")
         self.declare_parameter("base_frame", "base_link")
