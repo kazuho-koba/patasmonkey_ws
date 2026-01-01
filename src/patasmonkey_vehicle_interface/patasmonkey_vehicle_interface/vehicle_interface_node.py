@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool, Float32MultiArray
+from sensor_msgs.msg import JointState
 from .odrive_controller import MotorController
 import math
 import sys
@@ -73,12 +74,14 @@ class VehicleInterfaceNode(Node):
 
         # timer for control loop
         self._timer = self.create_timer(0.02, self.command_selector)
+        self._encoder_timer=self.create_timer(0.02, self.publish_encoder)
 
         # publihser config
         self.motor_cmd_pub = self.create_publisher(
             Float32MultiArray, self.mtr_output_topic, 10
         )
         self.sim_cmd_vel_pub = self.create_publisher(Twist, "/sim_cmd_vel", 10)
+        self.encoder_pub = self.create_publisher(JointState, "/wheel_cycles", 10)
 
     def cmd_vel_callback(self, msg):
         """callback function when /cmd_vel from autnomous driving software has been recieved"""
@@ -185,6 +188,26 @@ class VehicleInterfaceNode(Node):
         msg_out.data = [mtr_left_rps, mtr_right_rps]
         self.motor_cmd_pub.publish(msg_out)
 
+    def publish_encoder(self):
+        """ホイールオドメトリ等の計算のためにエンコーダ情報をpublishする関数"""
+        try:
+            now = self.get_clock().now().to_msg()
+
+            # モータ通算回転角を取得、ギア比で除してホイール回転角を取得
+            left_cycle = self.left_motor.get_position()/self.gear_ratio
+            right_cycle = self.right_motor.get_position()/self.gear_ratio
+
+            msg = JointState()
+            msg.header.stamp = now
+
+            msg.name=["left_wheel_joint", "right_wheel_joint"]
+            msg.position = [float(left_cycle), float(right_cycle)]
+
+            self.encoder_pub.publish(msg)
+
+        except Exception as e:
+            self.get_logger().error(f"Exception in publish_encoder: {e}")
+    
     def emergency_stop_callback(self, msg):
         """emefgency stop: stop motors immediately"""
         if msg.data:

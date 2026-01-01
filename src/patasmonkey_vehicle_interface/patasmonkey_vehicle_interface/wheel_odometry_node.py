@@ -110,7 +110,7 @@ class WheelOdometryNode(Node):
         else:
             now = rclpy.time.Time.from_msg(msg.header.stamp)
 
-        # subscribeしたメッセージから左右モータ角を取得（通算回転数でデータが取れるのでradに変換）
+        # subscribeしたメッセージから左右タイヤ通算回転角を取得（通算回転数でデータが取れるのでradに変換）
         left_pos = float(msg.position[li]) * 2.0 * math.pi
         right_pos = float(msg.position[ri]) * 2.0 * math.pi
 
@@ -125,13 +125,9 @@ class WheelOdometryNode(Node):
         if dt <= 0.0:
             return
 
-        # モータ回転角度の差分[rad]
-        d_left = left_pos - float(self.prev_left_pos)
-        d_right = right_pos - float(self.prev_right_pos)
-
-        # モータ回転角度をタイヤ回転角度に変換
-        d_left_wheel = d_left / self.gear_ratio
-        d_right_wheel = d_right / self.gear_ratio
+        # タイヤ回転角度の差分[rad]
+        d_left_wheel = left_pos - float(self.prev_left_pos)
+        d_right_wheel = right_pos - float(self.prev_right_pos)
 
         # タイヤ移動距離
         dl = d_left_wheel * self.wheel_radius
@@ -195,7 +191,7 @@ class WheelOdometryNode(Node):
         self.prev_right_pos = right_pos
 
     @staticmethod
-    def _index_of(names: list[str], target:str)->Optional[int]:
+    def _index_of(names: list[str], target: str) -> Optional[int]:
         try:
             return names.index(target)
         except ValueError:
