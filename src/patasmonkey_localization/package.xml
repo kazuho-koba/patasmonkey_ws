@@ -3,9 +3,9 @@
 <package format="3">
   <name>patasmonkey_localization</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="mujin">mujin</maintainer>
-  <license>TODO: License declaration</license>
+  <description>localization for patasmonkey UGV</description>
+  <maintainer email="kazuho.kobayashi.ynu@gmail.com">mujin</maintainer>
+  <license>MIT</license>
 
   <depend>rclpy</depend>
 
@@ -13,6 +13,8 @@
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
+
+  <exec_depend>robot_localization</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>
