@@ -19,13 +19,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-rosdep \
     python3-vcstool \
     python3-argcomplete \
-    python3-ament-package \
     x11-apps \
     mesa-utils \
     libgl1-mesa-glx \
     libglib2.0-0 \
+    usbutils \
+    libusb-1.0-0-dev \
     && rm -rf /var/lib/apt/lists/*
 
+
+# OAK-D / DepthAI Python API
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir \
+        numpy==1.24.4 \
+        depthai==3.1.0 \
+        opencv-python==4.13.0.92
+        
 # rosdep 初期化はホストや既存状態によって失敗することがあるので、失敗しても継続
 RUN rosdep init || true
 RUN rosdep update || true
