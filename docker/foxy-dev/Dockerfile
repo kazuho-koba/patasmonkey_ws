@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     python3-pip \
+    python3-usb \
     python3-colcon-common-extensions \
     python3-rosdep \
     python3-vcstool \
@@ -51,6 +52,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-rqt \
     && rm -rf /var/lib/apt/lists/*
 
+# ODrive関係
+RUN python3 -m pip install --upgrade pip setuptools wheel
+RUN python3 -m pip install --upgrade odrive
 
 # OAK-D / DepthAI Python API
 RUN python3 -m pip install --upgrade pip && \
