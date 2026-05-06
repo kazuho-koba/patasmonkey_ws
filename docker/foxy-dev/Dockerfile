@@ -15,8 +15,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nano \
     wget \
     curl \
-    gnupg2 \
-    lsb-release \
     build-essential \
     cmake \
     python3-pip \
@@ -24,22 +22,43 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-rosdep \
     python3-vcstool \
     python3-argcomplete \
+    && rm -rf /var/lib/apt/lists/*
+
+# GUIツール
+RUN apt-get update && apt-get install -y --no-install-recommends \
     x11-apps \
     mesa-utils \
     libgl1-mesa-glx \
     libglib2.0-0 \
+    gnupg2 \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
+# USBデバイス関係
+RUN apt-get update && apt-get install -y --no-install-recommends \
     usbutils \
     libusb-1.0-0-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ROS関係
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-foxy-image-pipeline \
+    ros-foxy-depthai-ros \
+    ros-foxy-rtabmap \
+    ros-foxy-rtabmap-ros \
+    ros-foxy-rviz2 \
+    ros-foxy-rqt-image-view \
+    ros-foxy-rqt \
     && rm -rf /var/lib/apt/lists/*
 
 
 # OAK-D / DepthAI Python API
 RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir \
-        numpy==1.24.4 \
-        depthai==3.1.0 \
-        opencv-python==4.13.0.92 \
-        black==24.4.2
+    numpy==1.24.4 \
+    depthai==3.1.0 \
+    opencv-python==4.13.0.92 \
+    black==24.4.2
 
 # rosdep 初期化はホストや既存状態によって失敗することがあるので、失敗しても継続
 RUN rosdep init || true
