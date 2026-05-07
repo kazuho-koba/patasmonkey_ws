@@ -27,3 +27,6 @@ Thumbs.db
 build/
 install/
 log/
+build_foxy 
+install_foxy
+log_foxy

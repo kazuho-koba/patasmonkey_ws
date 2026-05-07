@@ -4,10 +4,12 @@ set -e
 IMAGE_NAME="patasmonkey:foxy-dev"
 CONTAINER_NAME="patasmonkey_foxy_dev"
 
-# この run.sh の場所からリポジトリルートを推定
+# この run.sh の場所からリポジトリルートを推定し、必要なディレクトリをマウント
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOST_WS="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CONTAINER_WS="/workspaces/patasmonkey_ws"
+HOST_COMMON_WS="${HOME}/ros2_ws"
+CONTAINER_COMMON_WS="/workspaces/ros2_ws"
 
 # GUI 使用許可
 xhost +local:docker
@@ -29,6 +31,7 @@ docker run -it \
   --env RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}" \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw \
   --volume "${HOST_WS}:${CONTAINER_WS}:rw" \
+  --volume "${HOST_COMMON_WS}:${CONTAINER_COMMON_WS}:rw" \
   --volume /dev:/dev \
   --group-add dialout \
   --group-add video \
