@@ -153,9 +153,9 @@ class VehicleInterfaceNode(Node):
             zero_cmd = Twist()
             self.sim_cmd_vel_pub.publish(zero_cmd)
 
-        # send command to ODrive
+        # send command to ODrive (右モータの速度は反転)
         self.left_motor.set_velocity(mtr_left_rps)
-        self.right_motor.set_velocity(mtr_right_rps)
+        self.right_motor.set_velocity(-1.0*mtr_right_rps)
 
         # # get current and past motor velocity with low pass filter
         # self.last_vel_left = self.current_vel_left
