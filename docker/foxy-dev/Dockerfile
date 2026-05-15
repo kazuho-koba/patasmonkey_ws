@@ -69,7 +69,11 @@ RUN python3 -m pip install --upgrade pip && \
     numpy==1.24.4 \
     depthai==3.1.0 \
     opencv-python==4.13.0.92
-
+# DepthAIはv3が最新だが、Foxyで動かすならv2のほうがいい説
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir \
+    depthai==2.30.0.0
+    
 # IMU関係
 RUN python3 -m pip install --no-cache-dir \
     modbus_tk \
