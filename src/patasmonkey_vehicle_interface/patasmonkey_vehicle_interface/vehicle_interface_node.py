@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
-from patasmonkey_vehicle_interface.msg import MotorState
+from patasmonkey_msgs.msg import MotorState
 from .odrive_controller import MotorController
 import math
 import sys
@@ -292,9 +292,22 @@ class VehicleInterfaceNode(Node):
             ("cmd_vel_joy_topic", self.cmd_vel_joy_topic),
             ("motor_state_topic", self.motor_state_topic),
             ("emergency_stop_topic", self.emergency_stop_topic),
+            ("vel_ramp_rate", self.vel_ramp_rate),
+            ("pos_gain", self.pos_gain),
+            ("vel_gain", self.vel_gain),
+            ("vel_integrator_gain", self.vel_integrator_gain),
+            ("vel_integrator_limit", self.vel_integrator_limit),
         ]:
             lines.append(f"{key:<20} {str(value):<20}")
         self.get_logger().info("\n".join(lines))
+
+        self.vel_ramp_rate = self.get_parameter_or("vel_ramp_rate", 15.0)
+        self.pos_gain = self.get_parameter_or("pos_gain", 30.0)
+        self.vel_gain = self.get_parameter_or("vel_gain", 0.225)
+        self.vel_integrator_gain = self.get_parameter_or(
+            "vel_integrator_gain", 0.75)
+        self.vel_integrator_limit = self.get_parameter_or(
+            "vel_integrator_limit", 2.0)
 
 
 def main(args=None):
