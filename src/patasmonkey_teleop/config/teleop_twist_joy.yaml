@@ -1,7 +1,7 @@
 joy_teleop:
   ros__parameters:
     require_enable_button: true  # if true, do not work unless you push a particular button.
-    enable_button: 1  # enable if you push this button (default: 0 -> always enabled)
+    enable_button: 4  # enable if you push this button (default: 0 -> always enabled)
     
     axis_linear:
       x: 1  # assign forward/backward of left stick to linear.x
@@ -17,4 +17,4 @@ joy_teleop:
     scale_angular_turbo:
       yaw: 2.0  # max yaw rate at turbo mode 2.0 rad/s
 
-    enable_turbo_button: 4  # button for turbo mode (L1 button)
+    enable_turbo_button: 1  # button for turbo mode (L1 button)
