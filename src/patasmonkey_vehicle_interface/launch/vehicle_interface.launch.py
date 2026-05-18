@@ -8,7 +8,7 @@ import os
 def generate_launch_description():
     pkg_dir = os.path.dirname(os.path.abspath(__file__))  # package directory
     param_file = os.path.join(
-        pkg_dir, "../config/vehicle_contorl_params.yaml")  # yaml file
+        pkg_dir, "../config/vehicle_control_params.yaml")  # yaml file
 
     # Define the vehicle interface node
     vehicle_interface_node = Node(
