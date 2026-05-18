@@ -1,4 +1,7 @@
+#####################################################
 # 実際に車体を動かすときに使うパラメータ（ゲインが高め）
+#####################################################
+# この.yamlを呼び出したlaunchファイル内で定義された全ノードに適用可能なパラメータ群
 /**:
   ros__parameters:
     # vehicle config
@@ -16,6 +19,7 @@
     right_joint_name: "right_wheel_joint"
     publish_tf: true
 
+# この.yamlを呼び出したlaunchファイル内で以下の名称を持つノードに適用可能なパラメータ群
 vehicle_interface_node:
   ros__parameters: 
     # odrive config
@@ -44,3 +48,6 @@ vehicle_interface_node:
     # motor direction
     left_motor_sign: 1.0
     right_motor_sign: -1.0
+
+    # motor info
+    motor_state_topic: "/motor_state"

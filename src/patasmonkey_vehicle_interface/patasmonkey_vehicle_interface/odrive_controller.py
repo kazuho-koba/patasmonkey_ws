@@ -9,12 +9,25 @@ from odrive.enums import (
 
 
 class MotorController:
-    def __init__(self, axis_index=0):
+    def __init__(
+        self,
+        axis_index=0,
+        vel_ramp_rate=15.0,
+        pos_gain=20.0,
+        vel_gain=0.15,
+        vel_integrator_gain=0.5,
+        vel_integrator_limit=1.0,
+    ):
         """
         ODrive motor controller class.
         :param axis_index: 0 (left motor) or 1 (right motor)
         """
         self.axis_index = axis_index
+        self.vel_ramp_rate = vel_ramp_rate
+        self.pos_gain = pos_gain
+        self.vel_gain = vel_gain
+        self.vel_integrator_gain = vel_integrator_gain
+        self.vel_integrator_limit = vel_integrator_limit
         self.odrive = ODriveUtils.find_odrive()  # Find and connect to ODrive
         ODriveUtils.clear_odrive_errors(self.odrive)  # Clear errors on startup
         self.axis = self.select_axis()
@@ -33,12 +46,12 @@ class MotorController:
         """Initialize motor: closed-loop control & ramped velocity mode."""
         self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
         self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
-        self.axis.controller.config.vel_ramp_rate = 15
+        self.axis.controller.config.vel_ramp_rate = self.vel_ramp_rate
         self.axis.controller.config.input_mode = INPUT_MODE_VEL_RAMP
-        self.axis.controller.config.pos_gain = 20
-        self.axis.controller.config.vel_gain = 0.15
-        self.axis.controller.config.vel_integrator_gain = 0.5
-        self.axis.controller.config.vel_integrator_limit = 1
+        self.axis.controller.config.pos_gain = self.pos_gain
+        self.axis.controller.config.vel_gain = self.vel_gain
+        self.axis.controller.config.vel_integrator_gain = self.vel_integrator_gain
+        self.axis.controller.config.vel_integrator_limit = self.vel_integrator_limit
         print(
             f"Motor {self.axis_index}: Initialized in velocity control mode.",
             flush=True,
@@ -54,7 +67,6 @@ class MotorController:
         """Get the relative position (multi-turns) where the initial position is 0"""
         pos = self.axis.encoder.pos_estimate
         return pos
-
 
     def set_velocity(self, velocity):
         """Set target velocity [rps]."""
@@ -89,6 +101,10 @@ class MotorController:
     def check_errors(self):
         """Check and print ODrive error status."""
         ODriveUtils.check_odrive_errors(self.odrive)
+
+    def get_vbus_voltage(self):
+        """Get ODrive bus voltage [V]."""
+        return self.odrive.vbus_voltage
 
     def reboot(self):
         """Reboot the ODrive device."""

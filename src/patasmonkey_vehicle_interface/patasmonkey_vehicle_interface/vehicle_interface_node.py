@@ -1,8 +1,8 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Bool, Float32MultiArray
-from sensor_msgs.msg import JointState
+from std_msgs.msg import Bool
+from patasmonkey_vehicle_interface.msg import MotorState
 from .odrive_controller import MotorController
 import math
 import sys
@@ -39,8 +39,9 @@ class VehicleInterfaceNode(Node):
         self.cmd_vel_joy_topic = self.get_parameter_or(
             "cmd_vel_joy_topic", "/cmd_vel_joy"
         )
-        self.mtr_output_topic = self.get_parameter_or(
-            "mtr_output_topic", "/motor_cmd")
+        self.motor_state_topic = self.get_parameter_or(
+            "motor_state_topic", "/motor_state"
+        )
         self.emergency_stop_topic = self.get_parameter_or(
             "emergency_stop_topic", "/emergency_stop"
         )
@@ -63,8 +64,22 @@ class VehicleInterfaceNode(Node):
 
         # connect to odrive
         self.get_logger().info("connecting to ODrive...")
-        self.left_motor = MotorController(self.mtr_axis_l)
-        self.right_motor = MotorController(self.mtr_axis_r)
+        self.left_motor = MotorController(
+            self.mtr_axis_l,
+            vel_ramp_rate=self.vel_ramp_rate,
+            pos_gain=self.pos_gain,
+            vel_gain=self.vel_gain,
+            vel_integrator_gain=self.vel_integrator_gain,
+            vel_integrator_limit=self.vel_integrator_limit,
+        )
+        self.right_motor = MotorController(
+            self.mtr_axis_r,
+            vel_ramp_rate=self.vel_ramp_rate,
+            pos_gain=self.pos_gain,
+            vel_gain=self.vel_gain,
+            vel_integrator_gain=self.vel_integrator_gain,
+            vel_integrator_limit=self.vel_integrator_limit,
+        )
         self.get_logger().info("ODrive connected!")
         # self.left_motor.get_velocity()
 
@@ -83,25 +98,28 @@ class VehicleInterfaceNode(Node):
             Bool, self.emergency_stop_topic, self.emergency_stop_callback, 10
         )
 
+        # ------------------------
         # other params
-        self.current_vel_left = 0.0
-        self.last_vel_left = 0.0
-        self.current_vel_right = 0.0
-        self.last_vel_right = 0.0
-        self.accumerated_ver_err_left = 0.0
-        self.accumerated_ver_err_right = 0.0
+        # ------------------------
+        # self.current_vel_left = 0.0
+        # self.last_vel_left = 0.0
+        # self.current_vel_right = 0.0
+        # self.last_vel_right = 0.0
+        # self.accumerated_ver_err_left = 0.0
+        # self.accumerated_ver_err_right = 0.0
+        self.left_cmd_rps = 0.0  # モータ指令値をpublishするために値を保存しておく変数（左）
+        self.right_cmd_rps = 0.0  # モータ指令値をpublishするために値を保存しておく変数（右）
 
-        # timer for control loop
-        self._timer = self.create_timer(0.02, self.command_selector)
-        self._encoder_timer = self.create_timer(0.02, self.publish_encoder)
+        # タイマーを定義、設定時間（sec）ごとに関数を呼び出す（遠隔操縦指令の受領関数と、モータ制御情報の発信関数）
+        self._timer = self.create_timer(0.05, self.command_selector)
+        self._motor_state_timer = self.create_timer(
+            0.05, self.publish_motor_state)
 
         # publihser config
-        self.motor_cmd_pub = self.create_publisher(
-            Float32MultiArray, self.mtr_output_topic, 10
+        self.motor_state_pub = self.create_publisher(
+            MotorState, self.motor_state_topic, 10
         )
         self.sim_cmd_vel_pub = self.create_publisher(Twist, "/sim_cmd_vel", 10)
-        self.encoder_pub = self.create_publisher(
-            JointState, "/wheel_radians", 10)
 
     def cmd_vel_callback(self, msg):
         """callback function when /cmd_vel from autnomous driving software has been recieved"""
@@ -172,8 +190,12 @@ class VehicleInterfaceNode(Node):
             self.sim_cmd_vel_pub.publish(zero_cmd)
 
         # send command to ODrive (右モータの速度は反転)
-        self.left_motor.set_velocity(self.left_motor_sign*mtr_left_rps)
-        self.right_motor.set_velocity(self.right_motor_sign*mtr_right_rps)
+        self.left_motor.set_velocity(self.left_motor_sign * mtr_left_rps)
+        self.right_motor.set_velocity(self.right_motor_sign * mtr_right_rps)
+
+        # keep command values in vehicle coordinate convention
+        self.left_cmd_rps = mtr_left_rps
+        self.right_cmd_rps = mtr_right_rps
 
         # # get current and past motor velocity with low pass filter
         # self.last_vel_left = self.current_vel_left
@@ -203,34 +225,42 @@ class VehicleInterfaceNode(Node):
         #     vel_err_right, delta_vel_right, self.accumerated_ver_err_right
         # )
 
-        # publish /motor_cmd
-        msg_out = Float32MultiArray()
-        msg_out.data = [mtr_left_rps, mtr_right_rps]
-        self.motor_cmd_pub.publish(msg_out)
-
-    def publish_encoder(self):
-        """ホイールオドメトリ等の計算のためにエンコーダ情報をpublishする関数"""
+    def publish_motor_state(self):
+        """モータ制御情報を取得しpublishする関数"""
         try:
-            now = self.get_clock().now().to_msg()
+            msg = MotorState()
+            msg.stamp = self.get_clock().now().to_msg()
 
-            # モータ通算回転角を取得、2piを乗じradに直してからギア比で除してホイール回転角を取得
-            left_cycle = (
-                2.0 * math.pi * self.left_motor.get_position() / self.gear_ratio
+            # 速度指令値
+            msg.left_cmd_rps = float(self.left_cmd_rps)
+            msg.right_cmd_rps = float(self.right_cmd_rps)
+
+            # エンコーダ値（1回転で1増えるturns単位）
+            msg.left_pos_turns = float(
+                self.left_motor_sign * self.left_motor.get_position()
             )
-            right_cycle = (
-                2.0 * math.pi * self.right_motor.get_position() / self.gear_ratio
+            msg.right_pos_turns = float(
+                self.right_motor_sign * self.right_motor.get_position()
             )
 
-            msg = JointState()
-            msg.header.stamp = now
+            # モータ回転速度（実績）
+            msg.left_vel_rps = float(
+                self.left_motor_sign * self.left_motor.get_velocity()
+            )
+            msg.right_vel_rps = float(
+                self.right_motor_sign * self.right_motor.get_velocity()
+            )
 
-            msg.name = ["left_wheel_joint", "right_wheel_joint"]
-            msg.position = [float(left_cycle), float(right_cycle)]
+            # 電源電圧
+            msg.vbus_voltage = float(self.left_motor.get_vbus_voltage())
 
-            self.encoder_pub.publish(msg)
+            # publish
+            self.motor_state_pub.publish(msg)
+
+            pass
 
         except Exception as e:
-            self.get_logger().error(f"Exception in publish_encoder: {e}")
+            self.get_logger().error(f"Exception in publish_motor_state: {e}")
 
     def emergency_stop_callback(self, msg):
         """emefgency stop: stop motors immediately"""
@@ -260,7 +290,7 @@ class VehicleInterfaceNode(Node):
             ("mtr_axis_r", self.mtr_axis_r),
             ("cmd_vel_topic", self.cmd_vel_topic),
             ("cmd_vel_joy_topic", self.cmd_vel_joy_topic),
-            ("mtr_output_topic", self.mtr_output_topic),
+            ("motor_state_topic", self.motor_state_topic),
             ("emergency_stop_topic", self.emergency_stop_topic),
         ]:
             lines.append(f"{key:<20} {str(value):<20}")
