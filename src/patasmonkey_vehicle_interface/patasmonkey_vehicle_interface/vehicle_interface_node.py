@@ -10,7 +10,7 @@ import sys
 
 class VehicleInterfaceNode(Node):
     def __init__(self):
-        super().__init__("vehicle_interface")  # register the node
+        super().__init__("vehicle_interface_node")  # register the node
 
         # load parameters from yaml (passed via launch file)
         self.wheel_radius = self.get_parameter_or(
@@ -19,13 +19,15 @@ class VehicleInterfaceNode(Node):
         self.tread_width = self.get_parameter_or(
             "tread_width", 0.36
         )  # wheel separation betwee L\R [m]
-        self.gear_ratio = self.get_parameter_or("gear_ratio", 10.0)  # gear ratio
+        self.gear_ratio = self.get_parameter_or(
+            "gear_ratio", 10.0)  # gear ratio
         self.max_whl_rps = self.get_parameter_or(
             "max_whl_rps", 4.0
         )  # max wheel velocity [rps]
 
         # get odrive config
-        self.odrv_usb_port = self.get_parameter_or("odrv_usb_port", "/dev/ttyACM0")
+        self.odrv_usb_port = self.get_parameter_or(
+            "odrv_usb_port", "/dev/ttyACM0")
         self.odrv_baud_rate = self.get_parameter_or("odrv_baud_rate", 115200)
 
         # odrive axis
@@ -37,10 +39,24 @@ class VehicleInterfaceNode(Node):
         self.cmd_vel_joy_topic = self.get_parameter_or(
             "cmd_vel_joy_topic", "/cmd_vel_joy"
         )
-        self.mtr_output_topic = self.get_parameter_or("mtr_output_topic", "/motor_cmd")
+        self.mtr_output_topic = self.get_parameter_or(
+            "mtr_output_topic", "/motor_cmd")
         self.emergency_stop_topic = self.get_parameter_or(
             "emergency_stop_topic", "/emergency_stop"
         )
+
+        # ODriveの速度制御パラメータ
+        self.vel_ramp_rate = self.get_parameter_or("vel_ramp_rate", 15.0)
+        self.pos_gain = self.get_parameter_or("pos_gain", 30.0)
+        self.vel_gain = self.get_parameter_or("vel_gain", 0.225)
+        self.vel_integrator_gain = self.get_parameter_or(
+            "vel_integrator_gain", 0.75)
+        self.vel_integrator_limit = self.get_parameter_or(
+            "vel_integrator_limit", 2.0)
+
+        # モータ回転方向（基準）
+        self.left_motor_sign = self.get_parameter_or("left_motor_sign", 1.0)
+        self.right_motor_sign = self.get_parameter_or("right_motor_sign", -1.0)
 
         # display the set parameters
         self.print_parameters()
@@ -58,7 +74,8 @@ class VehicleInterfaceNode(Node):
         self.last_cmd_vel_joy = None
         self.last_cmd_vel_joy_time = None
         # subscriber config
-        self.create_subscription(Twist, self.cmd_vel_topic, self.cmd_vel_callback, 10)
+        self.create_subscription(
+            Twist, self.cmd_vel_topic, self.cmd_vel_callback, 10)
         self.create_subscription(
             Twist, self.cmd_vel_joy_topic, self.cmd_vel_callback_joy, 10
         )
@@ -83,7 +100,8 @@ class VehicleInterfaceNode(Node):
             Float32MultiArray, self.mtr_output_topic, 10
         )
         self.sim_cmd_vel_pub = self.create_publisher(Twist, "/sim_cmd_vel", 10)
-        self.encoder_pub = self.create_publisher(JointState, "/wheel_radians", 10)
+        self.encoder_pub = self.create_publisher(
+            JointState, "/wheel_radians", 10)
 
     def cmd_vel_callback(self, msg):
         """callback function when /cmd_vel from autnomous driving software has been recieved"""
@@ -154,8 +172,8 @@ class VehicleInterfaceNode(Node):
             self.sim_cmd_vel_pub.publish(zero_cmd)
 
         # send command to ODrive (右モータの速度は反転)
-        self.left_motor.set_velocity(mtr_left_rps)
-        self.right_motor.set_velocity(-1.0*mtr_right_rps)
+        self.left_motor.set_velocity(self.left_motor_sign*mtr_left_rps)
+        self.right_motor.set_velocity(self.right_motor_sign*mtr_right_rps)
 
         # # get current and past motor velocity with low pass filter
         # self.last_vel_left = self.current_vel_left

@@ -26,6 +26,20 @@ vehicle_interface_node:
     cmd_vel_joy_topic: "/cmd_vel_joy"   # topic for velocity command via gamepad
     mtr_output_topic: "/motor_cmd"      # output topic (motor rps)
 
+    # mergency stop
+    emergency_stop_topic: "/emergency_stop"
+
     # motor ID (odrive axis configs)
     mtr_axis_l: 0   # odrive axis for left motor
     mtr_axis_r: 1   # odrive axis for right motor
+
+    # ODrive velocity control config
+    vel_ramp_rate: 15.0
+    pos_gain: 30.0
+    vel_gain: 0.225
+    vel_integrator_gain: 0.75
+    vel_integrator_limit: 2.0
+
+    # motor direction
+    left_motor_sign: 1.0
+    right_motor_sign: -1.0
