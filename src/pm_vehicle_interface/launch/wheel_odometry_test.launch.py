@@ -1,0 +1,25 @@
+from launch import LaunchDescription
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    return LaunchDescription([
+        Node(
+            package="pm_vehicle_interface",
+            executable="dummy_jointstate_pub",
+            name="dummy_jointstate_pub",
+            parameters=[
+                {"left_cycle_per_sec":1.0},
+                {"right_cycle_per_sec":0.5},
+            ],
+            output="screen",
+        ),
+        Node(
+            package="pm_vehicle_interface",
+            executable="wheel_odometry_node",
+            name="wheel_odometry_node",
+            parameters=[
+                "src/pm_vehicle_interface/config/vehicle_params.yaml"
+            ],
+            output="screen",
+        ),
+    ])
