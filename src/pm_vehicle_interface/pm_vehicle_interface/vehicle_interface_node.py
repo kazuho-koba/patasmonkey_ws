@@ -123,7 +123,7 @@ class VehicleInterfaceNode(Node):
             )
 
             self.right_motor = MotorController(
-                self.mtr_axis_l,
+                self.mtr_axis_r,
                 vel_ramp_rate=self.vel_ramp_rate,
                 pos_gain=self.pos_gain,
                 vel_gain=self.vel_gain,
@@ -310,7 +310,7 @@ class VehicleInterfaceNode(Node):
                     self.right_motor.set_idle()
                 except Exception as e:
                     self.mark_odrive_disconnected(e)
-                    
+
             self.get_logger().warn("Emergency STOP activated!")
 
     def stop_motors(self):
