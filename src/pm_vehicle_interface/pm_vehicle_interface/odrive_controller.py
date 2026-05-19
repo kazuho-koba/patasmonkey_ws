@@ -70,14 +70,7 @@ class MotorController:
 
     def set_velocity(self, velocity):
         """Set target velocity [rps]."""
-        try:
-            self.axis.controller.input_vel = velocity
-            # print(
-            #     f"Motor {self.axis_index}: Velocity set to {velocity:.2f} rps.",
-            #     flush=True,
-            # )
-        except Exception as e:
-            print(f"Error setting velocity: {e}")
+        self.axis.controller.input_vel = velocity
 
     def velfb_torque_control(self, vel_err, delta_vel, accum_vel_err):
         pass

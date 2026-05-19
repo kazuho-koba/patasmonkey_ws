@@ -63,24 +63,14 @@ class VehicleInterfaceNode(Node):
         self.print_parameters()
 
         # connect to odrive
-        self.get_logger().info("connecting to ODrive...")
-        self.left_motor = MotorController(
-            self.mtr_axis_l,
-            vel_ramp_rate=self.vel_ramp_rate,
-            pos_gain=self.pos_gain,
-            vel_gain=self.vel_gain,
-            vel_integrator_gain=self.vel_integrator_gain,
-            vel_integrator_limit=self.vel_integrator_limit,
-        )
-        self.right_motor = MotorController(
-            self.mtr_axis_r,
-            vel_ramp_rate=self.vel_ramp_rate,
-            pos_gain=self.pos_gain,
-            vel_gain=self.vel_gain,
-            vel_integrator_gain=self.vel_integrator_gain,
-            vel_integrator_limit=self.vel_integrator_limit,
-        )
-        self.get_logger().info("ODrive connected!")
+        self.left_motor = None
+        self.right_motor = None
+        self.odrive_connected = False
+        self.reconnect_in_progress = False
+
+        self.connect_odrive()
+        self._reconnect_timer = self.create_timer(1.0, self.try_reconnect_odrive)
+
         # self.left_motor.get_velocity()
 
         # param definition related to subscriptions
@@ -107,8 +97,6 @@ class VehicleInterfaceNode(Node):
         # self.last_vel_right = 0.0
         # self.accumerated_ver_err_left = 0.0
         # self.accumerated_ver_err_right = 0.0
-        self.left_cmd_rps = 0.0  # モータ指令値をpublishするために値を保存しておく変数（左）
-        self.right_cmd_rps = 0.0  # モータ指令値をpublishするために値を保存しておく変数（右）
 
         # タイマーを定義、設定時間（sec）ごとに関数を呼び出す（遠隔操縦指令の受領関数と、モータ制御情報の発信関数）
         self._timer = self.create_timer(0.05, self.command_selector)
@@ -121,6 +109,42 @@ class VehicleInterfaceNode(Node):
         )
         self.sim_cmd_vel_pub = self.create_publisher(Twist, "/sim_cmd_vel", 10)
 
+    def connect_odrive(self):
+        """Connect/Re-Connect to ODrive and initialize both motors."""
+        try:
+            self.get_logger().info("connecting to ODrive...")
+            self.left_motor = MotorController(
+                self.mtr_axis_l,
+                vel_ramp_rate=self.vel_ramp_rate,
+                pos_gain=self.pos_gain,
+                vel_gain=self.vel_gain,
+                vel_integrator_gain=self.vel_integrator_gain,
+                vel_integrator_limit=self.vel_integrator_limit,
+            )
+
+            self.right_motor = MotorController(
+                self.mtr_axis_l,
+                vel_ramp_rate=self.vel_ramp_rate,
+                pos_gain=self.pos_gain,
+                vel_gain=self.vel_gain,
+                vel_integrator_gain=self.vel_integrator_gain,
+                vel_integrator_limit=self.vel_integrator_limit,
+            )
+
+            self.left_cmd_rps = 0.0  # モータ指令値をpublishするために値を保存しておく変数（左）
+            self.right_cmd_rps = 0.0  # モータ指令値をpublishするために値を保存しておく変数（右）
+            self.odrive_connected = True
+            self.reconnect_in_progress = False
+
+            self.get_logger().info("ODrive connected and initialized!")
+
+        except Exception as e:
+            self.left_motor = None
+            self.right_motor = None
+            self.odrive_connected = False
+            self.reconnect_in_progress = False
+            self.get_logger().warn(f"ODrive connection failed: {e}")
+    
     def cmd_vel_callback(self, msg):
         """callback function when /cmd_vel from autnomous driving software has been recieved"""
         self.last_cmd_vel = msg  # keep /cmd_vel_msg
@@ -189,13 +213,22 @@ class VehicleInterfaceNode(Node):
             zero_cmd = Twist()
             self.sim_cmd_vel_pub.publish(zero_cmd)
 
-        # send command to ODrive (右モータの速度は反転)
-        self.left_motor.set_velocity(self.left_motor_sign * mtr_left_rps)
-        self.right_motor.set_velocity(self.right_motor_sign * mtr_right_rps)
+        if not self.odrive_connected:
+            self.left_cmd_rps = 0.0
+            self.right_cmd_rps = 0.0
+            return
 
-        # keep command values in vehicle coordinate convention
-        self.left_cmd_rps = mtr_left_rps
-        self.right_cmd_rps = mtr_right_rps
+        try:
+            # send command to ODrive (右モータの速度は反転)
+            self.left_motor.set_velocity(self.left_motor_sign * mtr_left_rps)
+            self.right_motor.set_velocity(self.right_motor_sign * mtr_right_rps)
+
+            # keep command values in vehicle coordinate convention
+            self.left_cmd_rps = mtr_left_rps
+            self.right_cmd_rps = mtr_right_rps
+
+        except Exception as e:
+            self.mark_odrive_disconnected(e)
 
         # # get current and past motor velocity with low pass filter
         # self.last_vel_left = self.current_vel_left
@@ -227,6 +260,9 @@ class VehicleInterfaceNode(Node):
 
     def publish_motor_state(self):
         """モータ制御情報を取得しpublishする関数"""
+        if not self.odrive_connected:
+            return
+        
         try:
             msg = MotorState()
             msg.stamp = self.get_clock().now().to_msg()
@@ -260,13 +296,21 @@ class VehicleInterfaceNode(Node):
             pass
 
         except Exception as e:
-            self.get_logger().error(f"Exception in publish_motor_state: {e}")
+            self.mark_odrive_disconnected(e)
 
     def emergency_stop_callback(self, msg):
         """emefgency stop: stop motors immediately"""
         if msg.data:
-            self.left_motor.set_idle()
-            self.right_motor.set_idle()
+            self.left_cmd_rps = 0.0
+            self.right_cmd_rps = 0.0
+
+            if self.odrive_connected:
+                try:
+                    self.left_motor.set_idle()
+                    self.right_motor.set_idle()
+                except Exception as e:
+                    self.mark_odrive_disconnected(e)
+                    
             self.get_logger().warn("Emergency STOP activated!")
 
     def stop_motors(self):
@@ -308,7 +352,29 @@ class VehicleInterfaceNode(Node):
             "vel_integrator_gain", 0.75)
         self.vel_integrator_limit = self.get_parameter_or(
             "vel_integrator_limit", 2.0)
+        
+    def try_reconnect_odrive(self):
+        """Try reconnecting to ODrive when disconnected."""
+        if self.odrive_connected:
+            return
 
+        if self.reconnect_in_progress:
+            return
+
+        self.reconnect_in_progress = True
+        self.get_logger().warn("ODrive disconnected. Trying to reconnect...")
+        self.connect_odrive()
+
+    def mark_odrive_disconnected(self, reason):
+        """Mark ODrive as disconnected."""
+        if self.odrive_connected:
+            self.get_logger().error(f"ODrive disconnected: {reason}")
+
+        self.odrive_connected = False
+        self.left_motor = None
+        self.right_motor = None
+        self.left_cmd_rps = 0.0
+        self.right_cmd_rps = 0.0
 
 def main(args=None):
     rclpy.init(args=args)  # Initialize ROS2
