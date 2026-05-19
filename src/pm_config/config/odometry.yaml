@@ -16,4 +16,4 @@ wheel_odometry_node:
     base_frame: "base_link"
 
     # robot_localizationを使うならfalse推奨
-    publish_tf: true
+    publish_tf: false
