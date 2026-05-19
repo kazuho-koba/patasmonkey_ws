@@ -6,11 +6,13 @@ from typing import Optional, Tuple
 
 import rclpy
 from rclpy.node import Node
+from rclpy.time import Time
 
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformBroadcaster
+from pm_msgs.msg import MotorState
 
 
 def yaw_to_quat(z_yaw: float) -> Tuple[float, float, float, float]:
@@ -21,7 +23,7 @@ def yaw_to_quat(z_yaw: float) -> Tuple[float, float, float, float]:
 
 class WheelOdometryNode(Node):
     """
-    Subscribe   : sensor_msgs/JointState (左右のホイール角度)
+    Subscribe   : pm_msgs/msg/MotorState
     Publish     : nav_msgs/Odometry on /odom
     TF          : odom -> base_link (optional)
 

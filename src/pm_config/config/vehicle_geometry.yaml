@@ -1,0 +1,8 @@
+/**:
+  ros__parameters:
+    wheel_radius: 0.1016
+    tread_width: 0.36
+    gear_ratio: 10.0
+
+    left_sign: 1.0
+    right_sign: 1.0
