@@ -1,0 +1,41 @@
+vehicle_interface_node:
+  ros__parameters:
+
+    # odrive
+    odrv_usb_port: "/dev/ttyACM0"
+    odrv_baud_rate: 115200
+
+    # topics
+    cmd_vel_topic: "/cmd_vel"
+    cmd_vel_joy_topic: "/cmd_vel_joy"
+    mtr_output_topic: "/motor_cmd"
+
+    emergency_stop_topic: "/emergency_stop"
+
+    # odrive axis
+    mtr_axis_l: 0
+    mtr_axis_r: 1
+
+    # gains
+    vel_ramp_rate: 15.0
+    pos_gain: 30.0
+    vel_gain: 0.225
+    vel_integrator_gain: 0.75
+    vel_integrator_limit: 2.0
+
+    # state
+    motor_state_topic: "/motor_state"
+
+
+    #################################################
+    # motor direction
+    #################################################
+
+    # 正方向補正
+    #
+    # 前進指令時:
+    #   +1.0 -> 正回転
+    #   -1.0 -> 反転
+    #
+    left_motor_sign: 1.0
+    right_motor_sign: -1.0

@@ -1,0 +1,19 @@
+#####################################################
+# wheel odometry node parameters
+#####################################################
+
+wheel_odometry_node:
+  ros__parameters:
+
+    # input
+    motor_state_topic: "/motor_state"
+
+    # output
+    odom_topic: "/wheel/odometry"
+
+    # tf
+    odom_frame: "odom"
+    base_frame: "base_link"
+
+    # robot_localizationを使うならfalse推奨
+    publish_tf: true
