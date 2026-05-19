@@ -24,116 +24,121 @@ def yaw_to_quat(z_yaw: float) -> Tuple[float, float, float, float]:
 class WheelOdometryNode(Node):
     """
     Subscribe   : pm_msgs/msg/MotorState
-    Publish     : nav_msgs/Odometry on /odom
+    Publish     : nav_msgs/Odometry on /wheel/odometry
     TF          : odom -> base_link (optional)
 
     前提事項：
     - 左２輪、右２輪はそれぞれ同じ回転数となるスキッドステア車両
-    - JointState.positionはタイヤの累積回転数[turns](2piかけることで回転角になる)
-    - JointState velocityがある場合でも基本は無視して角度からオドメトリ計算をする
+    # - JointState.positionはタイヤの累積回転数[turns](2piかけることで回転角になる)
+    # - JointState velocityがある場合でも基本は無視して角度からオドメトリ計算をする
     """
 
     def __init__(self) -> None:
         super().__init__("wheel_odometry_node")
 
-        # Parameters(shared via /**: ros_parameters)
-        self.declare_parameter("wheel_radius", 0.1)
+        # i/o topics
+        self.declare_parameter("motor_state_topic", "/motor_state")
+        self.declare_parameter("odom_topic", "/wheel_odometry")
+
+        # vehicle geometry
+        self.declare_parameter("wheel_radius", 0.1016)
         self.declare_parameter("tread_width", 0.36)
         self.declare_parameter("gear_ratio", 10.0)
 
-        self.declare_parameter("wheel_state_topic", "/wheel_radians")
-        self.declare_parameter("odom_topic", "/odom")
+        # frames
         self.declare_parameter("odom_frame", "odom")
         self.declare_parameter("base_frame", "base_link")
-        self.declare_parameter("left_joint_name", "left_wheel_joint")
-        self.declare_parameter("right_joint_name", "right_wheel_joint")
-        self.declare_parameter("publish_tf", True)
+        self.declare_parameter("publish_tf", False)
+
+        self.motor_state_topic = str(self.get_parameter("motor_state_topic").value)
+        self.odom_topic = str(self.get_parameter("odom_topic").value)
 
         self.wheel_radius = float(self.get_parameter("wheel_radius").value)
         self.tread_width = float(self.get_parameter("tread_width").value)
         self.gear_ratio = float(self.get_parameter("gear_ratio").value)
 
-        self.wheel_state_topic = str(self.get_parameter("wheel_state_topic").value)
-        self.odom_topic = str(self.get_parameter("odom_topic").value)
         self.odom_frame = str(self.get_parameter("odom_frame").value)
         self.base_frame = str(self.get_parameter("base_frame").value)
-        self.left_joint_name = str(self.get_parameter("left_joint_name").value)
-        self.right_joint_name = str(self.get_parameter("right_joint_name").value)
         self.publish_tf = bool(self.get_parameter("publish_tf").value)
 
-        # state
-        self.prev_stamp: Optional[rclpy.time.Time] = None
-        self.prev_left_pos: Optional[float] = None  # [rad] 前フレームのモータ回転角（左）
-        self.prev_right_pos: Optional[float] = None  # [rad] 前フレームのモータ回転角（右）
+        # error handling on vehicle geometry
+        if self.wheel_radius <= 0.0:
+            raise ValueError("wheel_radius must be positive")
+        if self.tread_width <= 0.0:
+            raise ValueError("tread_width must be positive")
+        if self.gear_ratio <= 0.0:
+            raise ValueError("gear_ratio must be positive")
 
+        # previous motor state
+        self.prev_stamp: Optional[rclpy.time.Time] = None
+        self.prev_left_motor_turns: Optional[float] = None  # [turns] 前フレームのモータ回転角（左）
+        self.prev_right_motor_turns: Optional[float] = None  # [turns] 前フレームのモータ回転角（右）
+
+        # integrated odometry state
         self.x = 0.0  # [m] in odom frame
         self.y = 0.0  # [m] in odom frame
         self.yaw = 0.0  # [rad] in odom frame
 
         # pub/sub
         self.sub = self.create_subscription(
-            JointState,
-            self.wheel_state_topic,
-            self.on_joint_state,
+            MotorState,
+            self.motor_state_topic,
+            self.on_motor_state,
             50,
         )
         self.odom_pub = self.create_publisher(Odometry, self.odom_topic, 20)
 
-        self.tf_broadcaster = TransformBroadcaster(self)
+        # TFをこのノード自身が発行する場合は必要（今の想定はrobot_localizationがodom -> base_linkのTFを発行）
+        # self.tf_broadcaster = TransformBroadcaster(self)
 
         self.get_logger().info(
-            f"wheel_odometry_node started. Sub={self.wheel_state_topic}, Pub={self.odom_topic}, "
-            f"frames: {self.odom_frame}->{self.base_frame}, joints: "
-            f"{self.left_joint_name}, {self.right_joint_name}"
+            "wheel_odometry_node started: "
+            f"sub={self.motor_state_topic}, "
+            f"pub={self.odom_topic}, "
+            f"wheel_radius={self.wheel_radius}, "
+            f"tread_width={self.tread_width}, "
+            f"gear_ratio={self.gear_ratio}, "
+            f"publish_tf={self.publish_tf}"
         )
 
-    def on_joint_state(self, msg: JointState) -> None:
-        # Find inices of left/right joints in JointState
-        li = self._index_of(msg.name, self.left_joint_name)
-        ri = self._index_of(msg.name, self.right_joint_name)
-        if li is None or ri is None:
-            # Don't spam logs too hard
-            self.get_logger().warn(
-                f"JointState missing required joints. Need "
-                f"'{self.left_joint_name}' and '{self.right_joint_name}'. Got: {msg.name}",
-                throttle_duration_sec=2.0,
-            )
-            return
-
-        if len(msg.position) <= max(li, ri):
-            self.get_logger().warn(
-                "JointState.position is too short.", throttle_duration_sec=2.0
-            )
-            return
-
+    def on_motor_state(self, msg: MotorState) -> None:
+        
         # Use message stamp if provided; otherwise use current time
-        if msg.header.stamp.sec == 0 and msg.header.stamp.nanosec == 0:
+        if msg.stamp.sec == 0 and msg.stamp.nanosec == 0:
             now = self.get_clock().now()
         else:
-            now = rclpy.time.Time.from_msg(msg.header.stamp)
+            now = Time.from_msg(msg.stamp)
 
-        # subscribeしたメッセージから左右タイヤ通算回転角(rad)を取得
-        left_pos = float(msg.position[li])
-        right_pos = float(msg.position[ri])
+        # subscribeしたメッセージから左右モータ通算回転量(turns)を取得
+        left_motor_turns = float(msg.left_pos_turns)
+        right_motor_turns = float(msg.right_pos_turns)
 
         # 最初のメッセージ（前回タイヤ位置不定）のとき
         if self.prev_stamp is None:
             self.prev_stamp = now
-            self.prev_left_pos = left_pos
-            self.prev_right_pos = right_pos
+            self.prev_left_motor_turns = left_motor_turns
+            self.prev_right_motor_turns = right_motor_turns
             return
 
         dt = (now - self.prev_stamp).nanoseconds * 1e-9
         if dt <= 0.0:
+            self.get_logger().warn(
+                "Received MotorState with non-positive dt.",
+                throttle_duration_sec = 2.0,
+            )
             return
 
-        # タイヤ回転角度の差分[rad]
-        d_left_wheel = left_pos - float(self.prev_left_pos)
-        d_right_wheel = right_pos - float(self.prev_right_pos)
+        # モータ回転量の差分[turns]
+        d_left_motor_turns = left_motor_turns - float(self.prev_left_motor_turns)
+        d_right_motor_turns = right_motor_turns - float(self.prev_right_motor_turns)
+
+        # タイヤ回転量へ変換
+        d_left_wheel_turns = d_left_motor_turns/self.gear_ratio
+        d_right_wheel_turns = d_right_motor_turns/self.gear_ratio
 
         # タイヤ移動距離
-        dl = d_left_wheel * self.wheel_radius
-        dr = d_right_wheel * self.wheel_radius
+        dl = d_left_wheel_turns * 2.0 * math.pi * self.wheel_radius
+        dr = d_right_wheel_turns * 2.0 * math.pi * self.wheel_radius
 
         # スキッドステアの動き
         ds = 0.5 * (dr + dl)
@@ -189,8 +194,8 @@ class WheelOdometryNode(Node):
 
         # 前回時刻情報として保存しておくパラメータの内容を更新
         self.prev_stamp = now
-        self.prev_left_pos = left_pos
-        self.prev_right_pos = right_pos
+        self.prev_left_pos = left_motor_turns
+        self.prev_right_pos = right_motor_turns
 
     @staticmethod
     def _index_of(names: list[str], target: str) -> Optional[int]:
@@ -200,22 +205,24 @@ class WheelOdometryNode(Node):
             return None
 
     @staticmethod
-    def _wrap_pi(a: float) -> float:
+    def _wrap_pi(angle: float) -> float:
         # 角度情報を(-pi, pi]の間に収める
-        while a <= -math.pi:
-            a += 2.0 * math.pi
-        while a > math.pi:
-            a -= 2.0 * math.pi
-        return a
+        while angle <= -math.pi:
+            angle += 2.0 * math.pi
+        while angle > math.pi:
+            angle -= 2.0 * math.pi
+        return angle
 
 
 def main() -> None:
     rclpy.init()
     node = WheelOdometryNode()
+
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
+    
     node.destroy_node()
     rclpy.shutdown()
 
