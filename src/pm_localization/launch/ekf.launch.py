@@ -4,7 +4,7 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
-    pkg_share = get_package_share_directory("patasmonkey_localization")
+    pkg_share = get_package_share_directory("pm_localization")
     ekf_yaml = os.path.join(pkg_share, "config", "ekf.yaml")
 
     ekf_node = Node(

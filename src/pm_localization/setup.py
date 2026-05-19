@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 from glob import glob
 import os
 
-package_name = 'patasmonkey_localization'
+package_name = 'pm_localization'
 
 setup(
     name=package_name,
