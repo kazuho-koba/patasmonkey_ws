@@ -194,8 +194,8 @@ class WheelOdometryNode(Node):
 
         # 前回時刻情報として保存しておくパラメータの内容を更新
         self.prev_stamp = now
-        self.prev_left_pos = left_motor_turns
-        self.prev_right_pos = right_motor_turns
+        self.prev_left_motor_turns = left_motor_turns
+        self.prev_right_motor_turns = right_motor_turns
 
     @staticmethod
     def _index_of(names: list[str], target: str) -> Optional[int]:
