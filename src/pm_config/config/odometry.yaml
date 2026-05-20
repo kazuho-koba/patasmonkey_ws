@@ -17,3 +17,9 @@ wheel_odometry_node:
 
     # robot_localizationを使うならfalse推奨
     publish_tf: false
+
+odom_to_path_node:
+  ros__parameters:
+    odom_topic: "/wheel/odometry"
+    path_topic: "/wheel/path"
+    max_path_length: 5000

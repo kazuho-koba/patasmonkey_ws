@@ -102,7 +102,7 @@ class WheelOdometryNode(Node):
         )
 
     def on_motor_state(self, msg: MotorState) -> None:
-        
+
         # Use message stamp if provided; otherwise use current time
         if msg.stamp.sec == 0 and msg.stamp.nanosec == 0:
             now = self.get_clock().now()
@@ -124,7 +124,7 @@ class WheelOdometryNode(Node):
         if dt <= 0.0:
             self.get_logger().warn(
                 "Received MotorState with non-positive dt.",
-                throttle_duration_sec = 2.0,
+                throttle_duration_sec=2.0,
             )
             return
 
@@ -133,8 +133,8 @@ class WheelOdometryNode(Node):
         d_right_motor_turns = right_motor_turns - float(self.prev_right_motor_turns)
 
         # タイヤ回転量へ変換
-        d_left_wheel_turns = d_left_motor_turns/self.gear_ratio
-        d_right_wheel_turns = d_right_motor_turns/self.gear_ratio
+        d_left_wheel_turns = d_left_motor_turns / self.gear_ratio
+        d_right_wheel_turns = d_right_motor_turns / self.gear_ratio
 
         # タイヤ移動距離
         dl = d_left_wheel_turns * 2.0 * math.pi * self.wheel_radius
@@ -222,7 +222,7 @@ def main() -> None:
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
-    
+
     node.destroy_node()
     rclpy.shutdown()
 

@@ -29,6 +29,7 @@ setup(
     entry_points={
         'console_scripts': [
             'wheel_odometry_node = pm_localization.wheel_odometry_node:main',
+            'odom_to_path_node = pm_localization.odom_to_path_node:main',
         ],
     },
 )

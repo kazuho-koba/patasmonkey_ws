@@ -22,7 +22,18 @@ def generate_launch_description():
             ],
             output="screen",
         )
+    
+    odom_to_path_node = Node(
+        package="pm_localization",
+        executable="odom_to_path_node",
+        name="odom_to_path_node",
+        output="screen",
+        parameters=[
+            str(odometry_yaml),
+        ],
+    )
 
     return LaunchDescription([
         wheel_odometry_node,
+        odom_to_path_node,
     ])
