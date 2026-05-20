@@ -22,4 +22,4 @@ odom_to_path_node:
   ros__parameters:
     odom_topic: "/wheel/odometry"
     path_topic: "/wheel/path"
-    max_path_length: 100
+    max_path_length: 1000
