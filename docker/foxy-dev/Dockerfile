@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-rqt-image-view \
     ros-foxy-rqt \
     ros-foxy-tf-transformations \
+    ros-foxy-robot-localization \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
@@ -73,7 +74,7 @@ RUN python3 -m pip install --upgrade pip && \
 RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir \
     depthai==2.30.0.0
-    
+
 # IMU関係
 RUN python3 -m pip install --no-cache-dir \
     modbus_tk \

@@ -89,7 +89,7 @@ class WheelOdometryNode(Node):
         self.odom_pub = self.create_publisher(Odometry, self.odom_topic, 20)
 
         # TFをこのノード自身が発行する場合は必要（今の想定はrobot_localizationがodom -> base_linkのTFを発行）
-        # self.tf_broadcaster = TransformBroadcaster(self)
+        self.tf_broadcaster = TransformBroadcaster(self)
 
         self.get_logger().info(
             "wheel_odometry_node started: "
