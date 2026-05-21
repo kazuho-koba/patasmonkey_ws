@@ -13,13 +13,13 @@
 		<collision name="body_collision">
 			<origin rpy="0.0 -0.0 0.0" xyz="0.0 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/body.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/body.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual name="body_visual">
 			<origin rpy="0.0 -0.0 0.0" xyz="0.0 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/body.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/body.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
@@ -32,13 +32,13 @@
 		<collision name="wheelarm_rightrear_collision">
 			<origin rpy="0.0 0.4363323129985771 -1.5707963267948966" xyz="1.3877787807814457e-17 7.50720839698537e-18 -1.3877787807814457e-17"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheelarm_1.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheelarm_1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual name="wheelarm_rightrear_visual">
 			<origin rpy="0.0 0.4363323129985771 -1.5707963267948966" xyz="1.3877787807814457e-17 7.50720839698537e-18 -1.3877787807814457e-17"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheelarm_1.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheelarm_1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
@@ -51,13 +51,13 @@
 		<collision name="wheelarm_rightfront_collision">
 			<origin rpy="3.141592653589793 0.4363323129985816 1.5707963267948966" xyz="0.010000000000000009 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheelarm_2.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheelarm_2.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual name="wheelarm_rightfront_visual">
 			<origin rpy="3.141592653589793 0.4363323129985816 1.5707963267948966" xyz="0.010000000000000009 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheelarm_2.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheelarm_2.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
@@ -70,13 +70,13 @@
 		<collision name="wheelarm_leftfront_collision">
 			<origin rpy="0.0 0.4363323129985823 1.5707963267948966" xyz="0.0 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheelarm_1.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheelarm_1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual name="wheelarm_leftfront_visual">
 			<origin rpy="0.0 0.4363323129985823 1.5707963267948966" xyz="0.0 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheelarm_1.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheelarm_1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
@@ -89,13 +89,13 @@
 		<collision name="wheelarm_leftrear_collision">
 			<origin rpy="3.141592653589793 0.4363323129985823 -1.5707963267948966" xyz="-0.010000000000000009 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheelarm_2.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheelarm_2.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual name="wheelarm_leftrear_visual">
 			<origin rpy="3.141592653589793 0.4363323129985823 -1.5707963267948966" xyz="-0.010000000000000009 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheelarm_2.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheelarm_2.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
@@ -108,13 +108,13 @@
 		<collision name="wheel_rightrear_collision">
 			<origin rpy="0.0 -0.4363323129985797 1.5707963267948966" xyz="0.05000000000000002 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual name="wheel_rightrear_visual">
 			<origin rpy="0.0 -0.4363323129985797 1.5707963267948966" xyz="0.05000000000000002 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
@@ -127,13 +127,13 @@
 		<collision name="wheel_rightfront_collision">
 			<origin rpy="0.0 0.4363323129985819 1.5707963267948966" xyz="0.04999999999999999 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual name="wheel_rightfront_visual">
 			<origin rpy="0.0 0.4363323129985819 1.5707963267948966" xyz="0.04999999999999999 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
@@ -146,13 +146,13 @@
 		<collision name="wheel_leftfront_collision">
 			<origin rpy="0.0 -0.4363323129985824 -1.5707963267948966" xyz="-0.05000000000000002 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual name="wheel_leftfront_visual">
 			<origin rpy="0.0 -0.4363323129985824 -1.5707963267948966" xyz="-0.05000000000000002 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
@@ -165,13 +165,13 @@
 		<collision name="wheel_leftrear_collision">
 			<origin rpy="0.0 0.4363323129985823 -1.5707963267948966" xyz="-0.04999999999999999 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual name="wheel_leftrear_visual">
 			<origin rpy="0.0 0.4363323129985823 -1.5707963267948966" xyz="-0.04999999999999999 0.0 0.0"/>
 			<geometry>
-				<mesh filename="package://patasmonkey_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
+				<mesh filename="package://pm_description/meshes/wheel.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</visual>
 	</link>
