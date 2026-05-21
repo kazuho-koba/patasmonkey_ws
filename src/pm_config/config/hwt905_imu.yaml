@@ -1,0 +1,7 @@
+hwt905_imu_node:
+  ros__parameters:
+    port: /dev/ttyUSB0
+    baud: 230400
+    poll_hz: 100.0
+    frame_id: imu_link
+    slave_id: 80
