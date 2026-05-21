@@ -43,7 +43,7 @@ def generate_launch_description():
     )
     imu_node = Node(
         package="hwt905_rs485_driver",
-        executable="hwt905_rs485_driver",
+        executable="hwt905_imu_node",
         name="hwt905_imu_node",
         output="screen",
         parameters=[str(imu_config_file)],
