@@ -246,6 +246,6 @@
 		<child link="imu_link"/>
 
 		<!-- 要実測: base_link原点からIMU中心までの位置 [m] -->
-		<origin xyz="0.0 0.0 0.01" rpy="0.0 0.0 0.0"/>
+		<origin xyz="0.0 0.0 0.01" rpy="0.0 0.0 -1.5708"/>
 	</joint>
 </robot>
