@@ -48,30 +48,20 @@ def generate_launch_description():
         output="screen",
         parameters=[str(imu_config_file)],
     )
-
-    teleop_launch_file = (
-        Path(get_package_share_directory("pm_teleop"))
-        / "launch"
-        / "joy_teleop.launch.py"
-    )
-
-    # pm_vehicle_interface パッケージの launch
-    vehicle_launch_file = (
-        Path(get_package_share_directory("pm_vehicle_interface"))
-        / "launch"
-        / "vehicle_interface.launch.py"
-    )
-
-    teleop_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(str(teleop_launch_file))
-    )
-    vehicle_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(str(vehicle_launch_file))
+    ekf_node = Node(
+        package="robot_localization",
+        executable="ekf_node",
+        name="ekf_filter_node",
+        output="screen",
+        parameters=[str(ekf_config_file)],
     )
 
     return LaunchDescription(
         [
             teleop_launch,
             vehicle_launch,
+            robot_state_publisher_node,
+            imu_node,
+            ekf_node,
         ]
     )

@@ -20,6 +20,11 @@
   <!-- 起動対象のノードたち -->
   <exec_depend>pm_teleop</exec_depend>
   <exec_depend>pm_vehicle_interface</exec_depend>
+  <exec_depend>pm_description</exec_depend>
+  <exec_depend>pm_config</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>robot_localization</exec_depend>
+  <exec_depend>hwt905_rs485_driver</exec_depend>
   <exec_depend>joy</exec_depend>
   <exec_depend>teleop_twist_joy</exec_depend>
 
