@@ -48,6 +48,25 @@ def generate_launch_description():
         output="screen",
         parameters=[str(imu_config_file)],
     )
+    wheel_odometry_node = Node(
+        package="pm_localization",
+        executable="wheel_odometry_node",
+        name="wheel_odometry_node",
+        output="screen",
+        parameters=[str(pm_config_share/"config"/"vehicle_geometry.yaml"),
+                    str(pm_config_share/"config"/"vehicle_control.yaml"),
+                    str(pm_config_share/"config"/"wheel_odometry.yaml"),
+                    ],
+    )
+    odom_to_path_node = Node(
+        package="pm_localization",
+        executable="odom_to_path_node",
+        name="odom_to_path_node",
+        output="screen",
+        parameters=[
+            str(pm_config_share/"config"/"wheel_odometry.yaml"),
+        ],
+    )
     ekf_node = Node(
         package="robot_localization",
         executable="ekf_node",
@@ -62,6 +81,8 @@ def generate_launch_description():
             vehicle_launch,
             robot_state_publisher_node,
             imu_node,
+            wheel_odometry_node,
+            odom_to_path_node,
             ekf_node,
         ]
     )

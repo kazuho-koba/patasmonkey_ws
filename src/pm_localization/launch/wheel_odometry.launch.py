@@ -9,7 +9,7 @@ def generate_launch_description():
 
     vehicle_geometry_yaml = pm_config_dir / "config" / "vehicle_geometry.yaml"
     vehicle_control_yaml = pm_config_dir / "config" / "vehicle_control.yaml"
-    odometry_yaml = pm_config_dir / "config" / "odometry.yaml"
+    odometry_yaml = pm_config_dir / "config" / "wheel_odometry.yaml"
 
     wheel_odometry_node = Node(
             package="pm_localization",
