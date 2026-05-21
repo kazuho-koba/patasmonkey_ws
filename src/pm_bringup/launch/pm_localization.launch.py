@@ -41,6 +41,12 @@ def generate_launch_description():
         output="screen",
         parameters=[{"robot_description": robot_description, }],
     )
+    joint_state_publisher_node = Node(
+        package="joint_state_publisher",
+        executable="joint_state_publisher",
+        name="joint_state_publisher",
+        output="screen",
+    )
     imu_node = Node(
         package="hwt905_rs485_driver",
         executable="hwt905_imu_node",
@@ -80,6 +86,7 @@ def generate_launch_description():
             teleop_launch,
             vehicle_launch,
             robot_state_publisher_node,
+            joint_state_publisher_node,
             imu_node,
             wheel_odometry_node,
             odom_to_path_node,

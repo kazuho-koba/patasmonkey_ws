@@ -178,12 +178,12 @@
 
 	<!-- HWT905-RS485 IMU -->
 	<link name="imu_link">
-	<visual>
-		<origin xyz="0 0 0" rpy="0 0 0"/>
-		<geometry>
-		<box size="0.04 0.04 0.015"/>
-		</geometry>
-	</visual>
+		<visual>
+			<origin xyz="0 0 0" rpy="0 0 0"/>
+			<geometry>
+			<box size="0.04 0.04 0.015"/>
+			</geometry>
+		</visual>
 	</link>
 
 	<!-- 大きさを持たないbase_linkから車体主要部リンクであるbodyに回転した固定リンクを貼ることで、CADの座標系からROS 2座標系に変換（X座標が車両前方になるようにする） -->

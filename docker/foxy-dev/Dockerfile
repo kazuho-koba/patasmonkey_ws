@@ -53,6 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-rqt \
     ros-foxy-tf-transformations \
     ros-foxy-robot-localization \
+    ros-foxy-tf2-tools \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
