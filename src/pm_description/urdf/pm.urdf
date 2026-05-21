@@ -176,6 +176,16 @@
 		</visual>
 	</link>
 
+	<!-- HWT905-RS485 IMU -->
+	<link name="imu_link">
+	<visual>
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<geometry>
+		<box size="0.04 0.04 0.015"/>
+		</geometry>
+	</visual>
+	</link>
+
 	<!-- 大きさを持たないbase_linkから車体主要部リンクであるbodyに回転した固定リンクを貼ることで、CADの座標系からROS 2座標系に変換（X座標が車両前方になるようにする） -->
 	<joint name="base_link_to_body" type="fixed">
 		<parent link="base_link"/>
@@ -229,5 +239,13 @@
 		<child link="wheel_leftrear"/>
 		<origin rpy="0 0 0" xyz="-0.038000000000000006 -0.16012172781242623 -0.10004368005208186"/>
 		<axis xyz="-1.0 0.0 0.0"/>
+	</joint>
+
+	<joint name="base_link_to_imu_link" type="fixed">
+		<parent link="base_link"/>
+		<child link="imu_link"/>
+
+		<!-- 要実測: base_link原点からIMU中心までの位置 [m] -->
+		<origin xyz="0.0 0.0 0.01" rpy="0.0 0.0 0.0"/>
 	</joint>
 </robot>
