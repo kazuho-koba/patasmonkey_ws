@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     usbutils \
     libusb-1.0-0-dev \
     python3-serial \
+    rtklib \
     && rm -rf /var/lib/apt/lists/*
 
 # ROS関係
