@@ -186,6 +186,27 @@
 		</visual>
 	</link>
 
+	<!-- OAK-D S2 body/reference point -->
+	<link name="oakd_link">
+		<visual>
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<geometry>
+			<box size="0.09 0.03 0.025"/>
+		</geometry>
+		</visual>
+	</link>
+	<!-- OAK-D internal IMU frame -->
+	<link name="oakd_imu_link"/>
+	<!-- Mono camera physical frames: ROS body-style frames, x forward, y left, z up -->
+  	<link name="cam0_link"/>
+  	<link name="cam1_link"/>
+	<!-- Mono camera optical frames: x right, y down, z forward -->
+	<link name="cam0_optical_frame"/>
+	<link name="cam1_optical_frame"/>
+	<!-- RGB camera frame -->
+	<link name="rgb_camera_link"/>
+	<link name="rgb_camera_optical_frame"/>
+
 	<!-- 大きさを持たないbase_linkから車体主要部リンクであるbodyに回転した固定リンクを貼ることで、CADの座標系からROS 2座標系に変換（X座標が車両前方になるようにする） -->
 	<joint name="base_link_to_body" type="fixed">
 		<parent link="base_link"/>
@@ -247,5 +268,64 @@
 
 		<!-- 要実測: base_link原点からIMU中心までの位置 [m] -->
 		<origin xyz="0.0 0.0 0.01" rpy="0.0 0.0 0.0"/>
+	</joint>
+
+	<!-- base_link -> OAK-D center.
+       TODO: replace x/y/z with measured mounting position.
+       Current assumption: OAK-D center is directly above base_link by 0.28 m. -->
+	<joint name="base_link_to_oakd_link" type="fixed">
+		<parent link="base_link"/>
+		<child link="oakd_link"/>
+		<origin xyz="0.0 0.0 0.28" rpy="0.0 0.0 0.0"/>
+	</joint>
+	<!-- OAK-D internal IMU.
+       Approximate placement from Kalibr: close to cam1/right side.
+       For TF tree use, keeping it at oakd_link is acceptable unless precise IMU visualization is needed. -->
+	<joint name="oakd_link_to_oakd_imu_link" type="fixed">
+		<parent link="oakd_link"/>
+		<child link="oakd_imu_link"/>
+		<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+	</joint>
+	<!-- cam0 = left mono camera.
+       Baseline from Kalibr: approximately 0.07533 m, so half baseline is 0.0376655 m. -->
+	<joint name="oakd_link_to_cam0_link" type="fixed">
+		<parent link="oakd_link"/>
+		<child link="cam0_link"/>
+		<origin xyz="0.0 0.0376655 0.0" rpy="0.0 0.0 0.0"/>
+	</joint>
+	<!-- cam1 = right mono camera -->
+	<joint name="oakd_link_to_cam1_link" type="fixed">
+		<parent link="oakd_link"/>
+		<child link="cam1_link"/>
+		<origin xyz="0.0 -0.0376655 0.0" rpy="0.0 0.0 0.0"/>
+	</joint>
+
+	<!-- Convert ROS camera link frame to optical frame.
+       ROS link:    x forward, y left, z up
+       Optical:     x right,   y down, z forward
+       rpy = -90deg roll, 0 pitch, -90deg yaw -->
+	<joint name="cam0_link_to_cam0_optical_frame" type="fixed">
+		<parent link="cam0_link"/>
+		<child link="cam0_optical_frame"/>
+		<origin xyz="0.0 0.0 0.0" rpy="-1.57079632679 0.0 -1.57079632679"/>
+	</joint>
+	<joint name="cam1_link_to_cam1_optical_frame" type="fixed">
+		<parent link="cam1_link"/>
+		<child link="cam1_optical_frame"/>
+		<origin xyz="0.0 0.0 0.0" rpy="-1.57079632679 0.0 -1.57079632679"/>
+	</joint>
+
+	<!-- RGB camera is assumed to be at OAK-D center.
+       Adjust if EEPROM/Kalibr gives a more precise RGB extrinsic later. -->
+	<joint name="oakd_link_to_rgb_camera_link" type="fixed">
+		<parent link="oakd_link"/>
+		<child link="rgb_camera_link"/>
+		<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+	</joint>
+
+	<joint name="rgb_camera_link_to_rgb_camera_optical_frame" type="fixed">
+		<parent link="rgb_camera_link"/>
+		<child link="rgb_camera_optical_frame"/>
+		<origin xyz="0.0 0.0 0.0" rpy="-1.57079632679 0.0 -1.57079632679"/>
 	</joint>
 </robot>
