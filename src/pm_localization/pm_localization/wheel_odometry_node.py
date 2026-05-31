@@ -173,7 +173,21 @@ class WheelOdometryNode(Node):
         odom.twist.twist.linear.x = vx
         odom.twist.twist.linear.y = 0.0
         odom.twist.twist.angular.z = wz
-        # 共分散のデータもあるが今回は省略
+        
+        # 共分散のデータを仮で入れる
+        odom.pose.covariance[0] = 0.05     # x
+        odom.pose.covariance[7] = 0.05     # y
+        odom.pose.covariance[14] = 1e6     # z
+        odom.pose.covariance[21] = 1e6     # roll
+        odom.pose.covariance[28] = 1e6     # pitch
+        odom.pose.covariance[35] = 0.2     # yaw
+
+        odom.twist.covariance[0] = 0.02    # vx
+        odom.twist.covariance[7] = 1e6     # vy
+        odom.twist.covariance[14] = 1e6    # vz
+        odom.twist.covariance[21] = 1e6    # vroll
+        odom.twist.covariance[28] = 1e6    # vpitch
+        odom.twist.covariance[35] = 0.1    # vyaw
 
         self.odom_pub.publish(odom)
 
