@@ -57,7 +57,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-tf-transformations \
     ros-foxy-robot-localization \
     ros-foxy-tf2-tools \
-    ros-foxy-ublox \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
@@ -73,7 +72,6 @@ RUN python3 -m pip install --upgrade odrive
 RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir \
     numpy==1.24.4 \
-    depthai==3.1.0 \
     opencv-python==4.13.0.92
 # DepthAIはv3が最新だが、Foxyで動かすならv2のほうがいい説
 RUN python3 -m pip install --upgrade pip && \
