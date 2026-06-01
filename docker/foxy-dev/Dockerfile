@@ -57,6 +57,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-tf-transformations \
     ros-foxy-robot-localization \
     ros-foxy-tf2-tools \
+    ros-foxy-rtcm-msgs \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
@@ -98,11 +99,13 @@ WORKDIR /workspaces/patasmonkey_ws
 # bash 起動時に ROS / Foxy用 install を source
 RUN echo "source /opt/ros/foxy/setup.bash" >> /root/.bashrc
 RUN echo "if [ -f /workspaces/ros2_ws/install_foxy/setup.bash ]; then source /workspaces/ros2_ws/install_foxy/setup.bash; fi" >> /root/.bashrc
+RUN echo "if [ -f /workspaces/ros2_ws/install/setup.bash ]; then source /workspaces/ros2_ws/install/setup.bash; fi" >> /root/.bashrc
 RUN echo "if [ -f /workspaces/patasmonkey_ws/install_foxy/setup.bash ]; then source /workspaces/patasmonkey_ws/install_foxy/setup.bash; fi" >> /root/.bashrc
+RUN echo "if [ -f /workspaces/patasmonkey_ws/install/setup.bash ]; then source /workspaces/patasmonkey_ws/install/setup.bash; fi" >> /root/.bashrc
 
 # Foxy用ビルドalias
-RUN echo "alias build_ros2_foxy='cd /workspaces/ros2_ws && colcon --log-base log_foxy build --symlink-install --build-base build_foxy --install-base install_foxy --packages-select hwt905_rs485_driver'" >> /root/.bashrc
-RUN echo "alias build_pm_foxy='cd /workspaces/patasmonkey_ws && colcon --log-base log_foxy build --symlink-install --build-base build_foxy --install-base install_foxy'" >> /root/.bashrc
-RUN echo "alias src_foxy='source /opt/ros/foxy/setup.bash && if [ -f /workspaces/ros2_ws/install_foxy/setup.bash ]; then source /workspaces/ros2_ws/install_foxy/setup.bash; fi && if [ -f /workspaces/patasmonkey_ws/install_foxy/setup.bash ]; then source /workspaces/patasmonkey_ws/install_foxy/setup.bash; fi'" >> /root/.bashrc
+# RUN echo "alias build_ros2_foxy='cd /workspaces/ros2_ws && colcon --log-base log_foxy build --symlink-install --build-base build_foxy --install-base install_foxy --packages-select hwt905_rs485_driver'" >> /root/.bashrc
+# RUN echo "alias build_pm_foxy='cd /workspaces/patasmonkey_ws && colcon --log-base log_foxy build --symlink-install --build-base build_foxy --install-base install_foxy'" >> /root/.bashrc
+# RUN echo "alias src_foxy='source /opt/ros/foxy/setup.bash && if [ -f /workspaces/ros2_ws/install_foxy/setup.bash ]; then source /workspaces/ros2_ws/install_foxy/setup.bash; fi && if [ -f /workspaces/patasmonkey_ws/install_foxy/setup.bash ]; then source /workspaces/patasmonkey_ws/install_foxy/setup.bash; fi'" >> /root/.bashrc
 
 CMD ["/bin/bash"]
