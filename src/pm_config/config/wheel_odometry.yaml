@@ -18,6 +18,11 @@ wheel_odometry_node:
     # robot_localizationを使うならfalse推奨
     publish_tf: false
 
+    # 初期姿勢をIMUによって取得するかどうか
+    use_imu_initial_yaw: true
+    imu_topic: "/wit/imu"
+    imu_initial_timeout_sec: 5.0
+
 odom_to_path_node:
   ros__parameters:
     odom_topic: "/wheel/odometry"
