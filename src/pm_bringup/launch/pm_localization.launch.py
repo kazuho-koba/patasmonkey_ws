@@ -24,7 +24,7 @@ def generate_launch_description():
     # configファイル等
     urdf_file = pm_description_share/"urdf"/"pm.urdf"
     imu_config_file = pm_config_share/"config"/"hwt905_imu.yaml"
-    ekf_config_file = pm_config_share/"config"/"ekf_wheel_imu.yaml"
+    ekf_config_file = pm_config_share/"config"/"ekf_local_3d.yaml.yaml"
 
     with open(urdf_file, "r") as f:
         robot_description = f.read()
