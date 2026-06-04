@@ -58,6 +58,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-robot-localization \
     ros-foxy-tf2-tools \
     ros-foxy-rtcm-msgs \
+    ros-foxy-rosbag2-storage-mcap \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --upgrade pip
