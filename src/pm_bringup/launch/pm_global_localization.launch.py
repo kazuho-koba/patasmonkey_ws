@@ -3,13 +3,19 @@
 from pathlib import Path
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
+    # GNSS情報をどの程度使うか決めるパラメータ
+    use_gnss = LaunchConfiguration("use_gnss")
+    use_ntrip = LaunchConfiguration("use_ntrip")
+    
     # 各種パッケージのパス
     pm_teleop_share = Path(get_package_share_directory("pm_teleop"))
     pm_vehicle_share = Path(
@@ -24,7 +30,16 @@ def generate_launch_description():
     # configファイル等
     urdf_file = pm_description_share/"urdf"/"pm.urdf"
     imu_config_file = pm_config_share/"config"/"hwt905_imu.yaml"
-    ekf_config_file = pm_config_share/"config"/"ekf_local_3d.yaml"
+    wheel_odom_config_file = pm_config_share / "config" / "wheel_odometry.yaml"
+    vehicle_geometry_file = pm_config_share / "config" / "vehicle_geometry.yaml"
+    vehicle_control_file = pm_config_share / "config" / "vehicle_control.yaml"
+
+    ekf_local_config_file = pm_config_share/"config"/"ekf_local_3d.yaml"
+    ekf_global_config_file = pm_config_share/"config"/"ekf_global_3d.yaml"
+    navsat_config_file = pm_config_share / "config" / "navsat_transform.yaml"
+
+    ublox_config_file = pm_config_share / "config" / "ublox_f9p.yaml"
+    ntrip_config_file = pm_config_share / "config" / "ntrip_local.yaml"
 
     with open(urdf_file, "r") as f:
         robot_description = f.read()
@@ -59,37 +74,97 @@ def generate_launch_description():
         executable="wheel_odometry_node",
         name="wheel_odometry_node",
         output="screen",
-        parameters=[str(pm_config_share/"config"/"vehicle_geometry.yaml"),
-                    str(pm_config_share/"config"/"vehicle_control.yaml"),
-                    str(pm_config_share/"config"/"wheel_odometry.yaml"),
-                    ],
-    )
-    odom_to_path_node = Node(
-        package="pm_localization",
-        executable="odom_to_path_node",
-        name="odom_to_path_node",
-        output="screen",
         parameters=[
-            str(pm_config_share/"config"/"wheel_odometry.yaml"),
+            str(vehicle_geometry_file),
+            str(vehicle_control_file),
+            str(wheel_odom_config_file),
         ],
     )
-    ekf_node = Node(
+    # odom_to_path_node = Node(
+    #     package="pm_localization",
+    #     executable="odom_to_path_node",
+    #     name="odom_to_path_node",
+    #     output="screen",
+    #     parameters=[
+    #         str(pm_config_share/"config"/"wheel_odometry.yaml"),
+    #     ],
+    # )
+    ekf_local_node = Node(
         package="robot_localization",
         executable="ekf_node",
-        name="ekf_filter_node",
+        name="ekf_local_node",
         output="screen",
-        parameters=[str(ekf_config_file)],
+        parameters=[str(ekf_local_config_file)],
     )
 
-    return LaunchDescription(
-        [
-            teleop_launch,
-            vehicle_launch,
-            robot_state_publisher_node,
-            joint_state_publisher_node,
-            imu_node,
-            wheel_odometry_node,
-            odom_to_path_node,
-            ekf_node,
-        ]
+    ublox_gps_node = Node(
+        package="ublox_gps",
+        executable="ublox_gps_node",
+        name="ublox_gps_node",
+        output="screen",
+        parameters=[str(ublox_config_file)],
+        condition=IfCondition(use_gnss),
     )
+
+    ntrip_client_node = Node(
+        package="ntrip_client",
+        executable="ntrip_client_node",
+        name="ntrip_client_node",
+        output="screen",
+        parameters=[str(ntrip_config_file)],
+        condition=IfCondition(use_ntrip),
+    )
+
+    navsat_transform_node = Node(
+        package="robot_localization",
+        executable="navsat_transform_node",
+        name="navsat_transform_node",
+        output="screen",
+        parameters=[str(navsat_config_file)],
+        remappings=[
+            ("imu/data", "/imu/data"),
+            ("gps/fix", "/fix"),
+            ("odometry/filtered", "/odometry/local"),
+            ("odometry/gps", "/odometry/gps"),
+        ],
+        condition=IfCondition(use_gnss),
+    )
+
+    ekf_global_node = Node(
+        package="robot_localization",
+        executable="ekf_node",
+        name="ekf_global_node",
+        output="screen",
+        parameters=[str(ekf_global_config_file)],
+        condition=IfCondition(use_gnss),
+    )
+
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            "use_gnss",
+            default_value="true",
+            description="Start GNSS, navsat_transform, and global EKF",
+        ),
+        DeclareLaunchArgument(
+            "use_ntrip",
+            default_value="true",
+            description="Start NTRIP client for RTK corrections",
+        ),
+
+        teleop_launch,
+        vehicle_launch,
+        robot_state_publisher_node,
+        joint_state_publisher_node,
+        imu_node,
+        wheel_odometry_node,
+        # odom_to_path_node,
+
+        # Always-on local localization
+        ekf_local_node,
+
+        # Optional GNSS/global localization
+        ublox_gps_node,
+        ntrip_client_node,
+        navsat_transform_node,
+        ekf_global_node,
+    ])

@@ -30,3 +30,8 @@ log/
 build_foxy 
 install_foxy
 log_foxy
+
+# credentials / local configs
+src/pm_config/config/*secret*.yaml
+src/pm_config/config/*private*.yaml
+src/pm_config/config/*local*.yaml
