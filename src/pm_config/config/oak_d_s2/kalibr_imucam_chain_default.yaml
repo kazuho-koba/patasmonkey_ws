@@ -1,0 +1,32 @@
+%YAML:1.0
+
+# ----------------------------------
+# native data copied from OpenVINS repository (not for OAK-D)
+# ----------------------------------
+cam0:
+  T_imu_cam: # rotation from camera to IMU R_CtoI, position of camera in IMU p_CinI
+    - [0.0, 1.0, 0.0, 0.0]
+    - [1.0, 0.0, 0.0, 0.0]
+    - [0.0, 0.0, -1.0, 0.0]
+    - [0.0, 0.0, 0.0, 1.0]
+  cam_overlaps: [1]
+  camera_model: pinhole
+  distortion_coeffs: [-11.12248898, 109.87509918, 0.0012309491, 0.0001662431]
+  distortion_model: radtan
+  intrinsics: [404.87414551, 404.87414551, 325.89746094, 205.89299011] #fu, fv, cu, cv
+  resolution: [640, 400]
+  rostopic: /cam0/image_raw
+cam1:
+  T_imu_cam: # rotation from camera to IMU R_CtoI, position of camera in IMU p_CinI
+    - [0.0, 1.0, 0.0, 0.0]
+    - [1.0, 0.0, 0.0, 0.0753973818]
+    - [0.0, 0.0, -1.0, 0.0]
+    - [0.0, 0.0, 0.0, 1.0]
+  cam_overlaps: [0]
+  camera_model: pinhole
+  distortion_coeffs: [-11.05840302, 116.03304291, 0.0012003361, 0.0007351754]
+  distortion_model: radtan
+  intrinsics: [402.11419678, 402.11419678, 305.57312012, 181.50035095] #fu, fv, cu, cv
+  resolution: [640, 400]
+  rostopic: /cam1/image_raw
+

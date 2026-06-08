@@ -15,6 +15,9 @@ def generate_launch_description():
     # GNSS情報をどの程度使うか決めるパラメータ
     use_gnss = LaunchConfiguration("use_gnss")
     use_ntrip = LaunchConfiguration("use_ntrip")
+    # Visual Odometryを使うかどうかのパラメータ
+    use_oakd = LaunchConfiguration("use_oakd")
+    use_openvins = LaunchConfiguration("use_openvins")
     
     # 各種パッケージのパス
     pm_teleop_share = Path(get_package_share_directory("pm_teleop"))
@@ -22,10 +25,13 @@ def generate_launch_description():
         get_package_share_directory("pm_vehicle_interface"))
     pm_description_share = Path(get_package_share_directory("pm_description"))
     pm_config_share = Path(get_package_share_directory("pm_config"))
+    depthai_driver_share = Path(get_package_share_directory("depthai_driver"))
+    ov_msckf_share = Path(get_package_share_directory("ov_msckf"))
 
     # 既存launchファイル
     teleop_launch_file = pm_teleop_share/"launch"/"joy_teleop.launch.py"
     vehicle_launch_file = pm_vehicle_share/"launch"/"vehicle_interface.launch.py"
+    openvins_launch_file = ov_msckf_share/"launch"/"subscribe.launch.py"
 
     # configファイル等
     urdf_file = pm_description_share/"urdf"/"pm.urdf"
@@ -41,6 +47,8 @@ def generate_launch_description():
     ublox_config_file = pm_config_share / "config" / "ublox_f9p.yaml"
     ntrip_config_file = pm_config_share / "config" / "ntrip_local.yaml"
 
+    openvins_config_file = pm_config_share / "config" / "oak_d_s2" / "estimator_config1.yaml"
+
     with open(urdf_file, "r") as f:
         robot_description = f.read()
 
@@ -48,6 +56,16 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(str(teleop_launch_file)))
     vehicle_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(vehicle_launch_file)))
+    openvins_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(str(openvins_launch_file)),
+        launch_arguments={
+            "config_path": str(openvins_config_file),
+            "rviz_enable": "false",
+            "verbosity": "INFO",
+        }.items(),
+        condition=IfCondition(use_openvins),
+    )
+        
 
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
@@ -79,6 +97,13 @@ def generate_launch_description():
             str(vehicle_control_file),
             str(wheel_odom_config_file),
         ],
+    )
+    oakd_vio_rgbd_node = Node(
+        package="depthai_driver",
+        executable="oakd_vio_rgbd_node",
+        name="oakd_vio_rgbd_node",
+        output="screen",
+        condition=IfCondition(use_oakd),
     )
     # odom_to_path_node = Node(
     #     package="pm_localization",
@@ -150,13 +175,25 @@ def generate_launch_description():
             default_value="true",
             description="Start NTRIP client for RTK corrections",
         ),
+        DeclareLaunchArgument(
+            "use_oakd",
+            default_value="true",
+            description="Start OAK-D S2 RGB-D/VIO sensor node",
+        ),
+        DeclareLaunchArgument(
+            "use_openvins",
+            default_value="true",
+            description="Start OpenVINS",
+        ),
 
         teleop_launch,
         vehicle_launch,
+        openvins_launch,
         robot_state_publisher_node,
         joint_state_publisher_node,
         imu_node,
         wheel_odometry_node,
+        oakd_vio_rgbd_node,
         # odom_to_path_node,
 
         # Always-on local localization

@@ -1,0 +1,61 @@
+%YAML:1.0
+
+# ----------------------------------
+# native data copied from OpenVINS repository (not for OAK-D)
+# ----------------------------------
+# cam0:
+#   T_imu_cam: # rotation from camera to IMU R_CtoI, position of camera in IMU p_CinI
+#     - [0.0, 1.0, 0.0, 0.0]
+#     - [1.0, 0.0, 0.0, 0.0]
+#     - [0.0, 0.0, -1.0, 0.0]
+#     - [0.0, 0.0, 0.0, 1.0]
+#   cam_overlaps: [1]
+#   camera_model: pinhole
+#   distortion_coeffs: [-11.12248898, 109.87509918, 0.0012309491, 0.0001662431]
+#   distortion_model: radtan
+#   intrinsics: [404.87414551, 404.87414551, 325.89746094, 205.89299011] #fu, fv, cu, cv
+#   resolution: [640, 400]
+#   rostopic: /cam0/image_raw
+# cam1:
+#   T_imu_cam: # rotation from camera to IMU R_CtoI, position of camera in IMU p_CinI
+#     - [0.0, 1.0, 0.0, 0.0]
+#     - [1.0, 0.0, 0.0, 0.0753973818]
+#     - [0.0, 0.0, -1.0, 0.0]
+#     - [0.0, 0.0, 0.0, 1.0]
+#   cam_overlaps: [0]
+#   camera_model: pinhole
+#   distortion_coeffs: [-11.05840302, 116.03304291, 0.0012003361, 0.0007351754]
+#   distortion_model: radtan
+#   intrinsics: [402.11419678, 402.11419678, 305.57312012, 181.50035095] #fu, fv, cu, cv
+#   resolution: [640, 400]
+#   rostopic: /cam1/image_raw
+
+# ----------------------------------
+# acquired calib data by kalibr for OAK-D S2 S/N: 19443010E122001300
+# ----------------------------------
+cam0:
+  T_imu_cam:
+    - [0.00458484, 0.99995614, 0.00816716, -0.00068384]
+    - [0.99980452, -0.00442676, -0.01926998, -0.07534739]
+    - [-0.01923298, 0.00825391, -0.99978096, -0.01412541]
+    - [0.0, 0.0, 0.0, 1.0]
+  cam_overlaps: [1]
+  camera_model: pinhole
+  distortion_coeffs: [0.03318323418584644, -0.10790505791794129, 0.0010976800751699432, -0.0019812875905540167]
+  distortion_model: radtan
+  intrinsics: [400.4814123024703, 400.6352560522375, 322.33123328330237, 205.48166803116757]
+  resolution: [640, 400]
+  rostopic: /oak/stereo/left/image_raw
+cam1:
+  T_imu_cam:
+    - [0.00102972, 0.99998574, 0.00524095, -0.00201197]
+    - [0.99995801, -0.00098194, -0.00911175, 0.00072037]
+    - [-0.00910648, 0.00525011, -0.99994475, -0.01565281]
+    - [0.0, 0.0, 0.0, 1.0]
+  cam_overlaps: [0]
+  camera_model: pinhole
+  distortion_coeffs: [0.015125799257507401, -0.05698162976293714, -0.002997141930509312, 0.0015872773728161814]
+  distortion_model: radtan
+  intrinsics: [399.087067623455, 399.12724497515325, 330.7662134787063, 201.01493203166558]
+  resolution: [640, 400]
+  rostopic: /oak/stereo/right/image_raw
