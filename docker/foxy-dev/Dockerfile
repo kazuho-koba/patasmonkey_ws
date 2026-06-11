@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
     cmake \
+    zstd \
     python3-pip \
     python3-usb \
     python3-colcon-common-extensions \
