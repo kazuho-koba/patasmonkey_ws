@@ -14,6 +14,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name, 'config'),
             glob('config/*.yaml')),
+        (os.path.join('share', package_name, 'config', 'oak_d_s2'), glob('config/oak_d_s2/*.yaml')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
