@@ -196,47 +196,33 @@ def generate_launch_description():
         # GNSSを最優先で起動
         ublox_gps_node,
 
-        # 3秒後: IMU/local odometry系
+        # 3秒後: IMU/local odometry系とrtk信号送受信ノード立ち上げ
         TimerAction(
             period=3.0,
             actions=[
                 imu_node,
                 wheel_odometry_node,
                 ekf_local_node,
-            ],
-        ),
-
-        # 6秒後: NTRIP開始
-        TimerAction(
-            period=3.0,
-            actions=[
                 ntrip_client_node,
             ],
         ),
 
-        # 9秒後: GNSS変換/global EKF開始
+        # 6秒後: ODrive, 外界センサ系
         TimerAction(
-            period=9.0,
+            period=6.0,
+            actions=[
+                vehicle_launch,
+                oakd_vio_rgbd_node,
+                openvins_launch,
+            ],
+        ),
+
+        # GNSS座標変換とglobal EKFだけ遅らせる
+        TimerAction(
+            period=30.0,
             actions=[
                 navsat_transform_node,
                 ekf_global_node,
-            ],
-        ),
-
-        # 12秒後: ODrive
-        TimerAction(
-            period=12.0,
-            actions=[
-                vehicle_launch,
-            ],
-        ),
-
-        # 15秒後: OAK-D/OpenVINS
-        TimerAction(
-            period=15.0,
-            actions=[
-                oakd_vio_rgbd_node,
-                openvins_launch,
             ],
         ),
     ])
