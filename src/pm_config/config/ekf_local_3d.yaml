@@ -44,7 +44,7 @@ ekf_local_node:
     imu0_remove_gravitational_acceleration: true
 
     # visual odometry
-    odom1: /oak/odomimu
+    odom1: /ov_msckf/odomimu
     odom1_config: [
       true,  true,  true,   # x, y, z
       true,  true,  true,   # roll, pitch, yaw
