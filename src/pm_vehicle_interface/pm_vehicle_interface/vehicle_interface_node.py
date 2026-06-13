@@ -350,12 +350,6 @@ class VehicleInterfaceNode(Node):
             lines.append(f"{key:<20} {str(value):<20}")
         self.get_logger().info("\n".join(lines))
 
-        self.vel_ramp_rate = self.get_parameter_or("vel_ramp_rate", 15.0)
-        self.pos_gain = self.get_parameter_or("pos_gain", 30.0)
-        self.vel_gain = self.get_parameter_or("vel_gain", 0.225)
-        self.vel_integrator_gain = self.get_parameter_or("vel_integrator_gain", 0.75)
-        self.vel_integrator_limit = self.get_parameter_or("vel_integrator_limit", 2.0)
-
     def try_reconnect_odrive(self):
         """Try reconnecting to ODrive when disconnected."""
         if self.odrive_connected:
