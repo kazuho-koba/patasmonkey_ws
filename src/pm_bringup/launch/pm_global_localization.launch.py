@@ -9,6 +9,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
+from launch.actions import TimerAction
 
 
 def generate_launch_description():
@@ -129,6 +130,8 @@ def generate_launch_description():
         output="screen",
         parameters=[str(ublox_config_file)],
         condition=IfCondition(use_gnss),
+        respawn=True,
+        respawn_delay=3.0,
     )
 
     ntrip_client_node = Node(
@@ -187,21 +190,53 @@ def generate_launch_description():
         ),
 
         teleop_launch,
-        vehicle_launch,
-        openvins_launch,
         robot_state_publisher_node,
         joint_state_publisher_node,
-        imu_node,
-        wheel_odometry_node,
-        oakd_vio_rgbd_node,
-        # odom_to_path_node,
 
-        # Always-on local localization
-        ekf_local_node,
-
-        # Optional GNSS/global localization
+        # GNSSを最優先で起動
         ublox_gps_node,
-        ntrip_client_node,
-        navsat_transform_node,
-        ekf_global_node,
+
+        # 3秒後: IMU/local odometry系
+        TimerAction(
+            period=3.0,
+            actions=[
+                imu_node,
+                wheel_odometry_node,
+                ekf_local_node,
+            ],
+        ),
+
+        # 6秒後: NTRIP開始
+        TimerAction(
+            period=3.0,
+            actions=[
+                ntrip_client_node,
+            ],
+        ),
+
+        # 9秒後: GNSS変換/global EKF開始
+        TimerAction(
+            period=9.0,
+            actions=[
+                navsat_transform_node,
+                ekf_global_node,
+            ],
+        ),
+
+        # 12秒後: ODrive
+        TimerAction(
+            period=12.0,
+            actions=[
+                vehicle_launch,
+            ],
+        ),
+
+        # 15秒後: OAK-D/OpenVINS
+        TimerAction(
+            period=15.0,
+            actions=[
+                oakd_vio_rgbd_node,
+                openvins_launch,
+            ],
+        ),
     ])
