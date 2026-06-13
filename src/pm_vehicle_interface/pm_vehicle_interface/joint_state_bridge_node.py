@@ -13,8 +13,12 @@ class JointStateBridgeNode(Node):
         super().__init__("joint_state_bridge")
 
         # パラメータ
-        self.in_topicname = self.declare_parameter("in_topicname", "/wheel_radians").value
-        self.out_topicname = self.declare_parameter("out_topicname", "/joint_states").value
+        self.in_topicname = self.declare_parameter(
+            "in_topicname", "/wheel_radians"
+        ).value
+        self.out_topicname = self.declare_parameter(
+            "out_topicname", "/joint_states"
+        ).value
 
         # 入力側のジョイント名（メッセージについている名称）
         self.left_jointname = self.declare_parameter(
@@ -35,9 +39,11 @@ class JointStateBridgeNode(Node):
         ).value
 
         # URDFのうち、上記に該当しない固定ジョイント（ホイールアームなど、今は可視化しない部分）
-        self.static_joints=self.declare_parameter("static_joints", [""]).value
-        self.static_joints = [s for s in self.static_joints if isinstance(s, str) and len(s) > 0] # パラメータ未指定の場合は空に直す
-        self.static_positions=self.declare_parameter("static_positions", [0.0]).value
+        self.static_joints = self.declare_parameter("static_joints", [""]).value
+        self.static_joints = [
+            s for s in self.static_joints if isinstance(s, str) and len(s) > 0
+        ]  # パラメータ未指定の場合は空に直す
+        self.static_positions = self.declare_parameter("static_positions", [0.0]).value
         # バリデーション：static_joints と static_positions の長さ合わせ
         if len(self.static_positions) == 0 and len(self.static_joints) > 0:
             # positions未指定なら0埋め

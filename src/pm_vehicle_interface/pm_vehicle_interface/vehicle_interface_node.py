@@ -10,54 +10,61 @@ import sys
 
 class VehicleInterfaceNode(Node):
     def __init__(self):
-        super().__init__("vehicle_interface_node")  # register the node
+        super().__init__(
+            "vehicle_interface_node",
+        )  # register the node
 
-        # load parameters from yaml (passed via launch file)
-        self.wheel_radius = self.get_parameter_or(
-            "wheel_radius", 0.1
-        )  # wheel radius [m]
-        self.tread_width = self.get_parameter_or(
-            "tread_width", 0.36
-        )  # wheel separation betwee L\R [m]
-        self.gear_ratio = self.get_parameter_or(
-            "gear_ratio", 10.0)  # gear ratio
-        self.max_whl_rps = self.get_parameter_or(
-            "max_whl_rps", 4.0
-        )  # max wheel velocity [rps]
+        # パラメータ宣言（launchから上書き可）
+        self.declare_parameter("wheel_radius", 0.1)
+        self.declare_parameter("tread_width", 0.36)
+        self.declare_parameter("gear_ratio", 10.0)
+        self.declare_parameter("max_whl_rps", 4.0)
 
-        # get odrive config
-        self.odrv_usb_port = self.get_parameter_or(
-            "odrv_usb_port", "/dev/ttyACM0")
-        self.odrv_baud_rate = self.get_parameter_or("odrv_baud_rate", 115200)
+        self.declare_parameter("odrv_usb_port", "/dev/ttyACM0")
+        self.declare_parameter("odrv_baud_rate", 115200)
 
-        # odrive axis
-        self.mtr_axis_l = self.get_parameter_or("mtr_axis_l", 0)
-        self.mtr_axis_r = self.get_parameter_or("mtr_axis_r", 1)
+        self.declare_parameter("mtr_axis_l", 0)
+        self.declare_parameter("mtr_axis_r", 1)
 
-        # get topic name that will be used
-        self.cmd_vel_topic = self.get_parameter_or("cmd_vel_topic", "/cmd_vel")
-        self.cmd_vel_joy_topic = self.get_parameter_or(
-            "cmd_vel_joy_topic", "/cmd_vel_joy"
-        )
-        self.motor_state_topic = self.get_parameter_or(
-            "motor_state_topic", "/motor_state"
-        )
-        self.emergency_stop_topic = self.get_parameter_or(
-            "emergency_stop_topic", "/emergency_stop"
-        )
+        self.declare_parameter("cmd_vel_topic", "/cmd_vel")
+        self.declare_parameter("cmd_vel_joy_topic", "/cmd_vel_joy")
+        self.declare_parameter("motor_state_topic", "/motor_state")
+        self.declare_parameter("emergency_stop_topic", "/emergency_stop")
 
-        # ODriveの速度制御パラメータ
-        self.vel_ramp_rate = self.get_parameter_or("vel_ramp_rate", 15.0)
-        self.pos_gain = self.get_parameter_or("pos_gain", 30.0)
-        self.vel_gain = self.get_parameter_or("vel_gain", 0.225)
-        self.vel_integrator_gain = self.get_parameter_or(
-            "vel_integrator_gain", 0.75)
-        self.vel_integrator_limit = self.get_parameter_or(
-            "vel_integrator_limit", 2.0)
+        self.declare_parameter("vel_ramp_rate", 15.0)
+        self.declare_parameter("pos_gain", 30.0)
+        self.declare_parameter("vel_gain", 0.225)
+        self.declare_parameter("vel_integrator_gain", 0.75)
+        self.declare_parameter("vel_integrator_limit", 2.0)
 
-        # モータ回転方向（基準）
-        self.left_motor_sign = self.get_parameter_or("left_motor_sign", 1.0)
-        self.right_motor_sign = self.get_parameter_or("right_motor_sign", -1.0)
+        self.declare_parameter("left_motor_sign", 1.0)
+        self.declare_parameter("right_motor_sign", -1.0)
+
+        # パラメータ取得
+        self.wheel_radius = self.get_parameter("wheel_radius").get_parameter_value().double_value
+        self.tread_width = self.get_parameter("tread_width").get_parameter_value().double_value
+        self.gear_ratio = self.get_parameter("gear_ratio").get_parameter_value().double_value
+        self.max_whl_rps = self.get_parameter("max_whl_rps").get_parameter_value().double_value
+
+        self.odrv_usb_port = self.get_parameter("odrv_usb_port").get_parameter_value().string_value
+        self.odrv_baud_rate = self.get_parameter("odrv_baud_rate").get_parameter_value().integer_value
+
+        self.mtr_axis_l = self.get_parameter("mtr_axis_l").get_parameter_value().integer_value
+        self.mtr_axis_r = self.get_parameter("mtr_axis_r").get_parameter_value().integer_value
+
+        self.cmd_vel_topic = self.get_parameter("cmd_vel_topic").get_parameter_value().string_value
+        self.cmd_vel_joy_topic = self.get_parameter("cmd_vel_joy_topic").get_parameter_value().string_value
+        self.motor_state_topic = self.get_parameter("motor_state_topic").get_parameter_value().string_value
+        self.emergency_stop_topic = self.get_parameter("emergency_stop_topic").get_parameter_value().string_value
+
+        self.vel_ramp_rate = self.get_parameter("vel_ramp_rate").get_parameter_value().double_value
+        self.pos_gain = self.get_parameter("pos_gain").get_parameter_value().double_value
+        self.vel_gain = self.get_parameter("vel_gain").get_parameter_value().double_value
+        self.vel_integrator_gain = self.get_parameter("vel_integrator_gain").get_parameter_value().double_value
+        self.vel_integrator_limit = self.get_parameter("vel_integrator_limit").get_parameter_value().double_value
+
+        self.left_motor_sign = self.get_parameter("left_motor_sign").get_parameter_value().double_value
+        self.right_motor_sign = self.get_parameter("right_motor_sign").get_parameter_value().double_value
 
         # display the set parameters
         self.print_parameters()
@@ -79,8 +86,7 @@ class VehicleInterfaceNode(Node):
         self.last_cmd_vel_joy = None
         self.last_cmd_vel_joy_time = None
         # subscriber config
-        self.create_subscription(
-            Twist, self.cmd_vel_topic, self.cmd_vel_callback, 10)
+        self.create_subscription(Twist, self.cmd_vel_topic, self.cmd_vel_callback, 10)
         self.create_subscription(
             Twist, self.cmd_vel_joy_topic, self.cmd_vel_callback_joy, 10
         )
@@ -100,8 +106,7 @@ class VehicleInterfaceNode(Node):
 
         # タイマーを定義、設定時間（sec）ごとに関数を呼び出す（遠隔操縦指令の受領関数と、モータ制御情報の発信関数）
         self._timer = self.create_timer(0.05, self.command_selector)
-        self._motor_state_timer = self.create_timer(
-            0.05, self.publish_motor_state)
+        self._motor_state_timer = self.create_timer(0.05, self.publish_motor_state)
 
         # publihser config
         self.motor_state_pub = self.create_publisher(
@@ -144,7 +149,7 @@ class VehicleInterfaceNode(Node):
             self.odrive_connected = False
             self.reconnect_in_progress = False
             self.get_logger().warn(f"ODrive connection failed: {e}")
-    
+
     def cmd_vel_callback(self, msg):
         """callback function when /cmd_vel from autnomous driving software has been recieved"""
         self.last_cmd_vel = msg  # keep /cmd_vel_msg
@@ -262,7 +267,7 @@ class VehicleInterfaceNode(Node):
         """モータ制御情報を取得しpublishする関数"""
         if not self.odrive_connected:
             return
-        
+
         try:
             msg = MotorState()
             msg.stamp = self.get_clock().now().to_msg()
@@ -348,11 +353,9 @@ class VehicleInterfaceNode(Node):
         self.vel_ramp_rate = self.get_parameter_or("vel_ramp_rate", 15.0)
         self.pos_gain = self.get_parameter_or("pos_gain", 30.0)
         self.vel_gain = self.get_parameter_or("vel_gain", 0.225)
-        self.vel_integrator_gain = self.get_parameter_or(
-            "vel_integrator_gain", 0.75)
-        self.vel_integrator_limit = self.get_parameter_or(
-            "vel_integrator_limit", 2.0)
-        
+        self.vel_integrator_gain = self.get_parameter_or("vel_integrator_gain", 0.75)
+        self.vel_integrator_limit = self.get_parameter_or("vel_integrator_limit", 2.0)
+
     def try_reconnect_odrive(self):
         """Try reconnecting to ODrive when disconnected."""
         if self.odrive_connected:
@@ -375,6 +378,7 @@ class VehicleInterfaceNode(Node):
         self.right_motor = None
         self.left_cmd_rps = 0.0
         self.right_cmd_rps = 0.0
+
 
 def main(args=None):
     rclpy.init(args=args)  # Initialize ROS2
