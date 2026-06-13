@@ -2,7 +2,7 @@ vehicle_interface_node:
   ros__parameters:
 
     # odrive
-    odrv_usb_port: "/dev/ttyACM0"
+    odrv_usb_port: "/dev/serial/by-id/usb-ODrive_Robotics_ODrive_3.6_CDC_Interface_205139964D4D-if00"
     odrv_baud_rate: 115200
 
     # topics
