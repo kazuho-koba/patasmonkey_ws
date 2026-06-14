@@ -287,7 +287,7 @@
 	<joint name="oakd_link_to_oakd_imu_link" type="fixed">
 		<parent link="oakd_link"/>
 		<child link="oakd_imu_link"/>
-		<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+		<origin xyz="0.0 0.0 0.0" rpy="1.57079632679 0.0 1.57079632679"/>
 	</joint>
 	<!-- cam0 = left mono camera.
        Baseline from Kalibr: approximately 0.07533 m, so half baseline is 0.0376655 m. -->
