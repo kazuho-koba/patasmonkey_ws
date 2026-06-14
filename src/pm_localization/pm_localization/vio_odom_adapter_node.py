@@ -388,51 +388,69 @@ class VioOdomAdapterNode(Node):
         out.pose.pose.orientation.z = qz
         out.pose.pose.orientation.w = qw
 
-        # For first implementation, copy pose covariance.
-        # Strictly, covariance should be rotated into the output frame.
-        out.pose.covariance = msg.pose.covariance
+        # ------------------------------------------------------------
+        # Pose covariance transform
+        # ------------------------------------------------------------
+        #
+        # msg.pose.covariance:
+        #   covariance of OpenVINS imu pose in global frame
+        #
+        # out.pose.covariance:
+        #   covariance of base_link pose in odom frame
+        #
+        # T_odom_base = T_odom_global * T_global_imu * T_imu_base
+        #
+        R_odom_global = self.T_odom_global[:3, :3]
+        R_global_imu = T_global_imu[:3, :3]
 
-        # Twist from OpenVINS is IMU-frame/IMU-origin dependent.
-        # To avoid feeding wrong twist into EKF, publish high covariance.
-        out.twist.twist = msg.twist.twist
-        out.twist.covariance = [
-            1e6,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1e6,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1e6,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1e6,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1e6,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1e6,
-        ]
+        # Translation of base_link origin expressed in imu frame.
+        # T_imu_base maps base_link coordinates into imu coordinates.
+        p_base_in_imu = self.T_imu_base[:3, 3]
+
+        out.pose.covariance = transform_pose_covariance_ros_approx(
+            msg.pose.covariance,
+            R_odom_global,
+            R_global_imu,
+            p_base_in_imu,
+        )
+
+        # ------------------------------------------------------------
+        # Twist and twist covariance transform
+        # ------------------------------------------------------------
+        #
+        # ROS Odometry convention:
+        #   twist is expressed in child_frame_id.
+        #
+        # Input:
+        #   msg.child_frame_id = imu
+        #   twist at imu origin, expressed in imu frame
+        #
+        # Output:
+        #   out.child_frame_id = base_link
+        #   twist at base_link origin, expressed in base_link frame
+        #
+        R_base_imu = self.T_base_imu[:3, :3]
+
+        # Translation of imu origin expressed in base_link frame.
+        # T_base_imu maps imu coordinates into base_link coordinates.
+        p_imu_in_base = self.T_base_imu[:3, 3]
+
+        v_base, w_base, twist_cov_base = transform_twist_and_covariance_ros_approx(
+            msg.twist.twist,
+            msg.twist.covariance,
+            R_base_imu,
+            p_imu_in_base,
+        )
+
+        out.twist.twist.linear.x = float(v_base[0])
+        out.twist.twist.linear.y = float(v_base[1])
+        out.twist.twist.linear.z = float(v_base[2])
+
+        out.twist.twist.angular.x = float(w_base[0])
+        out.twist.twist.angular.y = float(w_base[1])
+        out.twist.twist.angular.z = float(w_base[2])
+
+        out.twist.covariance = twist_cov_base
 
         self.pub.publish(out)
 

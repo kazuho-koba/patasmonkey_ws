@@ -119,7 +119,7 @@ def generate_launch_description():
             'output_child_frame_id': 'base_link',
 
             'base_frame_id': 'base_link',
-            'oak_imu_frame_id': 'oak_imu_link',
+            'oak_imu_frame_id': 'oakd_imu_link',
 
             # True:
             #   first VIO pose becomes odom origin.
