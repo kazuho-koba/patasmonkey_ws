@@ -123,6 +123,39 @@ def odom_pose_to_matrix(msg: Odometry):
     )
     return T
 
+def openvins_odom_pose_to_matrix(msg: Odometry, invert_orientation: bool):
+    """
+    Convert OpenVINS Odometry pose to 4x4 matrix.
+
+    Position is assumed to be p_imu_in_global.
+
+    If invert_orientation is True:
+      msg.orientation is interpreted as R_imu_global, i.e. q_GtoI-like,
+      and converted to R_global_imu by transpose.
+
+    If invert_orientation is False:
+      msg.orientation is interpreted directly as R_global_imu.
+    """
+    T = np.eye(4)
+
+    R_msg = quat_to_rot(msg.pose.pose.orientation)
+
+    if invert_orientation:
+        R_global_imu = R_msg.T
+    else:
+        R_global_imu = R_msg
+
+    T[:3, :3] = R_global_imu
+    T[:3, 3] = np.array(
+        [
+            msg.pose.pose.position.x,
+            msg.pose.pose.position.y,
+            msg.pose.pose.position.z,
+        ],
+        dtype=float,
+    )
+
+    return T
 
 def skew(v):
     """
@@ -297,6 +330,9 @@ class VioOdomAdapterNode(Node):
         self.declare_parameter("zero_initial_pose", True)
         self.declare_parameter("publish_tf", False)
 
+        self.declare_parameter("invert_openvins_orientation", True)
+        self.declare_parameter("align_initial_to_tf", True)
+
         self.input_topic = self.get_parameter("input_topic").value
         self.output_topic = self.get_parameter("output_topic").value
 
@@ -307,6 +343,12 @@ class VioOdomAdapterNode(Node):
         self.oak_imu_frame_id = self.get_parameter("oak_imu_frame_id").value
 
         self.zero_initial_pose = bool(self.get_parameter("zero_initial_pose").value)
+        self.invert_openvins_orientation = bool(
+            self.get_parameter("invert_openvins_orientation").value
+        )
+        self.align_initial_to_tf = bool(
+            self.get_parameter("align_initial_to_tf").value
+        )
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -351,25 +393,75 @@ class VioOdomAdapterNode(Node):
                 throttle_duration_sec=2.0,
             )
             return False
+        
+    def try_initialize_odom_global(self, T_global_base):
+        """
+        Initialize T_odom_global.
+
+        Preferred:
+          align first VIO pose to current EKF TF: odom -> base_link
+
+        Fallback:
+          if zero_initial_pose is true, make first VIO pose identity.
+        """
+        if self.T_odom_global is not None:
+            return True
+
+        if self.align_initial_to_tf:
+            try:
+                tf_msg = self.tf_buffer.lookup_transform(
+                    self.output_frame_id,
+                    self.output_child_frame_id,
+                    rclpy.time.Time()
+                )
+                T_odom_base_ref = transform_to_matrix(tf_msg)
+
+                self.T_odom_global = T_odom_base_ref @ np.linalg.inv(T_global_base)
+
+                self.get_logger().info(
+                    f"Initialized T_odom_global from TF "
+                    f"{self.output_frame_id} -> {self.output_child_frame_id}"
+                )
+                return True
+
+            except (LookupException, ConnectivityException, ExtrapolationException) as e:
+                self.get_logger().warn(
+                    f"Waiting for initial TF "
+                    f"{self.output_frame_id} -> {self.output_child_frame_id}: {str(e)}",
+                    throttle_duration_sec=2.0,
+                )
+                return False
+
+        if self.zero_initial_pose:
+            self.T_odom_global = np.linalg.inv(T_global_base)
+            self.get_logger().info("Initialized T_odom_global from first VIO pose")
+        else:
+            self.T_odom_global = np.eye(4)
+            self.get_logger().info("Initialized T_odom_global as identity")
+
+        return True
 
     def odom_callback(self, msg: Odometry):
         if not self.try_update_static_transform():
             return
 
-        # OpenVINS output: T_global_imu
-        T_global_imu = odom_pose_to_matrix(msg)
+        # OpenVINS output.
+        # Important:
+        #   OpenVINS may publish q_GtoI-like orientation.
+        #   In that case, invert_openvins_orientation must be True.
+        T_global_imu = openvins_odom_pose_to_matrix(
+            msg,
+            self.invert_openvins_orientation,
+        )
 
         # Convert IMU pose to base_link pose.
         # T_global_base = T_global_imu * T_imu_base
         T_global_base = T_global_imu @ self.T_imu_base
 
-        # Align first pose to odom origin.
-        if self.T_odom_global is None:
-            if self.zero_initial_pose:
-                self.T_odom_global = np.linalg.inv(T_global_base)
-                self.get_logger().info("Initialized T_odom_global from first VIO pose")
-            else:
-                self.T_odom_global = np.eye(4)
+        # Align first VIO pose to current odom -> base_link TF.
+        # This prevents VIO yaw from pulling the EKF at startup.
+        if not self.try_initialize_odom_global(T_global_base):
+            return
 
         T_odom_base = self.T_odom_global @ T_global_base
 
