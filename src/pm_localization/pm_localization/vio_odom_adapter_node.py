@@ -8,7 +8,13 @@ from rclpy.node import Node
 
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TransformStamped
-from tf2_ros import Buffer, TransformListener, LookupException, ConnectivityException, ExtrapolationException
+from tf2_ros import (
+    Buffer,
+    TransformListener,
+    LookupException,
+    ConnectivityException,
+    ExtrapolationException,
+)
 
 
 def quat_to_rot(q):
@@ -34,11 +40,14 @@ def quat_to_rot(q):
     wy = w * y * s
     wz = w * z * s
 
-    return np.array([
-        [1.0 - (yy + zz), xy - wz,         xz + wy],
-        [xy + wz,         1.0 - (xx + zz), yz - wx],
-        [xz - wy,         yz + wx,         1.0 - (xx + yy)]
-    ], dtype=float)
+    return np.array(
+        [
+            [1.0 - (yy + zz), xy - wz, xz + wy],
+            [xy + wz, 1.0 - (xx + zz), yz - wx],
+            [xz - wy, yz + wx, 1.0 - (xx + yy)],
+        ],
+        dtype=float,
+    )
 
 
 def rot_to_quat(R):
@@ -90,11 +99,14 @@ def transform_to_matrix(t: TransformStamped):
     """
     T = np.eye(4)
     T[:3, :3] = quat_to_rot(t.transform.rotation)
-    T[:3, 3] = np.array([
-        t.transform.translation.x,
-        t.transform.translation.y,
-        t.transform.translation.z
-    ], dtype=float)
+    T[:3, 3] = np.array(
+        [
+            t.transform.translation.x,
+            t.transform.translation.y,
+            t.transform.translation.z,
+        ],
+        dtype=float,
+    )
     return T
 
 
@@ -105,23 +117,26 @@ def odom_pose_to_matrix(msg: Odometry):
     """
     T = np.eye(4)
     T[:3, :3] = quat_to_rot(msg.pose.pose.orientation)
-    T[:3, 3] = np.array([
-        msg.pose.pose.position.x,
-        msg.pose.pose.position.y,
-        msg.pose.pose.position.z
-    ], dtype=float)
+    T[:3, 3] = np.array(
+        [msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z],
+        dtype=float,
+    )
     return T
+
 
 def skew(v):
     """
     Return skew-symmetric matrix [v]x such that [v]x @ w = v x w.
     """
     x, y, z = float(v[0]), float(v[1]), float(v[2])
-    return np.array([
-        [0.0, -z,   y],
-        [z,    0.0, -x],
-        [-y,   x,   0.0],
-    ], dtype=float)
+    return np.array(
+        [
+            [0.0, -z, y],
+            [z, 0.0, -x],
+            [-y, x, 0.0],
+        ],
+        dtype=float,
+    )
 
 
 def cov_list_to_mat6(cov_list):
@@ -214,17 +229,23 @@ def transform_twist_and_covariance_ros_approx(
       [v_base]   [ R_base_imu   skew(p_imu_in_base) R_base_imu ] [v_imu]
       [w_base] = [     0                 R_base_imu             ] [w_imu]
     """
-    v_imu = np.array([
-        twist.linear.x,
-        twist.linear.y,
-        twist.linear.z,
-    ], dtype=float)
+    v_imu = np.array(
+        [
+            twist.linear.x,
+            twist.linear.y,
+            twist.linear.z,
+        ],
+        dtype=float,
+    )
 
-    w_imu = np.array([
-        twist.angular.x,
-        twist.angular.y,
-        twist.angular.z,
-    ], dtype=float)
+    w_imu = np.array(
+        [
+            twist.angular.x,
+            twist.angular.y,
+            twist.angular.z,
+        ],
+        dtype=float,
+    )
 
     w_base = R_base_imu @ w_imu
     v_base = R_base_imu @ v_imu + skew(p_imu_in_base) @ w_base
@@ -239,6 +260,7 @@ def transform_twist_and_covariance_ros_approx(
     P_out = J @ P_in @ J.T
 
     return v_base, w_base, cov_mat6_to_list(P_out)
+
 
 class VioOdomAdapterNode(Node):
     """
@@ -261,30 +283,30 @@ class VioOdomAdapterNode(Node):
     """
 
     def __init__(self):
-        super().__init__('vio_odom_adapter_node')
+        super().__init__("vio_odom_adapter_node")
 
-        self.declare_parameter('input_topic', '/ov_msckf/odomimu')
-        self.declare_parameter('output_topic', '/vio/odometry')
+        self.declare_parameter("input_topic", "/ov_msckf/odomimu")
+        self.declare_parameter("output_topic", "/vio/odometry")
 
-        self.declare_parameter('output_frame_id', 'odom')
-        self.declare_parameter('output_child_frame_id', 'base_link')
+        self.declare_parameter("output_frame_id", "odom")
+        self.declare_parameter("output_child_frame_id", "base_link")
 
-        self.declare_parameter('base_frame_id', 'base_link')
-        self.declare_parameter('oak_imu_frame_id', 'oakd_imu_link')
+        self.declare_parameter("base_frame_id", "base_link")
+        self.declare_parameter("oak_imu_frame_id", "oakd_imu_link")
 
-        self.declare_parameter('zero_initial_pose', True)
-        self.declare_parameter('publish_tf', False)
+        self.declare_parameter("zero_initial_pose", True)
+        self.declare_parameter("publish_tf", False)
 
-        self.input_topic = self.get_parameter('input_topic').value
-        self.output_topic = self.get_parameter('output_topic').value
+        self.input_topic = self.get_parameter("input_topic").value
+        self.output_topic = self.get_parameter("output_topic").value
 
-        self.output_frame_id = self.get_parameter('output_frame_id').value
-        self.output_child_frame_id = self.get_parameter('output_child_frame_id').value
+        self.output_frame_id = self.get_parameter("output_frame_id").value
+        self.output_child_frame_id = self.get_parameter("output_child_frame_id").value
 
-        self.base_frame_id = self.get_parameter('base_frame_id').value
-        self.oak_imu_frame_id = self.get_parameter('oak_imu_frame_id').value
+        self.base_frame_id = self.get_parameter("base_frame_id").value
+        self.oak_imu_frame_id = self.get_parameter("oak_imu_frame_id").value
 
-        self.zero_initial_pose = bool(self.get_parameter('zero_initial_pose').value)
+        self.zero_initial_pose = bool(self.get_parameter("zero_initial_pose").value)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -295,17 +317,14 @@ class VioOdomAdapterNode(Node):
 
         self.pub = self.create_publisher(Odometry, self.output_topic, 10)
         self.sub = self.create_subscription(
-            Odometry,
-            self.input_topic,
-            self.odom_callback,
-            50
+            Odometry, self.input_topic, self.odom_callback, 50
         )
 
         self.get_logger().info(
-            f'VIO odom adapter started: {self.input_topic} -> {self.output_topic}'
+            f"VIO odom adapter started: {self.input_topic} -> {self.output_topic}"
         )
         self.get_logger().info(
-            f'Using static transform: {self.base_frame_id} -> {self.oak_imu_frame_id}'
+            f"Using static transform: {self.base_frame_id} -> {self.oak_imu_frame_id}"
         )
 
     def try_update_static_transform(self):
@@ -316,22 +335,20 @@ class VioOdomAdapterNode(Node):
             # lookup_transform(target, source, time)
             # This returns T_target_source.
             tf_msg = self.tf_buffer.lookup_transform(
-                self.base_frame_id,
-                self.oak_imu_frame_id,
-                rclpy.time.Time()
+                self.base_frame_id, self.oak_imu_frame_id, rclpy.time.Time()
             )
             self.T_base_imu = transform_to_matrix(tf_msg)
             self.T_imu_base = np.linalg.inv(self.T_base_imu)
 
             self.get_logger().info(
-                f'Got TF: {self.base_frame_id} -> {self.oak_imu_frame_id}'
+                f"Got TF: {self.base_frame_id} -> {self.oak_imu_frame_id}"
             )
             return True
 
         except (LookupException, ConnectivityException, ExtrapolationException) as e:
             self.get_logger().warn(
-                f'Waiting for TF {self.base_frame_id} -> {self.oak_imu_frame_id}: {str(e)}',
-                throttle_duration_sec=2.0
+                f"Waiting for TF {self.base_frame_id} -> {self.oak_imu_frame_id}: {str(e)}",
+                throttle_duration_sec=2.0,
             )
             return False
 
@@ -350,7 +367,7 @@ class VioOdomAdapterNode(Node):
         if self.T_odom_global is None:
             if self.zero_initial_pose:
                 self.T_odom_global = np.linalg.inv(T_global_base)
-                self.get_logger().info('Initialized T_odom_global from first VIO pose')
+                self.get_logger().info("Initialized T_odom_global from first VIO pose")
             else:
                 self.T_odom_global = np.eye(4)
 
@@ -379,12 +396,42 @@ class VioOdomAdapterNode(Node):
         # To avoid feeding wrong twist into EKF, publish high covariance.
         out.twist.twist = msg.twist.twist
         out.twist.covariance = [
-            1e6, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 1e6, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 1e6, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 1e6, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 1e6, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 1e6,
+            1e6,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1e6,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1e6,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1e6,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1e6,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1e6,
         ]
 
         self.pub.publish(out)
@@ -403,5 +450,5 @@ def main(args=None):
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

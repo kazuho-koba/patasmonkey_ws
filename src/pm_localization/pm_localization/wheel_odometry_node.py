@@ -266,10 +266,10 @@ class WheelOdometryNode(Node):
 
         # orientation が無効の場合の簡易チェック
         if (
-            abs(q.x) < 1e-12 and
-            abs(q.y) < 1e-12 and
-            abs(q.z) < 1e-12 and
-            abs(q.w) < 1e-12
+            abs(q.x) < 1e-12
+            and abs(q.y) < 1e-12
+            and abs(q.z) < 1e-12
+            and abs(q.w) < 1e-12
         ):
             self.get_logger().warn(
                 "Received IMU orientation is all zeros. Ignoring.",
@@ -277,9 +277,7 @@ class WheelOdometryNode(Node):
             )
             return
 
-        self.yaw = self._wrap_pi(
-            quat_to_yaw(q.x, q.y, q.z, q.w)
-        )
+        self.yaw = self._wrap_pi(quat_to_yaw(q.x, q.y, q.z, q.w))
 
         self.initial_yaw_received = True
         self.waiting_for_initial_yaw = False
@@ -295,7 +293,6 @@ class WheelOdometryNode(Node):
         if self.imu_sub is not None:
             self.destroy_subscription(self.imu_sub)
             self.imu_sub = None
-
 
     def on_imu_initial_timeout(self) -> None:
         if self.initial_yaw_received:
@@ -315,7 +312,6 @@ class WheelOdometryNode(Node):
             self.destroy_subscription(self.imu_sub)
             self.imu_sub = None
 
-            
     @staticmethod
     def _index_of(names: list[str], target: str) -> Optional[int]:
         try:
