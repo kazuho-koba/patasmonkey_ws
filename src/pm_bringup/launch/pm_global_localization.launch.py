@@ -121,7 +121,7 @@ def generate_launch_description():
             'base_frame_id': 'base_link',
             'oak_imu_frame_id': 'oakd_imu_link',
 
-            'invert_openvins_orientation': True,
+            'invert_openvins_orientation': False,
             'align_initial_to_tf': True,
             'zero_initial_pose': True,
 
