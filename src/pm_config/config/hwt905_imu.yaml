@@ -3,5 +3,5 @@ hwt905_imu_node:
     port: /dev/ttyUSB0
     baud: 230400
     poll_hz: 100.0
-    frame_id: imu_link
+    frame_id: wit_imu_link
     slave_id: 80
