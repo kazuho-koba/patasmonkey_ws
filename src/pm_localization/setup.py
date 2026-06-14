@@ -30,6 +30,7 @@ setup(
         'console_scripts': [
             'wheel_odometry_node = pm_localization.wheel_odometry_node:main',
             'odom_to_path_node = pm_localization.odom_to_path_node:main',
+            'vio_odom_adapter_node = pm_localization.vio_odom_adapter_node:main',
         ],
     },
 )

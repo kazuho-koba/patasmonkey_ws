@@ -106,15 +106,31 @@ def generate_launch_description():
         output="screen",
         condition=IfCondition(use_oakd),
     )
-    # odom_to_path_node = Node(
-    #     package="pm_localization",
-    #     executable="odom_to_path_node",
-    #     name="odom_to_path_node",
-    #     output="screen",
-    #     parameters=[
-    #         str(pm_config_share/"config"/"wheel_odometry.yaml"),
-    #     ],
-    # )
+    vio_odom_adapter_node = Node(
+        package='pm_localization',
+        executable='vio_odom_adapter_node',
+        name='vio_odom_adapter_node',
+        output='screen',
+        parameters=[{
+            'input_topic': '/ov_msckf/odomimu',
+            'output_topic': '/vio/odometry',
+
+            'output_frame_id': 'odom',
+            'output_child_frame_id': 'base_link',
+
+            'base_frame_id': 'base_link',
+            'oak_imu_frame_id': 'oak_imu_link',
+
+            # True:
+            #   first VIO pose becomes odom origin.
+            #   Good for local odometry comparison with wheel odom.
+            'zero_initial_pose': True,
+
+            # This adapter publishes Odometry only.
+            # Let robot_localization publish odom -> base_link TF.
+            'publish_tf': False,
+        }]
+    )
     ekf_local_node = Node(
         package="robot_localization",
         executable="ekf_node",
@@ -214,6 +230,7 @@ def generate_launch_description():
                 vehicle_launch,
                 oakd_vio_rgbd_node,
                 openvins_launch,
+                vio_odom_adapter_node,
             ],
         ),
 
