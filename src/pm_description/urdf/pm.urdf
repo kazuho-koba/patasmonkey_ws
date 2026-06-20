@@ -209,6 +209,8 @@
 
 	<!-- GPSのリンク（アンテナ位置を基準） -->
 	<link name="gps_link"/>
+	<!-- Visual Odometry用の仮想リンク -->
+	<link name="openvins_imu_link"/>
 
 	<!-- 大きさを持たないbase_linkから車体主要部リンクであるbodyに回転した固定リンクを貼ることで、CADの座標系からROS 2座標系に変換（X座標が車両前方になるようにする） -->
 	<joint name="base_link_to_body" type="fixed">
@@ -289,6 +291,14 @@
 		<child link="oakd_imu_link"/>
 		<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
 	</joint>
+
+	<!-- Visual Odometry用の仮想ジョイント：OAK−D内のIMUと、実際のOpenVINS出力が出す座標系を合わせるためのアダプタ的な役割 -->
+	<joint name="oakd_link_to_openvins_imu_link" type="fixed">
+		<parent link="oakd_link"/>
+		<child link="openvins_imu_link"/>
+		<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+	</joint>
+	
 	<!-- cam0 = left mono camera.
        Baseline from Kalibr: approximately 0.07533 m, so half baseline is 0.0376655 m. -->
 	<joint name="oakd_link_to_cam0_link" type="fixed">

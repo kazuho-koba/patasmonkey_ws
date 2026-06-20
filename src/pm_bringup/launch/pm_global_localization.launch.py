@@ -119,11 +119,15 @@ def generate_launch_description():
             'output_child_frame_id': 'base_link',
 
             'base_frame_id': 'base_link',
-            'oak_imu_frame_id': 'oakd_imu_link',
+            'oak_imu_frame_id': 'openvins_imu_link',
 
             'invert_openvins_orientation': True,
-            'align_initial_to_tf': True,
+            'align_initial_to_tf': False,
             'zero_initial_pose': True,
+
+            # 診断用パラメータ
+            'enable_diagnostics': True,
+            'diagnostics_interval_sec': 1.0,
 
             # This adapter publishes Odometry only.
             # Let robot_localization publish odom -> base_link TF.

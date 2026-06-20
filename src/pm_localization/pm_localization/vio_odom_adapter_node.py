@@ -92,6 +92,32 @@ def rot_to_quat(R):
     return x / norm, y / norm, z / norm, w / norm
 
 
+def rpy_from_rot(R):
+    """
+    Rotation matrix -> roll, pitch, yaw.
+    ROS convention approximation:
+      roll  around x
+      pitch around y
+      yaw   around z
+    """
+    sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
+
+    if sy > 1e-6:
+        roll = math.atan2(R[2, 1], R[2, 2])
+        pitch = math.atan2(-R[2, 0], sy)
+        yaw = math.atan2(R[1, 0], R[0, 0])
+    else:
+        roll = math.atan2(-R[1, 2], R[1, 1])
+        pitch = math.atan2(-R[2, 0], sy)
+        yaw = 0.0
+
+    return roll, pitch, yaw
+
+
+def rad2deg(x):
+    return x * 180.0 / math.pi
+
+
 def transform_to_matrix(t: TransformStamped):
     """
     geometry_msgs TransformStamped -> 4x4 matrix.
@@ -122,6 +148,7 @@ def odom_pose_to_matrix(msg: Odometry):
         dtype=float,
     )
     return T
+
 
 def openvins_odom_pose_to_matrix(msg: Odometry, invert_orientation: bool):
     """
@@ -156,6 +183,7 @@ def openvins_odom_pose_to_matrix(msg: Odometry, invert_orientation: bool):
     )
 
     return T
+
 
 def skew(v):
     """
@@ -333,6 +361,9 @@ class VioOdomAdapterNode(Node):
         self.declare_parameter("invert_openvins_orientation", True)
         self.declare_parameter("align_initial_to_tf", True)
 
+        self.declare_parameter("enable_diagnostics", False)
+        self.declare_parameter("diagnostics_interval_sec", 1.0)
+
         self.input_topic = self.get_parameter("input_topic").value
         self.output_topic = self.get_parameter("output_topic").value
 
@@ -346,8 +377,11 @@ class VioOdomAdapterNode(Node):
         self.invert_openvins_orientation = bool(
             self.get_parameter("invert_openvins_orientation").value
         )
-        self.align_initial_to_tf = bool(
-            self.get_parameter("align_initial_to_tf").value
+        self.align_initial_to_tf = bool(self.get_parameter("align_initial_to_tf").value)
+
+        self.enable_diagnostics = bool(self.get_parameter("enable_diagnostics").value)
+        self.diagnostics_interval_sec = float(
+            self.get_parameter("diagnostics_interval_sec").value
         )
 
         self.tf_buffer = Buffer()
@@ -356,6 +390,11 @@ class VioOdomAdapterNode(Node):
         self.T_base_imu = None
         self.T_imu_base = None
         self.T_odom_global = None
+
+        self.T_global_imu_first = None
+        self.T_global_base_first = None
+        self.T_odom_base_first = None
+        self.last_diag_time = self.get_clock().now()
 
         self.pub = self.create_publisher(Odometry, self.output_topic, 10)
         self.sub = self.create_subscription(
@@ -393,7 +432,7 @@ class VioOdomAdapterNode(Node):
                 throttle_duration_sec=2.0,
             )
             return False
-        
+
     def try_initialize_odom_global(self, T_global_base):
         """
         Initialize T_odom_global.
@@ -410,9 +449,7 @@ class VioOdomAdapterNode(Node):
         if self.align_initial_to_tf:
             try:
                 tf_msg = self.tf_buffer.lookup_transform(
-                    self.output_frame_id,
-                    self.output_child_frame_id,
-                    rclpy.time.Time()
+                    self.output_frame_id, self.output_child_frame_id, rclpy.time.Time()
                 )
                 T_odom_base_ref = transform_to_matrix(tf_msg)
 
@@ -424,7 +461,11 @@ class VioOdomAdapterNode(Node):
                 )
                 return True
 
-            except (LookupException, ConnectivityException, ExtrapolationException) as e:
+            except (
+                LookupException,
+                ConnectivityException,
+                ExtrapolationException,
+            ) as e:
                 self.get_logger().warn(
                     f"Waiting for initial TF "
                     f"{self.output_frame_id} -> {self.output_child_frame_id}: {str(e)}",
@@ -440,6 +481,59 @@ class VioOdomAdapterNode(Node):
             self.get_logger().info("Initialized T_odom_global as identity")
 
         return True
+
+
+    def maybe_print_diagnostics(self, msg, T_global_imu, T_global_base, T_odom_base):
+        if not self.enable_diagnostics:
+            return
+
+        now = self.get_clock().now()
+        dt = (now - self.last_diag_time).nanoseconds * 1e-9
+        if dt < self.diagnostics_interval_sec:
+            return
+        self.last_diag_time = now
+
+        if self.T_global_imu_first is None:
+            self.T_global_imu_first = T_global_imu.copy()
+            self.T_global_base_first = T_global_base.copy()
+            self.T_odom_base_first = T_odom_base.copy()
+            self.get_logger().info("[VIO_DIAG] Initialized diagnostic reference pose")
+            return
+
+        # Raw OpenVINS global delta
+        dp_global_imu = T_global_imu[:3, 3] - self.T_global_imu_first[:3, 3]
+
+        # Converted base pose delta in odom frame
+        dp_odom_base = T_odom_base[:3, 3] - self.T_odom_base_first[:3, 3]
+
+        # Relative rotations
+        dR_global_imu = self.T_global_imu_first[:3, :3].T @ T_global_imu[:3, :3]
+        dR_odom_base = self.T_odom_base_first[:3, :3].T @ T_odom_base[:3, :3]
+
+        r_raw, p_raw, y_raw = rpy_from_rot(dR_global_imu)
+        r_out, p_out, y_out = rpy_from_rot(dR_odom_base)
+
+        # Current absolute orientation too
+        r_abs, p_abs, y_abs = rpy_from_rot(T_odom_base[:3, :3])
+
+        self.get_logger().info(
+            "[VIO_DIAG]\n"
+            f"  raw dp_global_imu     = "
+            f"[{dp_global_imu[0]:+.3f}, {dp_global_imu[1]:+.3f}, {dp_global_imu[2]:+.3f}] m\n"
+            f"  out dp_odom_base      = "
+            f"[{dp_odom_base[0]:+.3f}, {dp_odom_base[1]:+.3f}, {dp_odom_base[2]:+.3f}] m\n"
+            f"  raw dRPY              = "
+            f"[{rad2deg(r_raw):+.1f}, {rad2deg(p_raw):+.1f}, {rad2deg(y_raw):+.1f}] deg\n"
+            f"  out dRPY              = "
+            f"[{rad2deg(r_out):+.1f}, {rad2deg(p_out):+.1f}, {rad2deg(y_out):+.1f}] deg\n"
+            f"  out abs RPY           = "
+            f"[{rad2deg(r_abs):+.1f}, {rad2deg(p_abs):+.1f}, {rad2deg(y_abs):+.1f}] deg\n"
+            f"  msg frame             = {msg.header.frame_id} -> {msg.child_frame_id}\n"
+            f"  adapter frame         = {self.output_frame_id} -> {self.output_child_frame_id}\n"
+            f"  tf used               = {self.base_frame_id} -> {self.oak_imu_frame_id}\n"
+            f"  invert_orientation    = {self.invert_openvins_orientation}"
+        )
+
 
     def odom_callback(self, msg: Odometry):
         if not self.try_update_static_transform():
@@ -464,6 +558,13 @@ class VioOdomAdapterNode(Node):
             return
 
         T_odom_base = self.T_odom_global @ T_global_base
+
+        self.maybe_print_diagnostics(
+            msg,
+            T_global_imu,
+            T_global_base,
+            T_odom_base,
+        )
 
         out = Odometry()
         out.header.stamp = msg.header.stamp
