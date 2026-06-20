@@ -296,7 +296,7 @@
 	<joint name="oakd_link_to_openvins_imu_link" type="fixed">
 		<parent link="oakd_link"/>
 		<child link="openvins_imu_link"/>
-		<origin xyz="0.0 0.0 0.0" rpy="-1.57079632679 0.0 1.57079632679"/>
+		<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
 	</joint>
 	
 	<!-- cam0 = left mono camera.

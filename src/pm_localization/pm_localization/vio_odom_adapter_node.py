@@ -474,8 +474,11 @@ class VioOdomAdapterNode(Node):
                 return False
 
         if self.zero_initial_pose:
-            self.T_odom_global = np.linalg.inv(T_global_base)
-            self.get_logger().info("Initialized T_odom_global from first VIO pose")
+            self.T_odom_global = np.eye(4)
+            self.T_odom_global[:3, 3] = -T_global_base[:3, 3]
+            self.get_logger().info(
+                "Initialized T_odom_global with translation-only zeroing"
+            )   
         else:
             self.T_odom_global = np.eye(4)
             self.get_logger().info("Initialized T_odom_global as identity")
