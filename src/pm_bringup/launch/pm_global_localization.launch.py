@@ -41,12 +41,12 @@ def generate_launch_description():
     vehicle_geometry_file = pm_config_share / "config" / "vehicle_geometry.yaml"
     vehicle_control_file = pm_config_share / "config" / "vehicle_control.yaml"
 
-    ekf_local_config_file = pm_config_share/"config"/"ekf_local_3d.yaml"
+    ekf_local_config_file = pm_config_share/"config"/"ekf_local_whl_imu_cam.yaml"
     ekf_global_config_file = pm_config_share/"config"/"ekf_global_3d.yaml"
     navsat_config_file = pm_config_share / "config" / "navsat_transform.yaml"
 
     ublox_config_file = pm_config_share / "config" / "ublox_f9p.yaml"
-    ntrip_config_file = pm_config_share / "config" / "ntrip_local.yaml"
+    ntrip_config_file = pm_config_share / "config" / "ntrip_private.yaml"
 
     openvins_config_file = pm_config_share / "config" / "oak_d_s2" / "estimator_config1.yaml"
 
