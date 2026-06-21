@@ -67,6 +67,14 @@ class MotorController:
         """Get the relative position (multi-turns) where the initial position is 0"""
         pos = self.axis.encoder.pos_estimate
         return pos
+  
+    def get_iq_measured(self):
+        """Get measured q-axis motor current [A]."""
+        return self.axis.motor.current_control.Iq_measured
+
+    def get_iq_setpoint(self):
+        """Get q-axis motor current setpoint [A]."""
+        return self.axis.motor.current_control.Iq_setpoint
 
     def set_velocity(self, velocity):
         """Set target velocity [rps]."""
