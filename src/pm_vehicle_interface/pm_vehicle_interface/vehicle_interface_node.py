@@ -40,31 +40,105 @@ class VehicleInterfaceNode(Node):
         self.declare_parameter("left_motor_sign", 1.0)
         self.declare_parameter("right_motor_sign", -1.0)
 
+        # ------------------------
+        # 車両旋回制約
+        # ------------------------
+        self.declare_parameter("min_turn_radius", 0.75)  # [m]
+        self.declare_parameter("max_yaw_rate", 0.5)  # [rad/s]
+        self.declare_parameter("max_yaw_accel", 0.5)  # [rad/s^2]
+
+        # joy入力の角度解釈
+        self.declare_parameter("joy_max_turn_angle_deg", 45.0)  # [deg]
+        self.declare_parameter("joy_side_stop_angle_deg", 80.0)  # [deg]
+
         # パラメータ取得
-        self.wheel_radius = self.get_parameter("wheel_radius").get_parameter_value().double_value
-        self.tread_width = self.get_parameter("tread_width").get_parameter_value().double_value
-        self.gear_ratio = self.get_parameter("gear_ratio").get_parameter_value().double_value
-        self.max_whl_rps = self.get_parameter("max_whl_rps").get_parameter_value().double_value
+        self.wheel_radius = (
+            self.get_parameter("wheel_radius").get_parameter_value().double_value
+        )
+        self.tread_width = (
+            self.get_parameter("tread_width").get_parameter_value().double_value
+        )
+        self.gear_ratio = (
+            self.get_parameter("gear_ratio").get_parameter_value().double_value
+        )
+        self.max_whl_rps = (
+            self.get_parameter("max_whl_rps").get_parameter_value().double_value
+        )
 
-        self.odrv_usb_port = self.get_parameter("odrv_usb_port").get_parameter_value().string_value
-        self.odrv_baud_rate = self.get_parameter("odrv_baud_rate").get_parameter_value().integer_value
+        self.odrv_usb_port = (
+            self.get_parameter("odrv_usb_port").get_parameter_value().string_value
+        )
+        self.odrv_baud_rate = (
+            self.get_parameter("odrv_baud_rate").get_parameter_value().integer_value
+        )
 
-        self.mtr_axis_l = self.get_parameter("mtr_axis_l").get_parameter_value().integer_value
-        self.mtr_axis_r = self.get_parameter("mtr_axis_r").get_parameter_value().integer_value
+        self.mtr_axis_l = (
+            self.get_parameter("mtr_axis_l").get_parameter_value().integer_value
+        )
+        self.mtr_axis_r = (
+            self.get_parameter("mtr_axis_r").get_parameter_value().integer_value
+        )
 
-        self.cmd_vel_topic = self.get_parameter("cmd_vel_topic").get_parameter_value().string_value
-        self.cmd_vel_joy_topic = self.get_parameter("cmd_vel_joy_topic").get_parameter_value().string_value
-        self.motor_state_topic = self.get_parameter("motor_state_topic").get_parameter_value().string_value
-        self.emergency_stop_topic = self.get_parameter("emergency_stop_topic").get_parameter_value().string_value
+        self.cmd_vel_topic = (
+            self.get_parameter("cmd_vel_topic").get_parameter_value().string_value
+        )
+        self.cmd_vel_joy_topic = (
+            self.get_parameter("cmd_vel_joy_topic").get_parameter_value().string_value
+        )
+        self.motor_state_topic = (
+            self.get_parameter("motor_state_topic").get_parameter_value().string_value
+        )
+        self.emergency_stop_topic = (
+            self.get_parameter("emergency_stop_topic")
+            .get_parameter_value()
+            .string_value
+        )
 
-        self.vel_ramp_rate = self.get_parameter("vel_ramp_rate").get_parameter_value().double_value
-        self.pos_gain = self.get_parameter("pos_gain").get_parameter_value().double_value
-        self.vel_gain = self.get_parameter("vel_gain").get_parameter_value().double_value
-        self.vel_integrator_gain = self.get_parameter("vel_integrator_gain").get_parameter_value().double_value
-        self.vel_integrator_limit = self.get_parameter("vel_integrator_limit").get_parameter_value().double_value
+        self.vel_ramp_rate = (
+            self.get_parameter("vel_ramp_rate").get_parameter_value().double_value
+        )
+        self.pos_gain = (
+            self.get_parameter("pos_gain").get_parameter_value().double_value
+        )
+        self.vel_gain = (
+            self.get_parameter("vel_gain").get_parameter_value().double_value
+        )
+        self.vel_integrator_gain = (
+            self.get_parameter("vel_integrator_gain").get_parameter_value().double_value
+        )
+        self.vel_integrator_limit = (
+            self.get_parameter("vel_integrator_limit")
+            .get_parameter_value()
+            .double_value
+        )
 
-        self.left_motor_sign = self.get_parameter("left_motor_sign").get_parameter_value().double_value
-        self.right_motor_sign = self.get_parameter("right_motor_sign").get_parameter_value().double_value
+        self.left_motor_sign = (
+            self.get_parameter("left_motor_sign").get_parameter_value().double_value
+        )
+        self.right_motor_sign = (
+            self.get_parameter("right_motor_sign").get_parameter_value().double_value
+        )
+
+        self.min_turn_radius = (
+            self.get_parameter("min_turn_radius").get_parameter_value().double_value
+        )
+        self.max_yaw_rate = (
+            self.get_parameter("max_yaw_rate").get_parameter_value().double_value
+        )
+        self.max_yaw_accel = (
+            self.get_parameter("max_yaw_accel").get_parameter_value().double_value
+        )
+
+        self.joy_max_turn_angle_deg = (
+            self.get_parameter("joy_max_turn_angle_deg")
+            .get_parameter_value()
+            .double_value
+        )
+        self.joy_side_stop_angle_deg = (
+            self.get_parameter("joy_side_stop_angle_deg")
+            .get_parameter_value()
+            .double_value
+        )
 
         # display the set parameters
         self.print_parameters()
@@ -85,6 +159,10 @@ class VehicleInterfaceNode(Node):
         self.last_cmd_vel_time = None
         self.last_cmd_vel_joy = None
         self.last_cmd_vel_joy_time = None
+        # yaw rate ramp limiter 用
+        self.prev_yaw_rate_cmd = 0.0
+        self.prev_yaw_rate_time = None
+
         # subscriber config
         self.create_subscription(Twist, self.cmd_vel_topic, self.cmd_vel_callback, 10)
         self.create_subscription(
@@ -158,11 +236,92 @@ class VehicleInterfaceNode(Node):
         )  # log the time when the msg received
 
     def cmd_vel_callback_joy(self, msg):
-        """callback function when /cmd_vel from autnomous driving software has been recieved"""
-        self.last_cmd_vel_joy = msg  # keep /cmd_vel_time_msg
-        self.last_cmd_vel_joy_time = (
-            self.get_clock().now()
-        )  # log the time when the msg received
+        """
+        callback function when /cmd_vel_joy from gamepad has been received.
+        joy_teleop由来のTwistを、車両制約を考慮したTwistに変換して保存する。
+        """
+        self.last_cmd_vel_joy = self.map_joy_twist_to_vehicle_twist(msg)
+        self.last_cmd_vel_joy_time = self.get_clock().now()
+
+    def map_joy_twist_to_vehicle_twist(self, msg):
+        """
+        joy_teleop由来のTwistを、車両的なTwistに変換する。
+
+        前提:
+        msg.linear.x  : 前後スティック入力相当
+        msg.angular.z : 左右スティック入力相当
+
+        挙動:
+        - 正面/背面方向: 直進/後退
+        - 斜め方向: 曲がりながら前進/後退
+        - joy_max_turn_angle_deg で最大旋回強度に到達
+        - joy_max_turn_angle_deg〜joy_side_stop_angle_deg では同じ最大旋回動作を維持
+        - joy_side_stop_angle_deg以上、つまりほぼ真横入力では停止
+        - 後退時は、スティックを倒した方向へ車体が進むようにyaw符号が自然に反転する
+        """
+        out = Twist()
+
+        x = float(msg.linear.x)
+        y = float(msg.angular.z)
+
+        eps = 1e-6
+        r = math.sqrt(x * x + y * y)
+
+        # joy_teleop側でdeadzoneを処理する前提。
+        # ここでは数値誤差レベルのみ停止扱いにする。
+        if r < eps:
+            return out
+
+        # phi: 前後軸から見たスティック角度 [rad]
+        phi = math.atan2(abs(y), abs(x))
+
+        max_turn_angle = math.radians(self.joy_max_turn_angle_deg)
+        side_stop_angle = math.radians(self.joy_side_stop_angle_deg)
+
+        # ほぼ真横なら停止
+        if phi >= side_stop_angle:
+            return out
+
+        # 前後方向がほぼゼロの場合も停止
+        if abs(x) < eps:
+            return out
+
+        # ------------------------
+        # 旋回強度
+        # ------------------------
+        # phi=0deg                  -> 0
+        # phi=joy_max_turn_angle_deg -> 1
+        # それ以上                 -> 1で飽和
+        turn_strength = math.tan(phi) / max(math.tan(max_turn_angle), eps)
+        turn_strength = self.clamp(turn_strength, 0.0, 1.0)
+
+        # ------------------------
+        # 速度指令
+        # ------------------------
+        # 重要:
+        # joy_max_turn_angle_deg〜joy_side_stop_angle_deg の間で速度を落とさない。
+        # スティック倒し量 r のみで速度を決める。
+        direction = 1.0 if x > 0.0 else -1.0
+        v = direction * r
+
+        # ------------------------
+        # 曲率
+        # ------------------------
+        # y>0: 左旋回, y<0: 右旋回。
+        # omega = v * curvature とすることで、
+        # 後退時にはyaw rateの符号が自然に反転する。
+        turn_sign = 1.0 if y > 0.0 else -1.0
+        curvature = turn_sign * turn_strength / max(self.min_turn_radius, eps)
+
+        omega = v * curvature
+
+        out.linear.x = v
+        out.angular.z = omega
+
+        return out
+
+    def clamp(self, value, min_value, max_value):
+        return max(min(value, max_value), min_value)
 
     def command_selector(self):
         """check which command should be prioritized, from gamepad or autonomous driving software"""
@@ -188,33 +347,94 @@ class VehicleInterfaceNode(Node):
         except Exception as e:
             self.get_logger().error(f"Exception in command_selector: {e}")
 
+    def apply_motion_limits(self, lin_x, ang_z):
+        """
+        車両運動制約をTwistに適用する。
+
+        制約:
+        1. v=0でyaw回転しない
+        2. 最小旋回半径を守る
+        3. 最大yaw rateを守る
+        4. 最大yaw加速度を守る
+        """
+        eps = 1e-6
+
+        # ------------------------
+        # 1. 最小旋回半径制限
+        # ------------------------
+        if abs(lin_x) < eps:
+            ang_z = 0.0
+        else:
+            max_ang_by_radius = abs(lin_x) / max(self.min_turn_radius, eps)
+            ang_z = self.clamp(ang_z, -max_ang_by_radius, max_ang_by_radius)
+
+        # ------------------------
+        # 2. 最大yaw rate制限
+        # ------------------------
+        if self.max_yaw_rate > 0.0:
+            ang_z = self.clamp(ang_z, -self.max_yaw_rate, self.max_yaw_rate)
+
+        # ------------------------
+        # 3. yaw加速度制限
+        # ------------------------
+        now = self.get_clock().now()
+
+        if self.prev_yaw_rate_time is not None and self.max_yaw_accel > 0.0:
+            dt = (now - self.prev_yaw_rate_time).nanoseconds * 1e-9
+
+            if dt > eps:
+                max_delta = self.max_yaw_accel * dt
+                delta = ang_z - self.prev_yaw_rate_cmd
+                delta = self.clamp(delta, -max_delta, max_delta)
+                ang_z = self.prev_yaw_rate_cmd + delta
+
+        self.prev_yaw_rate_cmd = ang_z
+        self.prev_yaw_rate_time = now
+
+        return lin_x, ang_z
+
     def motor_control(self, cmd):
         """convert command to motor speed and send to ODrive"""
+
         if cmd is not None:
-            lin_x = cmd.linear.x  # velocity (forward/backward)
-            ang_z = cmd.angular.z  # velocity (turning)
-            wheel_perimeter = self.wheel_radius * 2 * math.pi  # wheel perimeter
+            lin_x = float(cmd.linear.x)  # velocity (forward/backward)
+            ang_z = float(cmd.angular.z)  # yaw rate command
+
+            # 車両運動制約を適用
+            lin_x, ang_z = self.apply_motion_limits(lin_x, ang_z)
+
+            wheel_perimeter = self.wheel_radius * 2.0 * math.pi
 
             # compute rps of L/R wheels
-            v_left = (lin_x - ang_z * self.tread_width / 2) / wheel_perimeter
-            v_right = (lin_x + ang_z * self.tread_width / 2) / wheel_perimeter
+            v_left = (lin_x - ang_z * self.tread_width / 2.0) / wheel_perimeter
+            v_right = (lin_x + ang_z * self.tread_width / 2.0) / wheel_perimeter
 
-            # cap by max speed
-            v_left = max(min(v_left, self.max_whl_rps), -self.max_whl_rps)
-            v_right = max(min(v_right, self.max_whl_rps), -self.max_whl_rps)
+            # 左右速度比を保ったまま、ホイール最大速度内に収める
+            max_abs_whl_rps = max(abs(v_left), abs(v_right))
+
+            if max_abs_whl_rps > self.max_whl_rps:
+                scale = self.max_whl_rps / max_abs_whl_rps
+                v_left *= scale
+                v_right *= scale
 
             # convert to motor rps
             mtr_left_rps = v_left * self.gear_ratio
             mtr_right_rps = v_right * self.gear_ratio
 
-            # publishe the equivalent Twist command for simulation
-            self.sim_cmd_vel_pub.publish(cmd)
+            # publish the limited equivalent Twist command for simulation
+            limited_cmd = Twist()
+            limited_cmd.linear.x = lin_x
+            limited_cmd.angular.z = ang_z
+            self.sim_cmd_vel_pub.publish(limited_cmd)
 
         else:
             mtr_left_rps = 0.0
             mtr_right_rps = 0.0
 
-            # if the command is None, publihs it for simulation
+            # command timeout時は停止を優先し、yaw ramp状態もリセット
+            self.prev_yaw_rate_cmd = 0.0
+            self.prev_yaw_rate_time = None
+
             zero_cmd = Twist()
             self.sim_cmd_vel_pub.publish(zero_cmd)
 
@@ -224,7 +444,7 @@ class VehicleInterfaceNode(Node):
             return
 
         try:
-            # send command to ODrive (右モータの速度は反転)
+            # send command to ODrive
             self.left_motor.set_velocity(self.left_motor_sign * mtr_left_rps)
             self.right_motor.set_velocity(self.right_motor_sign * mtr_right_rps)
 
@@ -234,34 +454,6 @@ class VehicleInterfaceNode(Node):
 
         except Exception as e:
             self.mark_odrive_disconnected(e)
-
-        # # get current and past motor velocity with low pass filter
-        # self.last_vel_left = self.current_vel_left
-        # self.last_vel_right = self.current_vel_right
-        # self.current_vel_left = (
-        #     0.2 * self.left_motor.get_velocity() + 0.8 * self.last_vel_left
-        # )
-        # self.current_vel_right = (
-        #     0.2 * self.right_motor.get_velocity() + 0.8 * self.last_vel_right
-        # )
-
-        # # velocity feedback torque control
-        # vel_err_left = mtr_left_rps - self.current_vel_left             # for P control
-        # vel_err_right = mtr_right_rps - self.current_vel_right          # for P control
-        # delta_vel_left = self.current_vel_left - self.last_vel_left     # for D control
-        # delta_vel_right = self.current_vel_right - self.last_vel_right  # for D control
-        # self.accumerated_ver_err_left = max(
-        #     self.accumerated_ver_err_left + self.current_vel_left - mtr_left_rps, 5
-        # )                                                               # for I control
-        # self.accumerated_ver_err_right = max(
-        #     self.accumerated_ver_err_right + self.current_vel_right - mtr_right_rps, 5
-        # )                                                               # for I control
-        # self.left_motor.velfb_torque_control(
-        #     vel_err_left, delta_vel_left, self.accumerated_ver_err_left
-        # )
-        # self.right_motor.velfb_torque_control(
-        #     vel_err_right, delta_vel_right, self.accumerated_ver_err_right
-        # )
 
     def publish_motor_state(self):
         """モータ制御情報を取得しpublishする関数"""
@@ -295,10 +487,16 @@ class VehicleInterfaceNode(Node):
             # q軸電流 [A]　実績
             # （符号も車体座標系に合わせるなら motor_sign を掛けるべき？）
             msg.left_iq_measured_a = float(self.left_motor.get_iq_measured())
-            msg.right_iq_measured_a = float(self.right_motor_sign * self.right_motor.get_iq_measured())
+            msg.right_iq_measured_a = float(
+                self.right_motor_sign * self.right_motor.get_iq_measured()
+            )
             # q軸電流 [A]　指令値
-            msg.left_iq_setpoint_a = float(self.left_motor_sign * self.left_motor.get_iq_setpoint())
-            msg.right_iq_setpoint_a = float(self.right_motor_sign * self.right_motor.get_iq_setpoint())
+            msg.left_iq_setpoint_a = float(
+                self.left_motor_sign * self.left_motor.get_iq_setpoint()
+            )
+            msg.right_iq_setpoint_a = float(
+                self.right_motor_sign * self.right_motor.get_iq_setpoint()
+            )
 
             # 電源電圧
             msg.vbus_voltage = float(self.left_motor.get_vbus_voltage())
@@ -354,6 +552,11 @@ class VehicleInterfaceNode(Node):
             ("vel_gain", self.vel_gain),
             ("vel_integrator_gain", self.vel_integrator_gain),
             ("vel_integrator_limit", self.vel_integrator_limit),
+            ("min_turn_radius", self.min_turn_radius),
+            ("max_yaw_rate", self.max_yaw_rate),
+            ("max_yaw_accel", self.max_yaw_accel),
+            ("joy_max_turn_angle_deg", self.joy_max_turn_angle_deg),
+            ("joy_side_stop_angle_deg", self.joy_side_stop_angle_deg),
         ]:
             lines.append(f"{key:<20} {str(value):<20}")
         self.get_logger().info("\n".join(lines))
