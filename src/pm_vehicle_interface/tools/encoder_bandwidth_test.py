@@ -255,14 +255,14 @@ def parse_args():
     parser.add_argument(
         "--hold-time",
         type=float,
-        default=3.0,
+        default=5.0,
         help="Duration for each nonzero velocity segment [s]. Default: 2.0",
     )
 
     parser.add_argument(
         "--zero-time",
         type=float,
-        default=3.0,
+        default=5.0,
         help="Duration for each zero velocity segment [s]. Default: 1.0",
     )
 
