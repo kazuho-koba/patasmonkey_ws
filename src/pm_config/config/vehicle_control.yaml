@@ -39,3 +39,47 @@ vehicle_interface_node:
     #
     left_motor_sign: 1.0
     right_motor_sign: -1.0
+
+
+        #################################################
+    # turn / yaw constraints
+    #################################################
+
+    # 最小旋回半径 [m]
+    #
+    # 信地旋回・超信地旋回を避けるための制約。
+    # tread_width=0.36m, min_turn_radius=0.5m の場合、
+    # 最大旋回時でも内側ホイールは停止せず回転する。
+    #
+    min_turn_radius: 0.75
+
+    # 最大ヨーレート [rad/s]
+    #
+    # Visual Odometryがyaw回転で破綻しにくくなるように制限する。
+    # 0.5 rad/s ≒ 28.6 deg/s
+    #
+    max_yaw_rate: 0.5
+
+    # 最大ヨー加速度 [rad/s^2]
+    #
+    # 急なスティック入力によるyaw rateの立ち上がりを制限する。
+    #
+    max_yaw_accel: 0.5
+
+    #################################################
+    # joystick turn mapping
+    #################################################
+
+    # この角度で最大旋回強度に到達する [deg]
+    #
+    # 0deg: 前後まっすぐ
+    # 45deg: 最大旋回
+    #
+    joy_max_turn_angle_deg: 45.0
+
+    # この角度以上は真横入力扱いとして停止する [deg]
+    #
+    # joy_max_turn_angle_deg〜joy_side_stop_angle_deg の間は、
+    # joy_max_turn_angle_deg と同じ最大旋回動作を維持する。
+    #
+    joy_side_stop_angle_deg: 80.0
