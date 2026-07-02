@@ -58,13 +58,13 @@ vehicle_interface_node:
     # Visual Odometryがyaw回転で破綻しにくくなるように制限する。
     # 0.5 rad/s ≒ 28.6 deg/s
     #
-    max_yaw_rate: 0.5
+    max_yaw_rate: 1.0
 
     # 最大ヨー加速度 [rad/s^2]
     #
     # 急なスティック入力によるyaw rateの立ち上がりを制限する。
     #
-    max_yaw_accel: 0.5
+    max_yaw_accel: 1.0
 
     #################################################
     # joystick turn mapping
