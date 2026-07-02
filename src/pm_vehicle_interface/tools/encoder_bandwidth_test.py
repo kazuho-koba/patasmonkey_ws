@@ -255,14 +255,14 @@ def parse_args():
     parser.add_argument(
         "--hold-time",
         type=float,
-        default=2.0,
+        default=3.0,
         help="Duration for each nonzero velocity segment [s]. Default: 2.0",
     )
 
     parser.add_argument(
         "--zero-time",
         type=float,
-        default=1.0,
+        default=3.0,
         help="Duration for each zero velocity segment [s]. Default: 1.0",
     )
 
@@ -276,7 +276,7 @@ def parse_args():
     parser.add_argument(
         "--vel-ramp-rate",
         type=float,
-        default=None,
+        default=25,
         help="Optional vel_ramp_rate override. If omitted, current ODrive value is used.",
     )
 
