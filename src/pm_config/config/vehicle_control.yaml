@@ -17,7 +17,7 @@ vehicle_interface_node:
     mtr_axis_r: 1
 
     # gains
-    vel_ramp_rate: 25.0
+    vel_ramp_rate: 35.0
     pos_gain: 30.0
     vel_gain: 0.225
     vel_integrator_gain: 0.75
