@@ -62,7 +62,7 @@ def generate_launch_description():
         launch_arguments={
             "config_path": str(openvins_config_file),
             "rviz_enable": "false",
-            "verbosity": "INFO",
+            "verbosity": "WARNING",
         }.items(),
         condition=IfCondition(use_openvins),
     )

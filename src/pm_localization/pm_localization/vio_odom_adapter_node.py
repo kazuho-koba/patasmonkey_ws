@@ -486,7 +486,15 @@ class VioOdomAdapterNode(Node):
         return True
 
 
-    def maybe_print_diagnostics(self, msg, T_global_imu, T_global_base, T_odom_base):
+    def maybe_print_diagnostics(
+        self,
+        msg,
+        T_global_imu,
+        T_global_base,
+        T_odom_base,
+        v_base=None,
+        w_base=None,
+    ):
         if not self.enable_diagnostics:
             return
 
@@ -519,6 +527,15 @@ class VioOdomAdapterNode(Node):
         # Current absolute orientation too
         r_abs, p_abs, y_abs = rpy_from_rot(T_odom_base[:3, :3])
 
+        twist_text = ""
+        if v_base is not None and w_base is not None:
+            twist_text = (
+                f"\n  out twist linear     = "
+                f"[{v_base[0]:+.3f}, {v_base[1]:+.3f}, {v_base[2]:+.3f}] m/s\n"
+                f"  out twist angular    = "
+                f"[{rad2deg(w_base[0]):+.1f}, {rad2deg(w_base[1]):+.1f}, {rad2deg(w_base[2]):+.1f}] deg/s"
+            )
+
         self.get_logger().info(
             "[VIO_DIAG]\n"
             f"  raw dp_global_imu     = "
@@ -530,7 +547,8 @@ class VioOdomAdapterNode(Node):
             f"  out dRPY              = "
             f"[{rad2deg(r_out):+.1f}, {rad2deg(p_out):+.1f}, {rad2deg(y_out):+.1f}] deg\n"
             f"  out abs RPY           = "
-            f"[{rad2deg(r_abs):+.1f}, {rad2deg(p_abs):+.1f}, {rad2deg(y_abs):+.1f}] deg\n"
+            f"[{rad2deg(r_abs):+.1f}, {rad2deg(p_abs):+.1f}, {rad2deg(y_abs):+.1f}] deg"
+            f"{twist_text}\n"
             f"  msg frame             = {msg.header.frame_id} -> {msg.child_frame_id}\n"
             f"  adapter frame         = {self.output_frame_id} -> {self.output_child_frame_id}\n"
             f"  tf used               = {self.base_frame_id} -> {self.oak_imu_frame_id}\n"
@@ -561,13 +579,6 @@ class VioOdomAdapterNode(Node):
             return
 
         T_odom_base = self.T_odom_global @ T_global_base
-
-        self.maybe_print_diagnostics(
-            msg,
-            T_global_imu,
-            T_global_base,
-            T_odom_base,
-        )
 
         out = Odometry()
         out.header.stamp = msg.header.stamp
@@ -636,6 +647,15 @@ class VioOdomAdapterNode(Node):
             msg.twist.covariance,
             R_base_imu,
             p_imu_in_base,
+        )
+
+        self.maybe_print_diagnostics(
+            msg,
+            T_global_imu,
+            T_global_base,
+            T_odom_base,
+            v_base,
+            w_base,
         )
 
         out.twist.twist.linear.x = float(v_base[0])
