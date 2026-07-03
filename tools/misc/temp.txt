@@ -1,1869 +1,220 @@
-[run_subscribe_msckf-12] [init]: successful initialization in 0.0020 seconds
-[run_subscribe_msckf-12] [init]: orientation = -0.7000, -0.0024, 0.7141, 0.0024
-[run_subscribe_msckf-12] [init]: bias gyro = 0.0000, 0.0000, 0.0000
-[run_subscribe_msckf-12] [init]: velocity = 0.0000, 0.0000, 0.0000
-[run_subscribe_msckf-12] [init]: bias accel = 0.0683, 0.0005, -0.0014
-[run_subscribe_msckf-12] [init]: position = 0.0000, 0.0000, 0.0000
-[run_subscribe_msckf-12] [TIME]: 0.0994 seconds total (10.1 hz, 0.48 ms behind)
-[run_subscribe_msckf-12] [TIME]: 0.0154 seconds total (65.1 hz, 0.73 ms behind)
-[run_subscribe_msckf-12] [TIME]: 0.0139 seconds total (72.1 hz, 1.05 ms behind)
-[run_subscribe_msckf-12] [TIME]: 0.0344 seconds total (29.1 hz, 1.29 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.701,0.051,0.709,0.050 | p_IinG = 0.168,-0.001,-0.006 | dist = 0.00 (meters)
-[run_subscribe_msckf-12] bg = 0.0000,0.0000,-0.0001 | ba = 0.0683,0.0005,-0.0014
-[run_subscribe_msckf-12] camera-imu timeoffset = 0.00000
-[run_subscribe_msckf-12] cam0 intrinsics = 406.225,406.484,326.284,205.634 | 0.027,-0.087,0.002,0.001
-[run_subscribe_msckf-12] cam1 intrinsics = 402.290,402.545,305.456,179.292 | 0.040,-0.115,0.001,0.001
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.074,-0.002,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.005,0.002 | -0.001,-0.000,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0000,-0.0000 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0000,0.0000,0.0000 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0000,0.0000 |  0.0000,-0.0000,0.0000 | 0.0000,0.0000,-0.0000 |
-[run_subscribe_msckf-12] [TIME]: 0.0352 seconds total (28.4 hz, 1.61 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.704,0.065,0.704,0.065 | p_IinG = 0.174,0.020,-0.012 | dist = 0.02 (meters)
-[run_subscribe_msckf-12] bg = -0.0017,-0.0008,0.0002 | ba = 0.0682,0.0009,-0.0011
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00229
-[run_subscribe_msckf-12] cam0 intrinsics = 406.690,406.890,325.823,205.916 | 0.029,-0.086,0.002,0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.810,402.137,305.935,178.952 | 0.040,-0.115,0.002,-0.001
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.081,-0.007,-0.003
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.001 | -0.007,0.004,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0001,0.0000 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9998,0.0007,0.0005 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Tg = | 0.0011,0.0005,-0.0002 |  -0.0003,-0.0000,0.0001 | 0.0000,-0.0001,0.0000 |
-[run_subscribe_msckf-12] [TIME]: 0.0630 seconds total (15.9 hz, 0.28 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.703,0.065,0.706,0.064 | p_IinG = 0.174,-0.001,-0.004 | dist = 0.03 (meters)
-[run_subscribe_msckf-12] bg = -0.0010,-0.0003,-0.0001 | ba = 0.0684,0.0007,-0.0014
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00233
-[run_subscribe_msckf-12] cam0 intrinsics = 406.683,406.931,325.844,205.928 | 0.029,-0.086,0.001,-0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.835,402.099,305.922,178.942 | 0.040,-0.115,0.003,-0.000
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.083,-0.007,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.001 | -0.009,0.004,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0001,-0.0000 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0003,-0.0001 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Tg = | 0.0007,0.0002,-0.0000 |  -0.0002,0.0000,0.0001 | 0.0000,-0.0001,0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0337 seconds total (29.7 hz, 1.83 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.703,0.069,0.705,0.068 | p_IinG = 0.185,-0.001,-0.004 | dist = 0.04 (meters)
-[run_subscribe_msckf-12] bg = -0.0011,-0.0004,-0.0001 | ba = 0.0684,0.0007,-0.0015
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00231
-[run_subscribe_msckf-12] cam0 intrinsics = 406.670,406.926,325.852,205.924 | 0.029,-0.086,0.001,-0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.848,402.106,305.920,178.946 | 0.040,-0.115,0.003,-0.000
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.083,-0.007,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.001 | -0.008,0.004,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0001,-0.0000 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0001,0.0004,-0.0002 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Tg = | 0.0008,0.0002,-0.0000 |  -0.0002,0.0000,0.0002 | -0.0000,-0.0001,0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0547 seconds total (18.3 hz, 1.59 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.703,0.072,0.704,0.071 | p_IinG = 0.192,-0.000,-0.004 | dist = 0.05 (meters)
-[run_subscribe_msckf-12] bg = -0.0010,-0.0004,0.0000 | ba = 0.0685,0.0008,-0.0014
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00307
-[run_subscribe_msckf-12] cam0 intrinsics = 406.677,406.920,325.850,205.928 | 0.029,-0.086,0.001,-0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.843,402.115,305.935,178.951 | 0.040,-0.115,0.003,-0.000
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.083,-0.007,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.001 | -0.008,0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0001,-0.0000 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0005,-0.0000 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Tg = | 0.0007,0.0002,-0.0000 |  -0.0001,0.0001,0.0001 | 0.0000,-0.0001,0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0736 seconds total (13.6 hz, 2.92 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.703,0.074,0.704,0.074 | p_IinG = 0.202,-0.001,-0.004 | dist = 0.07 (meters)
-[run_subscribe_msckf-12] bg = -0.0010,-0.0004,0.0000 | ba = 0.0684,0.0009,-0.0012
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00311
-[run_subscribe_msckf-12] cam0 intrinsics = 406.690,406.915,325.844,205.937 | 0.029,-0.086,0.001,-0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.846,402.121,305.948,178.957 | 0.040,-0.115,0.003,-0.000
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.083,-0.007,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.001 | -0.008,0.004,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0001,0.0000 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0001,0.0007,0.0002 | 1.0000,-0.0000 | 0.9999 |
-[run_subscribe_msckf-12] Tg = | 0.0007,0.0002,-0.0001 |  -0.0001,0.0001,0.0001 | 0.0001,-0.0002,0.0000 |
-[run_subscribe_msckf-12] [TIME]: 0.0305 seconds total (32.8 hz, 4.36 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.703,0.082,0.702,0.080 | p_IinG = 0.224,-0.002,-0.004 | dist = 0.09 (meters)
-[run_subscribe_msckf-12] bg = -0.0009,-0.0004,0.0001 | ba = 0.0685,0.0009,-0.0010
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00341
-[run_subscribe_msckf-12] cam0 intrinsics = 406.696,406.911,325.842,205.948 | 0.029,-0.086,0.001,-0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.849,402.126,305.969,178.963 | 0.040,-0.115,0.002,-0.000
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.083,-0.007,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.001 | -0.008,0.004,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0001,0.0001 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0006,0.0006 | 1.0000,-0.0000 | 0.9999 |
-[run_subscribe_msckf-12] Tg = | 0.0007,0.0002,-0.0001 |  -0.0001,0.0001,0.0001 | 0.0002,-0.0002,-0.0000 |
-[run_subscribe_msckf-12] [TIME]: 0.0388 seconds total (25.8 hz, 0.65 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.702,0.084,0.702,0.083 | p_IinG = 0.224,-0.006,-0.002 | dist = 0.10 (meters)
-[run_subscribe_msckf-12] bg = -0.0008,-0.0001,0.0001 | ba = 0.0685,0.0017,-0.0010
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00265
-[run_subscribe_msckf-12] cam0 intrinsics = 406.836,407.209,325.938,205.828 | 0.027,-0.089,0.001,0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.670,401.811,305.968,179.050 | 0.041,-0.114,0.003,-0.003
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.082,-0.006,-0.001
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.000 | -0.009,0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0003,0.0001 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0020,0.0006 | 1.0000,-0.0001 | 0.9999 |
-[run_subscribe_msckf-12] Tg = | 0.0006,0.0001,-0.0001 |  -0.0003,-0.0002,0.0001 | 0.0002,-0.0004,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0717 seconds total (14.0 hz, 1.25 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.702,0.088,0.701,0.087 | p_IinG = 0.234,-0.007,-0.002 | dist = 0.11 (meters)
-[run_subscribe_msckf-12] bg = -0.0008,-0.0001,0.0001 | ba = 0.0685,0.0017,-0.0010
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00265
-[run_subscribe_msckf-12] cam0 intrinsics = 406.836,407.209,325.938,205.828 | 0.027,-0.089,0.001,0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.670,401.811,305.968,179.050 | 0.041,-0.114,0.003,-0.003
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.082,-0.006,-0.001
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.000 | -0.009,0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0003,0.0001 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0020,0.0006 | 1.0000,-0.0001 | 0.9999 |
-[run_subscribe_msckf-12] Tg = | 0.0006,0.0001,-0.0001 |  -0.0003,-0.0002,0.0001 | 0.0002,-0.0004,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0660 seconds total (15.2 hz, 1.71 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.702,0.092,0.700,0.090 | p_IinG = 0.244,-0.009,-0.001 | dist = 0.12 (meters)
-[run_subscribe_msckf-12] bg = -0.0008,-0.0001,0.0001 | ba = 0.0685,0.0017,-0.0010
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00265
-[run_subscribe_msckf-12] cam0 intrinsics = 406.836,407.209,325.938,205.828 | 0.027,-0.089,0.001,0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.670,401.811,305.968,179.050 | 0.041,-0.114,0.003,-0.003
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.082,-0.006,-0.001
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.000 | -0.009,0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0003,0.0001 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0020,0.0006 | 1.0000,-0.0001 | 0.9999 |
-[run_subscribe_msckf-12] Tg = | 0.0006,0.0001,-0.0001 |  -0.0003,-0.0002,0.0001 | 0.0002,-0.0004,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0449 seconds total (22.3 hz, 3.01 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.702,0.094,0.700,0.093 | p_IinG = 0.254,-0.012,-0.001 | dist = 0.13 (meters)
-[run_subscribe_msckf-12] bg = -0.0008,-0.0001,0.0001 | ba = 0.0685,0.0017,-0.0009
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00235
-[run_subscribe_msckf-12] cam0 intrinsics = 406.845,407.210,325.941,205.830 | 0.027,-0.089,0.001,0.000
-[run_subscribe_msckf-12] cam1 intrinsics = 401.659,401.812,305.971,179.054 | 0.041,-0.114,0.003,-0.003
-[run_subscribe_msckf-12] cam0 extrinsics = -0.712,-0.703,0.004,0.004 | 0.082,-0.006,-0.001
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.007,0.000 | -0.009,0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0003,0.0001 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0020,0.0008 | 1.0000,-0.0001 | 0.9999 |
-[run_subscribe_msckf-12] Tg = | 0.0006,0.0001,-0.0001 |  -0.0003,-0.0002,0.0001 | 0.0002,-0.0004,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0351 seconds total (28.5 hz, 3.53 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.700,0.100,0.699,0.103 | p_IinG = 0.274,-0.014,0.003 | dist = 0.15 (meters)
-[run_subscribe_msckf-12] bg = -0.0010,0.0001,0.0002 | ba = 0.0685,0.0027,-0.0006
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00194
-[run_subscribe_msckf-12] cam0 intrinsics = 406.753,407.315,325.851,205.872 | 0.029,-0.087,0.002,-0.001
-[run_subscribe_msckf-12] cam1 intrinsics = 401.770,401.730,306.025,179.063 | 0.040,-0.114,0.003,-0.004
-[run_subscribe_msckf-12] cam0 extrinsics = -0.712,-0.703,0.004,0.004 | 0.084,-0.007,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.707,0.007,0.000 | -0.009,0.004,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0004,0.0002 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0003,0.0035,0.0013 | 1.0000,-0.0002 | 0.9999 |
-[run_subscribe_msckf-12] Tg = | 0.0007,0.0000,-0.0002 |  -0.0006,-0.0004,0.0001 | 0.0011,-0.0002,-0.0004 |
-[run_subscribe_msckf-12] [TIME]: 0.0627 seconds total (15.9 hz, 3.00 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.105,0.700,0.108 | p_IinG = 0.295,-0.021,0.006 | dist = 0.18 (meters)
-[run_subscribe_msckf-12] bg = -0.0006,0.0003,0.0002 | ba = 0.0686,0.0029,-0.0014
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00274
-[run_subscribe_msckf-12] cam0 intrinsics = 406.052,407.219,325.602,205.239 | 0.027,-0.088,0.004,-0.001
-[run_subscribe_msckf-12] cam1 intrinsics = 402.574,401.795,306.290,179.700 | 0.041,-0.113,0.003,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.004,0.004 | 0.083,-0.006,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.006,0.000 | -0.006,0.002,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0004,-0.0000 | 1.0000,0.0001 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0005,0.0038,-0.0000 | 0.9999,-0.0002 | 1.0001 |
-[run_subscribe_msckf-12] Tg = | 0.0005,-0.0001,-0.0002 |  -0.0006,-0.0002,0.0000 | 0.0001,-0.0000,-0.0010 |
-[run_subscribe_msckf-12] [TIME]: 0.0626 seconds total (16.0 hz, 0.11 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.109,0.700,0.112 | p_IinG = 0.316,-0.031,0.009 | dist = 0.21 (meters)
-[run_subscribe_msckf-12] bg = -0.0004,0.0004,0.0002 | ba = 0.0685,0.0039,-0.0009
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00291
-[run_subscribe_msckf-12] cam0 intrinsics = 406.143,407.022,325.696,205.169 | 0.028,-0.087,0.005,-0.002
-[run_subscribe_msckf-12] cam1 intrinsics = 402.506,402.030,306.027,179.885 | 0.043,-0.111,0.003,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.004 | 0.082,-0.006,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.006,0.000 | -0.005,0.003,-0.009
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0005,0.0002 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0003,0.0054,0.0008 | 1.0000,-0.0003 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0003,-0.0002,-0.0002 |  -0.0006,-0.0002,0.0000 | -0.0003,0.0001,-0.0006 |
-[run_subscribe_msckf-12] [TIME]: 0.0414 seconds total (24.1 hz, 1.27 ms behind)
-[vio_odom_adapter_node-13] [INFO] [1783086073.606982278] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.176, -0.043, +0.016] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.176, -0.042, +0.018] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, +0.4, +11.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.4, +11.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+89.4, +70.2, -90.5] deg
+[vio_odom_adapter_node-13] [INFO] [1783088833.871867582] [vio_odom_adapter_node]: Got TF: base_link -> openvins_imu_link
+[vio_odom_adapter_node-13] [INFO] [1783088833.908691820] [vio_odom_adapter_node]: Initialized T_odom_global with translation-only zeroing
+[vio_odom_adapter_node-13] [INFO] [1783088833.933718306] [vio_odom_adapter_node]: [VIO_DIAG] Initialized diagnostic reference pose
+[vio_odom_adapter_node-13] [INFO] [1783088834.924988140] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.012, +0.006, +0.001] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.012, +0.005, +0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, +0.1, +0.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.0, +0.1, +0.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+155.5, +88.8, -24.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.001, -0.001, +0.001] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.1, -0.2, +0.3] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.112,0.699,0.115 | p_IinG = 0.331,-0.036,0.008 | dist = 0.22 (meters)
-[run_subscribe_msckf-12] bg = -0.0004,0.0004,0.0002 | ba = 0.0685,0.0038,-0.0008
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00278
-[run_subscribe_msckf-12] cam0 intrinsics = 406.202,406.888,325.598,205.089 | 0.028,-0.087,0.005,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.441,402.177,306.076,179.931 | 0.044,-0.111,0.003,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.004 | 0.083,-0.006,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.006,0.000 | -0.005,0.002,-0.009
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0005,0.0002 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0053,0.0009 | 1.0000,-0.0003 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0002 |  -0.0005,-0.0002,0.0001 | -0.0003,0.0003,-0.0006 |
-[run_subscribe_msckf-12] [TIME]: 0.0485 seconds total (20.6 hz, 0.98 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.696,0.117,0.699,0.118 | p_IinG = 0.344,-0.040,0.010 | dist = 0.24 (meters)
-[run_subscribe_msckf-12] bg = -0.0004,0.0004,0.0002 | ba = 0.0685,0.0037,-0.0008
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00288
-[run_subscribe_msckf-12] cam0 intrinsics = 406.206,406.878,325.588,205.069 | 0.028,-0.087,0.005,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.442,402.185,306.085,179.939 | 0.044,-0.111,0.003,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.004 | 0.083,-0.006,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.006,0.000 | -0.005,0.002,-0.009
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0005,0.0002 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0003,0.0051,0.0010 | 1.0000,-0.0003 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0002 |  -0.0005,-0.0002,0.0001 | -0.0002,0.0001,-0.0006 |
-[run_subscribe_msckf-12] [TIME]: 0.0336 seconds total (29.8 hz, 1.51 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.695,0.125,0.697,0.124 | p_IinG = 0.371,-0.048,0.010 | dist = 0.26 (meters)
-[run_subscribe_msckf-12] bg = -0.0004,0.0003,0.0002 | ba = 0.0684,0.0038,-0.0011
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00276
-[run_subscribe_msckf-12] cam0 intrinsics = 406.213,406.874,325.601,205.060 | 0.028,-0.087,0.005,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.432,402.189,306.069,179.931 | 0.043,-0.111,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.004 | 0.083,-0.006,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.006,0.000 | -0.005,0.002,-0.009
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0005,0.0002 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0053,0.0004 | 1.0000,-0.0003 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0002 |  -0.0004,-0.0002,0.0002 | -0.0002,0.0002,-0.0005 |
-[run_subscribe_msckf-12] [TIME]: 0.0382 seconds total (26.1 hz, 1.02 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.693,0.132,0.696,0.131 | p_IinG = 0.398,-0.058,0.012 | dist = 0.29 (meters)
-[run_subscribe_msckf-12] bg = -0.0004,0.0003,0.0002 | ba = 0.0684,0.0038,-0.0011
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00276
-[run_subscribe_msckf-12] cam0 intrinsics = 406.213,406.874,325.601,205.060 | 0.028,-0.087,0.005,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.432,402.189,306.069,179.931 | 0.043,-0.111,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.004 | 0.083,-0.006,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.006,0.000 | -0.005,0.002,-0.009
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0005,0.0002 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0053,0.0004 | 1.0000,-0.0003 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0002 |  -0.0004,-0.0002,0.0002 | -0.0002,0.0002,-0.0005 |
-[run_subscribe_msckf-12] [TIME]: 0.0401 seconds total (25.0 hz, 1.32 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.692,0.141,0.695,0.137 | p_IinG = 0.424,-0.065,0.009 | dist = 0.32 (meters)
-[run_subscribe_msckf-12] bg = -0.0002,0.0004,-0.0000 | ba = 0.0683,0.0031,-0.0019
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00264
-[run_subscribe_msckf-12] cam0 intrinsics = 406.008,406.886,325.572,205.021 | 0.029,-0.086,0.005,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.665,402.191,306.025,179.958 | 0.043,-0.111,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.003 | 0.081,-0.005,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.006,0.001 | -0.003,0.002,-0.009
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0005,0.0003 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0041,-0.0008 | 1.0000,-0.0003 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0003,-0.0001,-0.0001 |  -0.0003,-0.0001,0.0000 | 0.0000,0.0004,-0.0005 |
-[run_subscribe_msckf-12] [TIME]: 0.0490 seconds total (20.4 hz, 0.79 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.692,0.148,0.692,0.145 | p_IinG = 0.453,-0.075,0.010 | dist = 0.35 (meters)
-[run_subscribe_msckf-12] bg = -0.0001,0.0003,0.0001 | ba = 0.0684,0.0026,-0.0018
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00232
-[run_subscribe_msckf-12] cam0 intrinsics = 405.887,406.923,325.704,204.993 | 0.029,-0.086,0.005,-0.002
-[run_subscribe_msckf-12] cam1 intrinsics = 402.800,402.147,305.814,179.978 | 0.043,-0.111,0.004,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.003 | 0.078,-0.004,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.002,0.002,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0006,0.0002 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0001,0.0034,-0.0005 | 1.0000,-0.0002 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0003,-0.0001,-0.0001 |  -0.0002,-0.0003,0.0000 | -0.0000,0.0006,-0.0004 |
-[run_subscribe_msckf-12] [TIME]: 0.0488 seconds total (20.5 hz, 1.04 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.690,0.154,0.690,0.153 | p_IinG = 0.478,-0.088,0.011 | dist = 0.38 (meters)
-[run_subscribe_msckf-12] bg = -0.0001,0.0003,0.0001 | ba = 0.0684,0.0027,-0.0018
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00261
-[run_subscribe_msckf-12] cam0 intrinsics = 405.887,406.914,325.720,204.919 | 0.029,-0.086,0.006,-0.002
-[run_subscribe_msckf-12] cam1 intrinsics = 402.795,402.158,305.792,180.037 | 0.043,-0.111,0.004,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.003 | 0.078,-0.004,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.002,0.002,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0005,0.0002 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0001,0.0034,-0.0007 | 1.0000,-0.0002 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0003,-0.0001,-0.0001 |  -0.0001,-0.0003,0.0002 | -0.0001,0.0006,-0.0005 |
-[run_subscribe_msckf-12] [TIME]: 0.0561 seconds total (17.8 hz, 0.54 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.688,0.161,0.689,0.160 | p_IinG = 0.505,-0.101,0.012 | dist = 0.41 (meters)
-[run_subscribe_msckf-12] bg = -0.0002,0.0003,0.0001 | ba = 0.0685,0.0026,-0.0020
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00245
-[run_subscribe_msckf-12] cam0 intrinsics = 405.883,406.917,325.714,204.906 | 0.029,-0.086,0.006,-0.002
-[run_subscribe_msckf-12] cam1 intrinsics = 402.794,402.157,305.801,180.030 | 0.043,-0.111,0.005,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.003 | 0.078,-0.004,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.002,0.002,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0005,0.0003 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0002,0.0034,-0.0009 | 0.9999,-0.0002 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0003,-0.0001,-0.0001 |  -0.0002,-0.0002,0.0000 | -0.0000,0.0005,-0.0005 |
-[run_subscribe_msckf-12] [TIME]: 0.0459 seconds total (21.8 hz, 0.06 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.687,0.170,0.687,0.167 | p_IinG = 0.533,-0.111,0.010 | dist = 0.44 (meters)
-[run_subscribe_msckf-12] bg = -0.0002,0.0004,0.0002 | ba = 0.0683,0.0027,-0.0024
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00242
-[run_subscribe_msckf-12] cam0 intrinsics = 405.883,406.909,325.726,204.890 | 0.029,-0.086,0.006,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.787,402.165,305.791,180.023 | 0.043,-0.111,0.005,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.003 | 0.078,-0.004,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.002,0.001,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0006,0.0002 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0000,0.0035,-0.0015 | 0.9999,-0.0002 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0003,-0.0000,-0.0001 |  -0.0003,-0.0005,-0.0001 | 0.0001,0.0007,-0.0005 |
-[run_subscribe_msckf-12] [TIME]: 0.0282 seconds total (35.5 hz, 0.30 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.686,0.179,0.683,0.176 | p_IinG = 0.558,-0.122,0.010 | dist = 0.46 (meters)
-[run_subscribe_msckf-12] bg = -0.0002,0.0004,0.0002 | ba = 0.0683,0.0027,-0.0024
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00242
-[run_subscribe_msckf-12] cam0 intrinsics = 405.883,406.909,325.726,204.890 | 0.029,-0.086,0.006,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.787,402.165,305.791,180.023 | 0.043,-0.111,0.005,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.003 | 0.078,-0.004,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.002,0.001,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0006,0.0002 | 1.0000,0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 1.0000,0.0035,-0.0015 | 0.9999,-0.0002 | 1.0003 |
-[run_subscribe_msckf-12] Tg = | 0.0003,-0.0000,-0.0001 |  -0.0003,-0.0005,-0.0001 | 0.0001,0.0007,-0.0005 |
-[run_subscribe_msckf-12] [TIME]: 0.0255 seconds total (39.2 hz, 1.35 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.682,0.188,0.682,0.185 | p_IinG = 0.581,-0.134,0.008 | dist = 0.50 (meters)
-[run_subscribe_msckf-12] bg = -0.0003,-0.0001,0.0004 | ba = 0.0682,0.0022,-0.0029
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00234
-[run_subscribe_msckf-12] cam0 intrinsics = 405.657,406.857,325.748,204.860 | 0.029,-0.086,0.006,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 403.047,402.238,305.741,180.073 | 0.043,-0.111,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.003 | 0.077,-0.004,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.001,0.001,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0006,0.0002 | 1.0000,-0.0000 | 1.0000 |
-[vio_odom_adapter_node-13] [INFO] [1783086074.610467026] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.443, -0.158, +0.019] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.443, -0.158, +0.022] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.5, +0.5, +24.0] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.5, +0.5, +24.0] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+90.2, +57.3, -90.1] deg
+[vio_odom_adapter_node-13] [INFO] [1783088835.929379983] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.013, +0.004, +0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.013, +0.004, +0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, +0.0, +0.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.0, +0.0, +0.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+158.9, +88.9, -21.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.000, +0.000, +0.001] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.0, -0.0, -0.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] Da = | 0.9998,0.0026,-0.0024 | 0.9998,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0003,-0.0001,-0.0001 |  -0.0005,-0.0000,-0.0003 | 0.0000,0.0004,-0.0006 |
-[run_subscribe_msckf-12] [TIME]: 0.0386 seconds total (25.9 hz, 0.83 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.680,0.196,0.680,0.193 | p_IinG = 0.607,-0.149,0.012 | dist = 0.53 (meters)
-[run_subscribe_msckf-12] bg = -0.0003,0.0001,0.0004 | ba = 0.0683,0.0021,-0.0026
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00245
-[run_subscribe_msckf-12] cam0 intrinsics = 405.749,406.627,325.633,204.870 | 0.029,-0.084,0.006,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 403.014,402.485,305.727,180.153 | 0.044,-0.110,0.005,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.011
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.001,0.001,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = 0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0005,0.0004 | 1.0000,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0025,-0.0018 | 0.9999,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0001 |  -0.0004,0.0001,-0.0004 | 0.0002,0.0003,-0.0004 |
-[run_subscribe_msckf-12] [TIME]: 0.0640 seconds total (15.6 hz, 1.15 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.678,0.203,0.678,0.200 | p_IinG = 0.634,-0.167,0.012 | dist = 0.56 (meters)
-[run_subscribe_msckf-12] bg = -0.0003,0.0001,0.0004 | ba = 0.0683,0.0021,-0.0022
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00249
-[run_subscribe_msckf-12] cam0 intrinsics = 405.795,406.632,325.662,204.801 | 0.030,-0.084,0.006,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.938,402.480,305.716,180.216 | 0.044,-0.111,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.001,0.000,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = 0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0006,0.0004 | 0.9999,-0.0000 | 1.0001 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0025,-0.0012 | 0.9999,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0001 |  -0.0004,0.0000,-0.0004 | 0.0002,0.0004,-0.0003 |
-[run_subscribe_msckf-12] [TIME]: 0.0360 seconds total (27.7 hz, 1.41 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.675,0.212,0.675,0.208 | p_IinG = 0.662,-0.182,0.012 | dist = 0.59 (meters)
-[run_subscribe_msckf-12] bg = -0.0002,0.0000,0.0004 | ba = 0.0683,0.0021,-0.0025
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00255
-[run_subscribe_msckf-12] cam0 intrinsics = 405.789,406.633,325.661,204.786 | 0.030,-0.084,0.007,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.936,402.478,305.714,180.198 | 0.044,-0.111,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.001,0.000,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = 0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0006,0.0005 | 0.9999,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0025,-0.0017 | 0.9999,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0000 |  -0.0004,-0.0001,-0.0007 | 0.0002,0.0004,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0287 seconds total (34.8 hz, 0.14 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.672,0.219,0.674,0.216 | p_IinG = 0.691,-0.201,0.012 | dist = 0.63 (meters)
-[run_subscribe_msckf-12] bg = -0.0002,-0.0000,0.0004 | ba = 0.0683,0.0021,-0.0027
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00259
-[run_subscribe_msckf-12] cam0 intrinsics = 405.796,406.634,325.653,204.780 | 0.030,-0.084,0.007,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.931,402.478,305.714,180.199 | 0.044,-0.111,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.001,0.000,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0006,0.0005 | 0.9999,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0025,-0.0020 | 0.9999,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0000 |  -0.0004,-0.0001,-0.0006 | 0.0002,0.0004,-0.0002 |
-[run_subscribe_msckf-12] [TIME]: 0.0372 seconds total (26.9 hz, 2.01 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.670,0.227,0.671,0.223 | p_IinG = 0.718,-0.220,0.012 | dist = 0.66 (meters)
-[run_subscribe_msckf-12] bg = -0.0001,0.0000,0.0004 | ba = 0.0683,0.0020,-0.0027
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00258
-[run_subscribe_msckf-12] cam0 intrinsics = 405.788,406.624,325.658,204.783 | 0.030,-0.084,0.007,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.937,402.488,305.710,180.193 | 0.044,-0.111,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.001 | -0.001,0.000,-0.010
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0007,0.0005 | 0.9999,-0.0000 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0024,-0.0021 | 0.9999,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0000 |  -0.0004,-0.0001,-0.0006 | 0.0002,0.0005,-0.0002 |
-[run_subscribe_msckf-12] [TIME]: 0.0241 seconds total (41.6 hz, 0.69 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.667,0.235,0.668,0.232 | p_IinG = 0.741,-0.237,0.009 | dist = 0.69 (meters)
-[run_subscribe_msckf-12] bg = -0.0004,-0.0000,0.0004 | ba = 0.0681,0.0017,-0.0025
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00255
-[run_subscribe_msckf-12] cam0 intrinsics = 405.924,406.665,325.500,204.916 | 0.031,-0.084,0.006,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.903,402.463,305.724,180.072 | 0.045,-0.108,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.002 | -0.001,0.000,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = 0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0009,0.0008 | 0.9999,-0.0001 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9996,0.0019,-0.0018 | 0.9999,-0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0000 |  -0.0002,-0.0003,-0.0010 | -0.0000,0.0007,0.0000 |
-[run_subscribe_msckf-12] [TIME]: 0.0456 seconds total (21.9 hz, 2.57 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.664,0.243,0.665,0.240 | p_IinG = 0.768,-0.257,0.011 | dist = 0.72 (meters)
-[run_subscribe_msckf-12] bg = -0.0006,-0.0000,0.0004 | ba = 0.0683,0.0013,-0.0027
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00242
-[run_subscribe_msckf-12] cam0 intrinsics = 405.980,406.718,325.519,204.912 | 0.031,-0.083,0.005,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.851,402.401,305.711,180.090 | 0.045,-0.108,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.002 | -0.000,0.000,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = 0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0009,0.0008 | 0.9999,-0.0001 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0013,-0.0021 | 0.9999,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0000 |  -0.0002,-0.0003,-0.0011 | 0.0000,0.0005,0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0471 seconds total (21.2 hz, 0.48 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.662,0.250,0.661,0.250 | p_IinG = 0.793,-0.276,0.011 | dist = 0.75 (meters)
-[run_subscribe_msckf-12] bg = -0.0006,-0.0000,0.0003 | ba = 0.0683,0.0013,-0.0028
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00249
-[run_subscribe_msckf-12] cam0 intrinsics = 405.985,406.720,325.517,204.904 | 0.031,-0.083,0.005,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.848,402.399,305.713,180.093 | 0.044,-0.108,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.002 | -0.001,0.000,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = 0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0008,0.0007 | 0.9999,-0.0001 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0013,-0.0021 | 0.9999,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0000 |  -0.0002,-0.0003,-0.0010 | -0.0000,0.0005,0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0288 seconds total (34.8 hz, 0.72 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.660,0.257,0.657,0.258 | p_IinG = 0.816,-0.299,0.012 | dist = 0.79 (meters)
-[run_subscribe_msckf-12] bg = -0.0007,-0.0001,0.0003 | ba = 0.0683,0.0012,-0.0024
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00280
-[run_subscribe_msckf-12] cam0 intrinsics = 405.998,406.714,325.520,204.913 | 0.031,-0.084,0.005,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.838,402.402,305.725,180.104 | 0.045,-0.108,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.002 | -0.000,0.000,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = 0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0008,0.0005 | 0.9999,-0.0001 | 1.0001 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0011,-0.0015 | 0.9998,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0000 |  -0.0001,-0.0003,-0.0008 | 0.0001,0.0005,-0.0000 |
-[run_subscribe_msckf-12] [TIME]: 0.0258 seconds total (38.8 hz, 3.37 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.658,0.262,0.654,0.266 | p_IinG = 0.841,-0.329,0.008 | dist = 0.83 (meters)
-[run_subscribe_msckf-12] bg = -0.0006,-0.0001,0.0003 | ba = 0.0683,0.0012,-0.0025
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00277
-[run_subscribe_msckf-12] cam0 intrinsics = 406.001,406.711,325.523,204.916 | 0.031,-0.084,0.005,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.836,402.404,305.722,180.100 | 0.044,-0.108,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.006,0.003 | 0.077,-0.004,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.708,-0.706,0.005,0.002 | -0.000,0.000,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = 0.000,0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0009,0.0006 | 0.9999,-0.0001 | 1.0001 |
-[run_subscribe_msckf-12] Da = | 0.9999,0.0011,-0.0017 | 0.9998,-0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Tg = | 0.0002,-0.0001,-0.0000 |  -0.0001,-0.0003,-0.0008 | 0.0000,0.0005,-0.0000 |
-[run_subscribe_msckf-12] [TIME]: 0.0327 seconds total (30.6 hz, 1.31 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.647,0.274,0.653,0.282 | p_IinG = 0.837,-0.347,0.023 | dist = 0.86 (meters)
-[run_subscribe_msckf-12] bg = -0.0006,-0.0000,-0.0004 | ba = 0.0687,-0.0023,-0.0041
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00511
-[run_subscribe_msckf-12] cam0 intrinsics = 406.080,406.944,325.349,204.412 | 0.033,-0.082,0.005,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.721,402.268,305.953,180.503 | 0.043,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.002 | 0.079,-0.002,-0.009
-[vio_odom_adapter_node-13] [INFO] [1783086075.612977519] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.670, -0.354, +0.033] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.670, -0.354, +0.033] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.1, +38.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.1, +38.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+89.3, +42.5, -90.6] deg
+[vio_odom_adapter_node-13] [INFO] [1783088836.933498784] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.014, +0.003, +0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.014, +0.003, +0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, +0.0, -0.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.0, +0.0, -0.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+159.5, +88.9, -20.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.000, +0.001, +0.001] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.0, -0.0, -0.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.000,-0.000,-0.014
-[run_subscribe_msckf-12] q_GYROtoI = 0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9995,-0.0000,-0.0002 | 1.0003,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 1.0004,-0.0044,-0.0041 | 0.9998,0.0001 | 1.0000 |
-[run_subscribe_msckf-12] Tg = | 0.0001,-0.0002,-0.0001 |  -0.0008,-0.0005,-0.0001 | 0.0007,0.0002,-0.0003 |
-[run_subscribe_msckf-12] [TIME]: 0.0462 seconds total (21.6 hz, 0.81 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.643,0.285,0.651,0.285 | p_IinG = 0.864,-0.356,0.022 | dist = 0.88 (meters)
-[run_subscribe_msckf-12] bg = -0.0016,-0.0006,-0.0007 | ba = 0.0687,-0.0020,-0.0049
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00471
-[run_subscribe_msckf-12] cam0 intrinsics = 406.141,406.854,325.447,204.320 | 0.033,-0.082,0.005,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.665,402.322,305.962,180.532 | 0.043,-0.108,0.004,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.704,0.005,0.002 | 0.080,-0.002,-0.010
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | 0.000,-0.000,-0.014
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9997,0.0003,-0.0005 | 1.0001,0.0002 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 1.0002,-0.0039,-0.0054 | 1.0000,-0.0000 | 1.0001 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0002,-0.0002 |  -0.0004,-0.0008,-0.0007 | 0.0006,0.0010,0.0006 |
-[run_subscribe_msckf-12] [TIME]: 0.0368 seconds total (27.1 hz, 1.36 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.636,0.296,0.652,0.287 | p_IinG = 0.895,-0.366,0.026 | dist = 0.90 (meters)
-[run_subscribe_msckf-12] bg = -0.0015,-0.0012,-0.0001 | ba = 0.0686,-0.0017,-0.0043
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00459
-[run_subscribe_msckf-12] cam0 intrinsics = 406.075,406.805,325.407,204.411 | 0.033,-0.082,0.005,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.690,402.354,305.976,180.443 | 0.044,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.704,0.005,0.002 | 0.081,-0.002,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.000,-0.000,-0.013
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0002,-0.0002 | 1.0001,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 1.0000,-0.0036,-0.0044 | 0.9999,0.0003 | 0.9998 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0003,-0.0001 |  -0.0001,-0.0002,-0.0003 | 0.0004,0.0027,-0.0004 |
-[run_subscribe_msckf-12] [TIME]: 0.0398 seconds total (25.1 hz, 2.39 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.299,0.650,0.286 | p_IinG = 0.896,-0.364,0.027 | dist = 0.90 (meters)
-[run_subscribe_msckf-12] bg = -0.0015,-0.0012,-0.0001 | ba = 0.0686,-0.0017,-0.0043
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00459
-[run_subscribe_msckf-12] cam0 intrinsics = 406.075,406.805,325.407,204.411 | 0.033,-0.082,0.005,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.690,402.354,305.976,180.443 | 0.044,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.704,0.005,0.002 | 0.081,-0.002,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.000,-0.000,-0.013
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9998,0.0002,-0.0002 | 1.0001,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 1.0000,-0.0036,-0.0044 | 0.9999,0.0003 | 0.9998 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0003,-0.0001 |  -0.0001,-0.0002,-0.0003 | 0.0004,0.0027,-0.0004 |
-[run_subscribe_msckf-12] [TIME]: 0.0257 seconds total (38.9 hz, 1.05 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.637,0.299,0.651,0.286 | p_IinG = 0.897,-0.365,0.028 | dist = 0.90 (meters)
-[run_subscribe_msckf-12] bg = -0.0014,-0.0009,-0.0001 | ba = 0.0685,-0.0016,-0.0044
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00456
-[run_subscribe_msckf-12] cam0 intrinsics = 406.084,406.804,325.397,204.403 | 0.033,-0.082,0.005,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.686,402.352,305.977,180.439 | 0.044,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.704,0.005,0.002 | 0.080,-0.002,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.001,-0.000,-0.013
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0004,-0.0002 | 1.0001,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 1.0000,-0.0034,-0.0045 | 0.9999,0.0004 | 0.9995 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0003,-0.0001 |  0.0001,0.0003,-0.0003 | 0.0003,0.0028,-0.0002 |
-[run_subscribe_msckf-12] [TIME]: 0.0277 seconds total (36.1 hz, 1.35 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.637,0.299,0.650,0.286 | p_IinG = 0.896,-0.364,0.029 | dist = 0.90 (meters)
-[run_subscribe_msckf-12] bg = -0.0014,-0.0009,-0.0001 | ba = 0.0685,-0.0016,-0.0044
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00456
-[run_subscribe_msckf-12] cam0 intrinsics = 406.084,406.804,325.397,204.403 | 0.033,-0.082,0.005,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.686,402.352,305.977,180.439 | 0.044,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.704,0.005,0.002 | 0.080,-0.002,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.001,-0.000,-0.013
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,0.0004,-0.0002 | 1.0001,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 1.0000,-0.0034,-0.0045 | 0.9999,0.0004 | 0.9995 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0003,-0.0001 |  0.0001,0.0003,-0.0003 | 0.0003,0.0028,-0.0002 |
-[run_subscribe_msckf-12] [TIME]: 0.0230 seconds total (43.5 hz, 2.38 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.637,0.298,0.651,0.286 | p_IinG = 0.902,-0.366,0.026 | dist = 0.90 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0001 | ba = 0.0684,-0.0010,-0.0045
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00448
-[run_subscribe_msckf-12] cam0 intrinsics = 406.359,406.970,325.318,204.177 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.397,402.170,306.057,180.577 | 0.044,-0.107,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.079,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0002,-0.0003 | 1.0000,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 0.9999,-0.0024,-0.0048 | 0.9998,0.0006 | 0.9988 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0001 |  0.0003,-0.0004,-0.0002 | -0.0004,0.0016,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0532 seconds total (18.8 hz, 1.09 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.637,0.298,0.651,0.286 | p_IinG = 0.903,-0.367,0.026 | dist = 0.90 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0001 | ba = 0.0684,-0.0010,-0.0045
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00446
-[run_subscribe_msckf-12] cam0 intrinsics = 406.350,406.942,325.332,204.176 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.406,402.200,306.043,180.579 | 0.044,-0.107,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.079,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.014
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0002,-0.0003 | 1.0000,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 0.9999,-0.0024,-0.0047 | 0.9998,0.0006 | 0.9988 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0001 |  0.0003,-0.0004,-0.0001 | -0.0004,0.0016,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0315 seconds total (31.7 hz, 1.36 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.637,0.298,0.651,0.286 | p_IinG = 0.904,-0.368,0.026 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0001 | ba = 0.0684,-0.0010,-0.0045
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00445
-[run_subscribe_msckf-12] cam0 intrinsics = 406.352,406.935,325.334,204.178 | 0.033,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.407,402.209,306.039,180.578 | 0.044,-0.107,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.079,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.014
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0002,-0.0003 | 1.0000,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0024,-0.0048 | 0.9997,0.0006 | 0.9987 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0001 |  0.0003,-0.0005,-0.0001 | -0.0004,0.0016,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0260 seconds total (38.5 hz, 0.83 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.637,0.298,0.651,0.286 | p_IinG = 0.904,-0.369,0.026 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0001 | ba = 0.0684,-0.0010,-0.0045
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00445
-[run_subscribe_msckf-12] cam0 intrinsics = 406.352,406.935,325.334,204.178 | 0.033,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.407,402.209,306.039,180.578 | 0.044,-0.107,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.079,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.014
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0002,-0.0003 | 1.0000,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0024,-0.0048 | 0.9997,0.0006 | 0.9987 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0001 |  0.0003,-0.0005,-0.0001 | -0.0004,0.0016,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0296 seconds total (33.8 hz, 1.38 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.637,0.298,0.651,0.286 | p_IinG = 0.905,-0.369,0.027 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0001 | ba = 0.0684,-0.0010,-0.0045
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00445
-[run_subscribe_msckf-12] cam0 intrinsics = 406.352,406.935,325.334,204.178 | 0.033,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.407,402.209,306.039,180.578 | 0.044,-0.107,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.079,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.014
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0002,-0.0003 | 1.0000,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0024,-0.0048 | 0.9997,0.0006 | 0.9987 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0001 |  0.0003,-0.0005,-0.0001 | -0.0004,0.0016,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0283 seconds total (35.3 hz, 1.16 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.637,0.298,0.651,0.286 | p_IinG = 0.907,-0.371,0.027 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0001 | ba = 0.0684,-0.0010,-0.0045
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00445
-[vio_odom_adapter_node-13] [INFO] [1783086076.620838077] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.721, -0.365, +0.030] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.721, -0.371, +0.031] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.8, -0.8, +40.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.8, -0.8, +40.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+89.4, +41.2, -91.8] deg
+[vio_odom_adapter_node-13] [INFO] [1783088837.934102483] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.014, +0.003, +0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.014, +0.003, +0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.1, -0.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.1, -0.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+160.4, +88.9, -19.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.002, -0.002, -0.000] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.2, +0.4, -0.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] cam0 intrinsics = 406.352,406.935,325.334,204.178 | 0.033,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.407,402.209,306.039,180.578 | 0.044,-0.107,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.079,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.014
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,-0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,0.0002,-0.0003 | 1.0000,0.0001 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0024,-0.0048 | 0.9997,0.0006 | 0.9987 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0001 |  0.0003,-0.0005,-0.0001 | -0.0004,0.0016,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0389 seconds total (25.7 hz, 0.64 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.904,-0.367,0.024 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0002 | ba = 0.0684,-0.0008,-0.0046
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.469,407.033,325.309,204.070 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.272,402.122,306.060,180.647 | 0.044,-0.107,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0002,-0.0005 | 1.0000,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0022,-0.0049 | 0.9998,0.0008 | 0.9982 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0000 |  0.0003,-0.0009,-0.0001 | -0.0003,0.0009,-0.0000 |
-[run_subscribe_msckf-12] [TIME]: 0.0331 seconds total (30.2 hz, 1.18 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.904,-0.367,0.024 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0002 | ba = 0.0684,-0.0008,-0.0046
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.467,407.013,325.321,204.068 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.276,402.144,306.048,180.651 | 0.044,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0001,-0.0004 | 1.0000,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0022,-0.0049 | 0.9998,0.0008 | 0.9982 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0000 |  0.0003,-0.0009,-0.0001 | -0.0003,0.0009,-0.0000 |
-[run_subscribe_msckf-12] [TIME]: 0.0375 seconds total (26.7 hz, 0.89 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.904,-0.367,0.024 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0002 | ba = 0.0684,-0.0008,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.469,407.011,325.324,204.068 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.276,402.147,306.046,180.650 | 0.044,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0001,-0.0005 | 1.0000,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0022,-0.0050 | 0.9997,0.0008 | 0.9982 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0000 |  0.0003,-0.0009,-0.0001 | -0.0003,0.0009,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0395 seconds total (25.3 hz, 1.42 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.904,-0.367,0.024 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0002 | ba = 0.0684,-0.0008,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.469,407.011,325.324,204.068 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.276,402.147,306.046,180.650 | 0.044,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0001,-0.0005 | 1.0000,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0022,-0.0050 | 0.9997,0.0008 | 0.9982 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0000 |  0.0003,-0.0009,-0.0001 | -0.0003,0.0009,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0592 seconds total (16.9 hz, 1.21 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.904,-0.368,0.024 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0002 | ba = 0.0684,-0.0008,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.469,407.011,325.324,204.068 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.276,402.147,306.046,180.650 | 0.044,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0001,-0.0005 | 1.0000,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0022,-0.0050 | 0.9997,0.0008 | 0.9982 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0000 |  0.0003,-0.0009,-0.0001 | -0.0003,0.0009,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0351 seconds total (28.5 hz, 0.92 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.904,-0.368,0.024 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0014,0.0002 | ba = 0.0684,-0.0008,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.469,407.011,325.324,204.068 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.276,402.147,306.046,180.650 | 0.044,-0.108,0.004,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0001,-0.0005 | 1.0000,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0022,-0.0050 | 0.9997,0.0008 | 0.9982 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,-0.0000 |  0.0003,-0.0009,-0.0001 | -0.0003,0.0009,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0343 seconds total (29.1 hz, 1.45 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.902,-0.366,0.023 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0006,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00448
-[run_subscribe_msckf-12] cam0 intrinsics = 406.543,407.080,325.315,204.017 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.197,402.091,306.061,180.681 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0004,-0.0005 | 0.9999,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0019,-0.0051 | 0.9997,0.0008 | 0.9980 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0011,-0.0001 | -0.0003,0.0007,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0334 seconds total (30.0 hz, 1.99 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.902,-0.366,0.023 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0006,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.541,407.064,325.326,204.014 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.200,402.108,306.050,180.684 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0003,-0.0005 | 0.9999,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0019,-0.0051 | 0.9997,0.0008 | 0.9980 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0011,-0.0001 | -0.0003,0.0007,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0307 seconds total (32.6 hz, 0.93 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.285 | p_IinG = 0.903,-0.366,0.022 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0006,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.543,407.065,325.327,204.013 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.199,402.107,306.049,180.685 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0004,-0.0005 | 0.9999,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0019,-0.0051 | 0.9997,0.0008 | 0.9980 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0011,-0.0002 | -0.0003,0.0007,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0484 seconds total (20.6 hz, 1.47 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.903,-0.367,0.023 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0006,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.543,407.065,325.327,204.013 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.199,402.107,306.049,180.685 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0004,-0.0005 | 0.9999,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0019,-0.0051 | 0.9997,0.0008 | 0.9980 |
-[vio_odom_adapter_node-13] [INFO] [1783086077.620436975] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.719, -0.365, +0.027] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.719, -0.371, +0.028] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.9, -0.7, +40.2] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.9, -0.7, +40.2] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+89.5, +41.1, -91.7] deg
+[vio_odom_adapter_node-13] [INFO] [1783088838.935963139] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.015, +0.005, +0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.015, +0.005, +0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.1, -0.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.1, -0.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+161.5, +88.8, -18.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.000, -0.006, +0.004] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.4, -0.1, -0.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0011,-0.0002 | -0.0003,0.0007,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0446 seconds total (22.4 hz, 2.05 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.903,-0.367,0.023 | dist = 0.91 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0006,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.543,407.065,325.327,204.013 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.199,402.107,306.049,180.685 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0004,-0.0005 | 0.9999,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0019,-0.0051 | 0.9997,0.0008 | 0.9980 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0011,-0.0002 | -0.0003,0.0007,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0409 seconds total (24.4 hz, 1.49 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.904,-0.368,0.023 | dist = 0.92 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0006,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.543,407.065,325.327,204.013 | 0.034,-0.082,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.199,402.107,306.049,180.685 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.002,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0004,-0.0005 | 0.9999,0.0001 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0019,-0.0051 | 0.9997,0.0008 | 0.9980 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0011,-0.0002 | -0.0003,0.0007,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0501 seconds total (19.9 hz, 0.97 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.902,-0.366,0.021 | dist = 0.92 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0003,-0.0048
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00448
-[run_subscribe_msckf-12] cam0 intrinsics = 406.591,407.118,325.319,203.975 | 0.034,-0.082,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.145,402.065,306.060,180.707 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0007,-0.0006 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0014,-0.0052 | 0.9997,0.0008 | 0.9979 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0013,-0.0001 | -0.0003,0.0006,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0510 seconds total (19.6 hz, 2.09 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.298,0.650,0.286 | p_IinG = 0.902,-0.366,0.021 | dist = 0.92 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0003,-0.0048
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00448
-[run_subscribe_msckf-12] cam0 intrinsics = 406.588,407.104,325.330,203.972 | 0.034,-0.082,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.147,402.080,306.050,180.711 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0006,-0.0006 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0014,-0.0051 | 0.9997,0.0009 | 0.9979 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0002,-0.0013,-0.0001 | -0.0003,0.0006,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0424 seconds total (23.6 hz, 0.75 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.299,0.649,0.286 | p_IinG = 0.902,-0.366,0.020 | dist = 0.92 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0003,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00448
-[run_subscribe_msckf-12] cam0 intrinsics = 406.592,407.108,325.330,203.969 | 0.034,-0.082,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.144,402.076,306.050,180.713 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0006,-0.0006 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0014,-0.0051 | 0.9997,0.0009 | 0.9979 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0013,-0.0002 | -0.0003,0.0006,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0333 seconds total (30.0 hz, 1.82 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.299,0.649,0.286 | p_IinG = 0.902,-0.367,0.020 | dist = 0.92 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0003,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00448
-[run_subscribe_msckf-12] cam0 intrinsics = 406.592,407.108,325.330,203.969 | 0.034,-0.082,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.144,402.076,306.050,180.713 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0006,-0.0006 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0014,-0.0051 | 0.9997,0.0009 | 0.9979 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0013,-0.0002 | -0.0003,0.0006,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0252 seconds total (39.7 hz, 1.31 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.638,0.299,0.649,0.286 | p_IinG = 0.903,-0.368,0.021 | dist = 0.92 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0003,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00448
-[run_subscribe_msckf-12] cam0 intrinsics = 406.592,407.108,325.330,203.969 | 0.034,-0.082,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.144,402.076,306.050,180.713 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0006,-0.0006 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0014,-0.0051 | 0.9997,0.0009 | 0.9979 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0013,-0.0002 | -0.0003,0.0006,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0386 seconds total (25.9 hz, 1.64 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.639,0.298,0.650,0.285 | p_IinG = 0.901,-0.367,0.021 | dist = 0.92 (meters)
-[run_subscribe_msckf-12] bg = -0.0013,-0.0015,0.0003 | ba = 0.0684,-0.0003,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00448
-[run_subscribe_msckf-12] cam0 intrinsics = 406.592,407.108,325.330,203.969 | 0.034,-0.082,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.144,402.076,306.050,180.713 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.001 | -0.002,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.000,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0006,-0.0006 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0014,-0.0051 | 0.9997,0.0009 | 0.9979 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0013,-0.0002 | -0.0003,0.0006,-0.0001 |
-[run_subscribe_msckf-12] [TIME]: 0.0302 seconds total (33.1 hz, 1.89 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.639,0.296,0.651,0.283 | p_IinG = 0.894,-0.358,0.019 | dist = 0.93 (meters)
-[run_subscribe_msckf-12] bg = -0.0014,-0.0017,0.0003 | ba = 0.0683,-0.0000,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.619,407.137,325.346,203.917 | 0.034,-0.082,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.123,402.062,306.038,180.750 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.000 | -0.002,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0009,-0.0007 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0010,-0.0051 | 0.9996,0.0009 | 0.9978 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0014,-0.0002 | -0.0002,0.0006,-0.0002 |
-[run_subscribe_msckf-12] [TIME]: 0.0401 seconds total (24.9 hz, 0.65 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.642,0.292,0.652,0.278 | p_IinG = 0.881,-0.345,0.019 | dist = 0.94 (meters)
-[run_subscribe_msckf-12] bg = -0.0014,-0.0016,0.0003 | ba = 0.0683,-0.0000,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00447
-[run_subscribe_msckf-12] cam0 intrinsics = 406.621,407.123,325.356,203.913 | 0.034,-0.081,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.120,402.080,306.026,180.757 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.000 | -0.002,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0009,-0.0008 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0010,-0.0051 | 0.9996,0.0009 | 0.9977 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0002,-0.0014,-0.0002 | -0.0002,0.0005,-0.0003 |
-[run_subscribe_msckf-12] [TIME]: 0.0356 seconds total (28.1 hz, 2.47 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.644,0.287,0.654,0.275 | p_IinG = 0.863,-0.327,0.018 | dist = 0.97 (meters)
-[run_subscribe_msckf-12] bg = -0.0014,-0.0016,0.0003 | ba = 0.0683,-0.0001,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00446
-[run_subscribe_msckf-12] cam0 intrinsics = 406.625,407.129,325.360,203.908 | 0.034,-0.081,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.118,402.072,306.030,180.760 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[vio_odom_adapter_node-13] [INFO] [1783086078.624915837] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.526, -0.178, +0.008] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.526, -0.182, +0.010] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+1.0, -0.1, +29.4] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+1.0, -0.1, +29.4] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+89.9, +51.9, -91.1] deg
+[vio_odom_adapter_node-13] [INFO] [1783088839.937336498] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.014, +0.003, +0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.014, +0.003, +0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.0, +0.0, -0.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.0, +0.0, -0.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+162.2, +88.9, -18.0] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.001, +0.003, +0.002] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.2, +0.3, -0.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.000 | -0.002,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0001,-0.0009,-0.0008 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0010,-0.0050 | 0.9996,0.0009 | 0.9978 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0014,-0.0003 | -0.0002,0.0005,-0.0003 |
-[run_subscribe_msckf-12] [TIME]: 0.0404 seconds total (24.7 hz, 1.96 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.649,0.279,0.656,0.267 | p_IinG = 0.838,-0.302,0.016 | dist = 1.01 (meters)
-[run_subscribe_msckf-12] bg = -0.0014,-0.0016,0.0003 | ba = 0.0683,-0.0001,-0.0047
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00446
-[run_subscribe_msckf-12] cam0 intrinsics = 406.625,407.129,325.360,203.908 | 0.034,-0.081,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.118,402.072,306.030,180.760 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.000 | -0.002,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0001,-0.0009,-0.0008 | 0.9999,0.0000 | 1.0003 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0010,-0.0050 | 0.9996,0.0009 | 0.9978 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,-0.0000 |  0.0003,-0.0014,-0.0003 | -0.0002,0.0005,-0.0003 |
-[run_subscribe_msckf-12] [TIME]: 0.0335 seconds total (29.9 hz, 0.64 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.652,0.270,0.660,0.257 | p_IinG = 0.813,-0.273,0.014 | dist = 1.05 (meters)
-[run_subscribe_msckf-12] bg = -0.0011,-0.0015,0.0002 | ba = 0.0682,-0.0003,-0.0042
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00443
-[run_subscribe_msckf-12] cam0 intrinsics = 406.608,407.123,325.385,203.887 | 0.034,-0.081,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.134,402.084,306.059,180.738 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.000 | -0.002,-0.003,-0.017
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0004,-0.0015 | 0.9999,0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9996,-0.0015,-0.0043 | 0.9997,0.0009 | 0.9975 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,0.0000 |  0.0002,-0.0012,-0.0007 | -0.0005,0.0008,-0.0015 |
-[run_subscribe_msckf-12] [TIME]: 0.0381 seconds total (26.2 hz, 1.70 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.658,0.260,0.662,0.248 | p_IinG = 0.780,-0.241,0.011 | dist = 1.09 (meters)
-[run_subscribe_msckf-12] bg = -0.0011,-0.0015,0.0002 | ba = 0.0682,-0.0003,-0.0042
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00443
-[run_subscribe_msckf-12] cam0 intrinsics = 406.608,407.123,325.385,203.887 | 0.034,-0.081,0.004,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.134,402.084,306.059,180.738 | 0.044,-0.108,0.004,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.711,-0.703,0.005,0.002 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.707,0.004,0.000 | -0.002,-0.003,-0.017
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.000,1.000
-[run_subscribe_msckf-12] Dw = | 1.0000,-0.0004,-0.0015 | 0.9999,0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9996,-0.0015,-0.0043 | 0.9997,0.0009 | 0.9975 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,0.0000 |  0.0002,-0.0012,-0.0007 | -0.0005,0.0008,-0.0015 |
-[run_subscribe_msckf-12] [TIME]: 0.0277 seconds total (36.1 hz, 2.00 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.661,0.250,0.667,0.237 | p_IinG = 0.754,-0.217,0.005 | dist = 1.14 (meters)
-[run_subscribe_msckf-12] bg = -0.0009,-0.0008,0.0003 | ba = 0.0681,-0.0009,-0.0039
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00450
-[run_subscribe_msckf-12] cam0 intrinsics = 406.587,407.251,325.349,203.575 | 0.035,-0.081,0.005,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.128,402.017,306.113,180.897 | 0.044,-0.107,0.005,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.002 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.004,0.000 | -0.004,-0.002,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9992,-0.0023,-0.0027 | 1.0000,0.0001 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0023,-0.0039 | 1.0001,0.0005 | 0.9962 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0001,0.0001 |  0.0005,-0.0011,-0.0006 | -0.0005,-0.0012,-0.0026 |
-[run_subscribe_msckf-12] [TIME]: 0.0403 seconds total (24.8 hz, 0.68 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.665,0.236,0.672,0.224 | p_IinG = 0.704,-0.185,0.005 | dist = 1.20 (meters)
-[run_subscribe_msckf-12] bg = -0.0011,-0.0010,0.0004 | ba = 0.0681,-0.0014,-0.0042
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00436
-[run_subscribe_msckf-12] cam0 intrinsics = 406.655,407.230,325.433,203.486 | 0.034,-0.082,0.005,-0.008
-[run_subscribe_msckf-12] cam1 intrinsics = 402.047,402.041,306.081,180.965 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.002 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9991,-0.0015,-0.0036 | 1.0000,0.0002 | 0.9999 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0030,-0.0044 | 1.0002,0.0006 | 0.9962 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0002,0.0001 |  0.0005,-0.0011,-0.0006 | -0.0005,-0.0005,-0.0032 |
-[run_subscribe_msckf-12] [TIME]: 0.0657 seconds total (15.2 hz, 0.99 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.669,0.223,0.676,0.214 | p_IinG = 0.656,-0.149,0.005 | dist = 1.26 (meters)
-[run_subscribe_msckf-12] bg = -0.0010,-0.0009,0.0003 | ba = 0.0682,-0.0015,-0.0043
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00434
-[run_subscribe_msckf-12] cam0 intrinsics = 406.632,407.233,325.415,203.500 | 0.035,-0.082,0.005,-0.008
-[run_subscribe_msckf-12] cam1 intrinsics = 402.047,402.040,306.092,180.999 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.002 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9988,-0.0017,-0.0031 | 1.0000,0.0002 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0032,-0.0046 | 1.0002,0.0006 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0002,0.0001 |  0.0004,-0.0011,-0.0006 | -0.0006,-0.0004,-0.0029 |
-[run_subscribe_msckf-12] [TIME]: 0.0269 seconds total (37.1 hz, 0.46 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.673,0.210,0.680,0.202 | p_IinG = 0.605,-0.114,0.004 | dist = 1.32 (meters)
-[run_subscribe_msckf-12] bg = -0.0010,-0.0009,0.0003 | ba = 0.0682,-0.0015,-0.0043
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00434
-[run_subscribe_msckf-12] cam0 intrinsics = 406.632,407.233,325.415,203.500 | 0.035,-0.082,0.005,-0.008
-[run_subscribe_msckf-12] cam1 intrinsics = 402.047,402.040,306.092,180.999 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.002 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9988,-0.0017,-0.0031 | 1.0000,0.0002 | 1.0000 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0032,-0.0046 | 1.0002,0.0006 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0002,0.0001 |  0.0004,-0.0011,-0.0006 | -0.0006,-0.0004,-0.0029 |
-[run_subscribe_msckf-12] [TIME]: 0.0266 seconds total (37.6 hz, 1.53 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.676,0.196,0.684,0.189 | p_IinG = 0.554,-0.079,0.004 | dist = 1.39 (meters)
-[run_subscribe_msckf-12] bg = -0.0010,-0.0009,0.0004 | ba = 0.0682,-0.0014,-0.0044
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00434
-[run_subscribe_msckf-12] cam0 intrinsics = 406.630,407.233,325.409,203.504 | 0.035,-0.082,0.005,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.044,402.040,306.090,180.995 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.002 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9987,-0.0019,-0.0033 | 0.9999,0.0002 | 0.9999 |
-[run_subscribe_msckf-12] Da = | 0.9996,-0.0031,-0.0047 | 1.0002,0.0006 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0002,0.0001 |  0.0005,-0.0011,-0.0006 | -0.0005,-0.0003,-0.0029 |
-[run_subscribe_msckf-12] [TIME]: 0.0315 seconds total (31.7 hz, 1.02 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.680,0.185,0.687,0.175 | p_IinG = 0.503,-0.045,0.003 | dist = 1.45 (meters)
-[run_subscribe_msckf-12] bg = -0.0010,-0.0008,0.0004 | ba = 0.0682,-0.0013,-0.0043
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00432
-[run_subscribe_msckf-12] cam0 intrinsics = 406.633,407.233,325.405,203.504 | 0.035,-0.082,0.005,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.048,402.039,306.091,180.992 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.002 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9988,-0.0018,-0.0033 | 1.0000,0.0002 | 0.9999 |
-[run_subscribe_msckf-12] Da = | 0.9996,-0.0030,-0.0046 | 1.0002,0.0006 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0000,-0.0002,0.0001 |  0.0005,-0.0011,-0.0006 | -0.0006,-0.0004,-0.0030 |
-[run_subscribe_msckf-12] [TIME]: 0.0464 seconds total (21.5 hz, 1.27 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.681,0.180,0.690,0.167 | p_IinG = 0.484,-0.035,0.001 | dist = 1.48 (meters)
-[run_subscribe_msckf-12] bg = -0.0015,-0.0007,0.0005 | ba = 0.0681,-0.0022,-0.0042
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00402
-[run_subscribe_msckf-12] cam0 intrinsics = 406.564,407.211,325.367,203.414 | 0.034,-0.081,0.006,-0.008
-[run_subscribe_msckf-12] cam1 intrinsics = 402.176,402.086,306.142,180.871 | 0.044,-0.108,0.006,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9991,-0.0021,-0.0047 | 0.9999,0.0001 | 0.9999 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0044,-0.0043 | 1.0004,0.0005 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,0.0001 |  0.0011,-0.0008,-0.0005 | -0.0008,-0.0002,-0.0023 |
-[run_subscribe_msckf-12] [TIME]: 0.0408 seconds total (24.5 hz, 1.06 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.682,0.171,0.693,0.160 | p_IinG = 0.455,-0.020,0.002 | dist = 1.51 (meters)
-[run_subscribe_msckf-12] bg = -0.0015,-0.0009,0.0005 | ba = 0.0682,-0.0023,-0.0045
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00398
-[run_subscribe_msckf-12] cam0 intrinsics = 406.609,407.209,325.370,203.404 | 0.034,-0.081,0.005,-0.009
-[run_subscribe_msckf-12] cam1 intrinsics = 402.177,402.089,306.200,180.922 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.005,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9996,-0.0022,-0.0040 | 0.9999,0.0001 | 0.9999 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0046,-0.0048 | 1.0004,0.0005 | 0.9959 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,0.0001 |  0.0012,-0.0009,-0.0006 | -0.0009,-0.0002,-0.0027 |
-[run_subscribe_msckf-12] [TIME]: 0.0378 seconds total (26.4 hz, 1.54 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.685,0.158,0.696,0.144 | p_IinG = 0.404,0.008,0.002 | dist = 1.56 (meters)
-[run_subscribe_msckf-12] bg = -0.0017,-0.0012,0.0004 | ba = 0.0682,-0.0024,-0.0046
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00391
-[run_subscribe_msckf-12] cam0 intrinsics = 406.607,407.208,325.368,203.407 | 0.034,-0.081,0.005,-0.009
-[run_subscribe_msckf-12] cam1 intrinsics = 402.160,402.086,306.205,180.921 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.005,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9994,-0.0023,-0.0039 | 0.9999,0.0001 | 0.9999 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0047,-0.0050 | 1.0004,0.0005 | 0.9959 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,0.0001 |  0.0013,-0.0009,-0.0006 | -0.0009,-0.0001,-0.0028 |
-[run_subscribe_msckf-12] [TIME]: 0.0379 seconds total (26.4 hz, 1.04 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.687,0.144,0.701,0.127 | p_IinG = 0.354,0.034,0.003 | dist = 1.62 (meters)
-[run_subscribe_msckf-12] bg = -0.0017,-0.0012,0.0004 | ba = 0.0682,-0.0024,-0.0046
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00390
-[run_subscribe_msckf-12] cam0 intrinsics = 406.606,407.209,325.369,203.408 | 0.034,-0.081,0.005,-0.009
-[run_subscribe_msckf-12] cam1 intrinsics = 402.160,402.086,306.204,180.919 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.005,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9994,-0.0023,-0.0039 | 0.9999,0.0001 | 0.9999 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0047,-0.0049 | 1.0004,0.0005 | 0.9959 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,0.0001 |  0.0013,-0.0009,-0.0006 | -0.0009,-0.0001,-0.0028 |
-[run_subscribe_msckf-12] [TIME]: 0.0301 seconds total (33.2 hz, 2.07 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.689,0.138,0.702,0.117 | p_IinG = 0.332,0.045,0.004 | dist = 1.65 (meters)
-[run_subscribe_msckf-12] bg = -0.0017,-0.0013,0.0004 | ba = 0.0682,-0.0025,-0.0049
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00390
-[run_subscribe_msckf-12] cam0 intrinsics = 406.594,407.213,325.370,203.404 | 0.034,-0.081,0.005,-0.009
-[run_subscribe_msckf-12] cam1 intrinsics = 402.167,402.087,306.211,180.905 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.077,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.004,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9994,-0.0023,-0.0037 | 0.9999,0.0001 | 0.9999 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0049,-0.0054 | 1.0004,0.0005 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,0.0001 |  0.0013,-0.0009,-0.0006 | -0.0009,-0.0000,-0.0028 |
-[run_subscribe_msckf-12] [TIME]: 0.0417 seconds total (24.0 hz, 1.05 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.691,0.132,0.703,0.107 | p_IinG = 0.315,0.058,0.004 | dist = 1.67 (meters)
-[run_subscribe_msckf-12] bg = -0.0017,-0.0014,0.0003 | ba = 0.0682,-0.0025,-0.0048
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00389
-[run_subscribe_msckf-12] cam0 intrinsics = 406.596,407.213,325.368,203.409 | 0.034,-0.081,0.005,-0.008
-[run_subscribe_msckf-12] cam1 intrinsics = 402.170,402.086,306.218,180.906 | 0.044,-0.108,0.005,-0.010
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.077,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.004,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9994,-0.0023,-0.0037 | 0.9999,0.0001 | 0.9998 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0049,-0.0053 | 1.0004,0.0005 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0002,0.0001 |  0.0013,-0.0009,-0.0006 | -0.0009,-0.0001,-0.0029 |
-[run_subscribe_msckf-12] [TIME]: 0.0339 seconds total (29.5 hz, 1.56 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.693,0.120,0.705,0.086 | p_IinG = 0.287,0.072,0.004 | dist = 1.70 (meters)
-[run_subscribe_msckf-12] bg = -0.0018,-0.0015,0.0002 | ba = 0.0682,-0.0026,-0.0051
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00366
-[run_subscribe_msckf-12] cam0 intrinsics = 406.584,407.177,325.499,203.456 | 0.036,-0.080,0.006,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.290,402.153,306.500,180.738 | 0.046,-0.105,0.006,-0.009
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.078,-0.001,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.004,-0.003,-0.015
-[vio_odom_adapter_node-13] [INFO] [1783086079.627697274] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.094, +0.082, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.094, +0.067, +0.010] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+2.9, -0.8, +6.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+2.9, -0.8, +6.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+87.6, +75.2, -95.5] deg
+[vio_odom_adapter_node-13] [INFO] [1783088840.947252749] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.003, +0.003, +0.026] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.003, +0.000, +0.020] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.6, -1.1, -0.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.6, -1.1, -0.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+61.6, +89.8, -119.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.079, -0.011, -0.011] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.5, +1.4, +4.3] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,-0.0019,-0.0045 | 0.9998,0.0001 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0051,-0.0058 | 1.0005,0.0005 | 0.9964 |
-[run_subscribe_msckf-12] Tg = | -0.0001,-0.0003,0.0001 |  0.0014,-0.0009,-0.0009 | -0.0019,-0.0003,-0.0014 |
-[run_subscribe_msckf-12] [TIME]: 0.0635 seconds total (15.7 hz, 1.86 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.695,0.106,0.708,0.067 | p_IinG = 0.273,0.083,0.002 | dist = 1.72 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0012,0.0005 | ba = 0.0682,-0.0023,-0.0056
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00377
-[run_subscribe_msckf-12] cam0 intrinsics = 406.585,407.208,325.592,203.534 | 0.037,-0.079,0.006,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.376,402.141,306.763,180.716 | 0.047,-0.102,0.006,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.003,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9994,-0.0018,-0.0043 | 0.9999,0.0001 | 1.0001 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0045,-0.0065 | 1.0005,0.0006 | 0.9961 |
-[run_subscribe_msckf-12] Tg = | -0.0002,-0.0002,0.0001 |  0.0005,-0.0006,-0.0007 | -0.0012,-0.0006,-0.0015 |
-[run_subscribe_msckf-12] [TIME]: 0.0542 seconds total (18.5 hz, 0.49 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.696,0.098,0.709,0.059 | p_IinG = 0.270,0.083,0.002 | dist = 1.72 (meters)
-[run_subscribe_msckf-12] bg = -0.0033,-0.0014,0.0004 | ba = 0.0682,-0.0023,-0.0059
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00367
-[run_subscribe_msckf-12] cam0 intrinsics = 406.581,407.190,325.612,203.521 | 0.037,-0.079,0.006,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.389,402.153,306.766,180.718 | 0.047,-0.102,0.006,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9995,-0.0018,-0.0041 | 0.9999,0.0001 | 1.0001 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0045,-0.0069 | 1.0007,0.0007 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0001,-0.0007,-0.0008 | -0.0012,-0.0004,-0.0016 |
-[run_subscribe_msckf-12] [TIME]: 0.0455 seconds total (22.0 hz, 1.05 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.092,0.709,0.054 | p_IinG = 0.271,0.081,0.000 | dist = 1.72 (meters)
-[run_subscribe_msckf-12] bg = -0.0033,-0.0014,0.0004 | ba = 0.0682,-0.0023,-0.0059
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00367
-[run_subscribe_msckf-12] cam0 intrinsics = 406.581,407.190,325.612,203.521 | 0.037,-0.079,0.006,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.389,402.153,306.766,180.718 | 0.047,-0.102,0.006,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9995,-0.0018,-0.0041 | 0.9999,0.0001 | 1.0001 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0045,-0.0069 | 1.0007,0.0007 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0001,-0.0007,-0.0008 | -0.0012,-0.0004,-0.0016 |
-[run_subscribe_msckf-12] [TIME]: 0.0489 seconds total (20.5 hz, 1.57 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.089,0.709,0.051 | p_IinG = 0.274,0.079,-0.000 | dist = 1.72 (meters)
-[run_subscribe_msckf-12] bg = -0.0033,-0.0014,0.0004 | ba = 0.0682,-0.0023,-0.0059
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00367
-[run_subscribe_msckf-12] cam0 intrinsics = 406.581,407.190,325.612,203.521 | 0.037,-0.079,0.006,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.389,402.153,306.766,180.718 | 0.047,-0.102,0.006,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9995,-0.0018,-0.0041 | 0.9999,0.0001 | 1.0001 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0045,-0.0069 | 1.0007,0.0007 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0001,-0.0007,-0.0008 | -0.0012,-0.0004,-0.0016 |
-[run_subscribe_msckf-12] [TIME]: 0.0424 seconds total (23.6 hz, 1.34 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.696,0.087,0.711,0.052 | p_IinG = 0.280,0.075,-0.001 | dist = 1.73 (meters)
-[run_subscribe_msckf-12] bg = -0.0033,-0.0014,0.0004 | ba = 0.0682,-0.0023,-0.0059
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00367
-[run_subscribe_msckf-12] cam0 intrinsics = 406.581,407.190,325.612,203.521 | 0.037,-0.079,0.006,-0.007
-[run_subscribe_msckf-12] cam1 intrinsics = 402.389,402.153,306.766,180.718 | 0.047,-0.102,0.006,-0.008
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.078,-0.002,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.004,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 0.9995,-0.0018,-0.0041 | 0.9999,0.0001 | 1.0001 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0045,-0.0069 | 1.0007,0.0007 | 0.9960 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0001,-0.0007,-0.0008 | -0.0012,-0.0004,-0.0016 |
-[run_subscribe_msckf-12] [TIME]: 0.0397 seconds total (25.2 hz, 0.30 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.084,0.708,0.052 | p_IinG = 0.258,0.088,-0.017 | dist = 1.73 (meters)
-[run_subscribe_msckf-12] bg = -0.0023,-0.0022,0.0007 | ba = 0.0683,0.0005,-0.0060
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00361
-[run_subscribe_msckf-12] cam0 intrinsics = 406.618,407.212,325.676,203.419 | 0.037,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.343,402.149,306.717,180.759 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.077,-0.002,-0.005
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.001 | -0.006,-0.003,-0.014
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 0.9999,-0.0032,-0.0038 | 0.9997,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0002,-0.0069 | 1.0003,0.0015 | 0.9936 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0012,0.0001 | -0.0023,0.0003,-0.0021 |
-[run_subscribe_msckf-12] [TIME]: 0.0473 seconds total (21.2 hz, 0.83 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.083,0.709,0.055 | p_IinG = 0.254,0.086,-0.021 | dist = 1.74 (meters)
-[run_subscribe_msckf-12] bg = -0.0022,-0.0026,0.0007 | ba = 0.0683,0.0011,-0.0064
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00339
-[run_subscribe_msckf-12] cam0 intrinsics = 406.606,407.218,325.641,203.664 | 0.038,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.407,402.148,306.721,180.554 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.075,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.001 | -0.007,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0035,-0.0036 | 0.9997,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,0.0007,-0.0075 | 1.0004,0.0018 | 0.9931 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0013,-0.0014,0.0001 | -0.0028,0.0007,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0870 seconds total (11.5 hz, 2.12 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.055 | p_IinG = 0.255,0.085,-0.021 | dist = 1.74 (meters)
-[run_subscribe_msckf-12] bg = -0.0023,-0.0025,0.0007 | ba = 0.0683,0.0011,-0.0063
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00334
-[run_subscribe_msckf-12] cam0 intrinsics = 406.608,407.195,325.665,203.633 | 0.038,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.410,402.167,306.706,180.589 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.075,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.001 | -0.007,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0035,-0.0036 | 0.9996,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,0.0008,-0.0074 | 1.0004,0.0018 | 0.9931 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0013,-0.0014,0.0001 | -0.0027,0.0006,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0423 seconds total (23.6 hz, 1.92 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.056 | p_IinG = 0.254,0.085,-0.022 | dist = 1.74 (meters)
-[run_subscribe_msckf-12] bg = -0.0023,-0.0025,0.0007 | ba = 0.0683,0.0011,-0.0063
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00334
-[run_subscribe_msckf-12] cam0 intrinsics = 406.608,407.195,325.665,203.633 | 0.038,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.410,402.167,306.706,180.589 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.075,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.001 | -0.007,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0035,-0.0036 | 0.9996,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,0.0008,-0.0074 | 1.0004,0.0018 | 0.9931 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0013,-0.0014,0.0001 | -0.0027,0.0006,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0483 seconds total (20.7 hz, 2.41 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.083,0.708,0.056 | p_IinG = 0.254,0.085,-0.022 | dist = 1.74 (meters)
-[run_subscribe_msckf-12] bg = -0.0023,-0.0025,0.0007 | ba = 0.0683,0.0011,-0.0063
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00334
-[run_subscribe_msckf-12] cam0 intrinsics = 406.608,407.195,325.665,203.633 | 0.038,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.410,402.167,306.706,180.589 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.075,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.001 | -0.007,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0035,-0.0036 | 0.9996,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,0.0008,-0.0074 | 1.0004,0.0018 | 0.9931 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0013,-0.0014,0.0001 | -0.0027,0.0006,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0255 seconds total (39.3 hz, 2.13 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.083,0.708,0.056 | p_IinG = 0.254,0.085,-0.023 | dist = 1.74 (meters)
-[run_subscribe_msckf-12] bg = -0.0023,-0.0025,0.0007 | ba = 0.0683,0.0011,-0.0063
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00334
-[run_subscribe_msckf-12] cam0 intrinsics = 406.608,407.195,325.665,203.633 | 0.038,-0.078,0.005,-0.006
-[vio_odom_adapter_node-13] [INFO] [1783086080.633558657] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.064, +0.090, -0.014] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.064, +0.080, -0.014] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+1.9, -0.4, +2.8] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+1.9, -0.4, +2.8] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+87.2, +78.5, -94.8] deg
+[ublox_gps_node-5] [WARN] [1783088841.123781956] [ublox_gps_node]: INF: DGNSS long baseline (837 km)
+[vio_odom_adapter_node-13] [INFO] [1783088841.946184399] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.014, -0.015, +0.275] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.015, -0.019, +0.243] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -6.5, +7.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, -6.5, +7.7] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+56.4, +80.2, -124.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.511, +0.061, +0.062] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+7.5, +17.9, -6.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] cam1 intrinsics = 402.410,402.167,306.706,180.589 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.075,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.001 | -0.007,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0035,-0.0036 | 0.9996,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,0.0008,-0.0074 | 1.0004,0.0018 | 0.9931 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0013,-0.0014,0.0001 | -0.0027,0.0006,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0466 seconds total (21.5 hz, 1.08 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.083,0.708,0.057 | p_IinG = 0.252,0.086,-0.021 | dist = 1.74 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0024,0.0007 | ba = 0.0684,0.0011,-0.0063
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00331
-[run_subscribe_msckf-12] cam0 intrinsics = 406.607,407.211,325.654,203.579 | 0.038,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.409,402.177,306.700,180.645 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.075,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.001 | -0.008,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0035,-0.0037 | 0.9997,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,0.0007,-0.0073 | 1.0004,0.0019 | 0.9928 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0011,-0.0012,0.0001 | -0.0027,0.0003,-0.0023 |
-[run_subscribe_msckf-12] [TIME]: 0.0647 seconds total (15.5 hz, 0.56 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.083,0.708,0.057 | p_IinG = 0.251,0.086,-0.021 | dist = 1.74 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0023,0.0007 | ba = 0.0684,0.0010,-0.0062
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00331
-[run_subscribe_msckf-12] cam0 intrinsics = 406.595,407.231,325.652,203.746 | 0.038,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.431,402.164,306.695,180.476 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.075,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.008,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0003,-0.0035,-0.0037 | 0.9997,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9996,0.0006,-0.0072 | 1.0004,0.0019 | 0.9927 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0011,-0.0012,0.0001 | -0.0027,0.0003,-0.0023 |
-[run_subscribe_msckf-12] [TIME]: 0.0521 seconds total (19.2 hz, 0.04 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.083,0.708,0.057 | p_IinG = 0.251,0.086,-0.021 | dist = 1.74 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0023,0.0007 | ba = 0.0684,0.0009,-0.0062
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00331
-[run_subscribe_msckf-12] cam0 intrinsics = 406.636,407.268,325.647,203.752 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.383,402.118,306.707,180.476 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.075,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.008,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0034,-0.0037 | 0.9997,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9996,0.0004,-0.0073 | 1.0004,0.0019 | 0.9927 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0011,-0.0012,0.0001 | -0.0026,0.0002,-0.0023 |
-[run_subscribe_msckf-12] [TIME]: 0.0372 seconds total (26.9 hz, 1.11 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.083,0.708,0.058 | p_IinG = 0.249,0.087,-0.021 | dist = 1.75 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0023,0.0007 | ba = 0.0684,0.0009,-0.0062
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00331
-[run_subscribe_msckf-12] cam0 intrinsics = 406.636,407.268,325.647,203.752 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.383,402.118,306.707,180.476 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.075,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.008,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0034,-0.0037 | 0.9997,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9996,0.0004,-0.0073 | 1.0004,0.0019 | 0.9927 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0011,-0.0012,0.0001 | -0.0026,0.0002,-0.0023 |
-[run_subscribe_msckf-12] [TIME]: 0.0366 seconds total (27.3 hz, 0.59 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.083,0.708,0.058 | p_IinG = 0.246,0.088,-0.021 | dist = 1.75 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0023,0.0007 | ba = 0.0684,0.0009,-0.0062
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00331
-[run_subscribe_msckf-12] cam0 intrinsics = 406.636,407.268,325.647,203.752 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.383,402.118,306.707,180.476 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.075,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.008,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0034,-0.0037 | 0.9997,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9996,0.0004,-0.0073 | 1.0004,0.0019 | 0.9927 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0011,-0.0012,0.0001 | -0.0026,0.0002,-0.0023 |
-[run_subscribe_msckf-12] [TIME]: 0.0376 seconds total (26.6 hz, 0.90 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.699,0.083,0.708,0.059 | p_IinG = 0.244,0.089,-0.021 | dist = 1.75 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0023,0.0007 | ba = 0.0684,0.0009,-0.0062
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00331
-[run_subscribe_msckf-12] cam0 intrinsics = 406.636,407.268,325.647,203.752 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.383,402.118,306.707,180.476 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.075,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.008,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0034,-0.0037 | 0.9997,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9996,0.0004,-0.0073 | 1.0004,0.0019 | 0.9927 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0011,-0.0012,0.0001 | -0.0026,0.0002,-0.0023 |
-[run_subscribe_msckf-12] [TIME]: 0.0621 seconds total (16.1 hz, 1.19 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.059 | p_IinG = 0.253,0.086,-0.017 | dist = 1.75 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0018,0.0008 | ba = 0.0683,0.0000,-0.0063
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00331
-[run_subscribe_msckf-12] cam0 intrinsics = 406.633,407.280,325.637,203.697 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.378,402.130,306.692,180.533 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.074,-0.002,-0.007
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.001 | -0.009,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0030,-0.0037 | 0.9998,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0010,-0.0074 | 1.0004,0.0022 | 0.9919 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0009,0.0001 | -0.0027,-0.0002,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0651 seconds total (15.4 hz, 1.44 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.059 | p_IinG = 0.251,0.085,-0.017 | dist = 1.75 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0019,0.0009 | ba = 0.0683,0.0001,-0.0064
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00331
-[run_subscribe_msckf-12] cam0 intrinsics = 406.623,407.289,325.636,203.833 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.389,402.120,306.683,180.388 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.074,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.009,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0003,-0.0031,-0.0036 | 0.9998,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0009,-0.0074 | 1.0004,0.0022 | 0.9919 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0009,0.0002 | -0.0026,-0.0002,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0543 seconds total (18.4 hz, 0.16 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.060 | p_IinG = 0.250,0.085,-0.017 | dist = 1.75 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0018,0.0009 | ba = 0.0683,0.0000,-0.0064
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.601,407.249,325.651,203.801 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.419,402.161,306.665,180.430 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.074,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.009,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0003,-0.0030,-0.0036 | 0.9998,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0010,-0.0075 | 1.0004,0.0022 | 0.9918 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0008,0.0001 | -0.0026,-0.0002,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0499 seconds total (20.0 hz, 0.41 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.060 | p_IinG = 0.249,0.086,-0.017 | dist = 1.75 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0018,0.0009 | ba = 0.0683,0.0000,-0.0064
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.601,407.249,325.651,203.801 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.419,402.161,306.665,180.430 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.074,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.009,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0003,-0.0030,-0.0036 | 0.9998,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0010,-0.0075 | 1.0004,0.0022 | 0.9918 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0008,0.0001 | -0.0026,-0.0002,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0417 seconds total (24.0 hz, 1.46 ms behind)
-[vio_odom_adapter_node-13] [INFO] [1783086081.640043201] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.066, +0.086, -0.009] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.066, +0.078, -0.010] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+1.6, -0.5, +3.0] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+1.6, -0.5, +3.0] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+86.2, +78.3, -95.5] deg
+[vio_odom_adapter_node-13] [INFO] [1783088842.947649034] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.015, +0.004, +0.279] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.017, -0.004, +0.240] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.6, -8.2, +7.5] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.6, -8.2, +7.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+48.8, +79.3, -132.6] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.450, -0.045, -0.038] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-3.4, -0.5, -0.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.060 | p_IinG = 0.248,0.086,-0.017 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0018,0.0009 | ba = 0.0683,0.0000,-0.0064
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.601,407.249,325.651,203.801 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.419,402.161,306.665,180.430 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.074,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.009,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0003,-0.0030,-0.0036 | 0.9998,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0010,-0.0075 | 1.0004,0.0022 | 0.9918 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0008,0.0001 | -0.0026,-0.0002,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0280 seconds total (35.7 hz, 0.96 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.060 | p_IinG = 0.247,0.087,-0.017 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0018,0.0009 | ba = 0.0683,0.0000,-0.0064
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.601,407.249,325.651,203.801 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.419,402.161,306.665,180.430 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.074,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.009,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0003,-0.0030,-0.0036 | 0.9998,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0010,-0.0075 | 1.0004,0.0022 | 0.9918 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0008,0.0001 | -0.0026,-0.0002,-0.0024 |
-[run_subscribe_msckf-12] [TIME]: 0.0493 seconds total (20.3 hz, 0.45 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.083,0.709,0.061 | p_IinG = 0.252,0.085,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0017,0.0009 | ba = 0.0683,-0.0002,-0.0064
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.597,407.248,325.651,203.751 | 0.038,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.425,402.177,306.656,180.486 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.001 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.001 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0013,-0.0075 | 1.0003,0.0023 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0007,0.0002 | -0.0027,-0.0004,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0479 seconds total (20.9 hz, 1.51 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.082,0.709,0.061 | p_IinG = 0.250,0.084,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0017,0.0009 | ba = 0.0683,-0.0002,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.594,407.258,325.655,203.871 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.428,402.164,306.645,180.355 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0030,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0013,-0.0076 | 1.0003,0.0023 | 0.9916 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0007,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0589 seconds total (17.0 hz, 0.24 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.061 | p_IinG = 0.249,0.085,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0017,0.0009 | ba = 0.0683,-0.0002,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.589,407.244,325.664,203.852 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.437,402.180,306.637,180.382 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0030,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0013,-0.0076 | 1.0003,0.0023 | 0.9916 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0007,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0343 seconds total (29.2 hz, 0.49 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.082,0.709,0.061 | p_IinG = 0.249,0.085,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0017,0.0009 | ba = 0.0683,-0.0002,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.589,407.244,325.664,203.852 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.437,402.180,306.637,180.382 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0030,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0013,-0.0076 | 1.0003,0.0023 | 0.9916 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0007,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0348 seconds total (28.8 hz, 0.81 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.083,0.709,0.062 | p_IinG = 0.248,0.085,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0017,0.0009 | ba = 0.0683,-0.0002,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.589,407.244,325.664,203.852 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.437,402.180,306.637,180.382 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0030,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0013,-0.0076 | 1.0003,0.0023 | 0.9916 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0007,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0292 seconds total (34.2 hz, 0.26 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.082,0.709,0.061 | p_IinG = 0.246,0.086,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0017,0.0009 | ba = 0.0683,-0.0002,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.589,407.244,325.664,203.852 | 0.038,-0.077,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.437,402.180,306.637,180.382 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.707,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0030,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0013,-0.0076 | 1.0003,0.0023 | 0.9916 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0007,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0441 seconds total (22.7 hz, 3.73 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.081,0.709,0.061 | p_IinG = 0.250,0.085,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0024,-0.0017,0.0009 | ba = 0.0683,-0.0002,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00330
-[run_subscribe_msckf-12] cam0 intrinsics = 406.582,407.239,325.661,203.813 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.448,402.196,306.637,180.426 | 0.047,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.001 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0014,-0.0076 | 1.0003,0.0024 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0006,0.0003 | -0.0027,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0627 seconds total (15.9 hz, 0.83 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.080,0.709,0.060 | p_IinG = 0.248,0.084,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0017,0.0009 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00329
-[run_subscribe_msckf-12] cam0 intrinsics = 406.586,407.249,325.666,203.919 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.446,402.183,306.626,180.307 | 0.046,-0.101,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0014,-0.0076 | 1.0002,0.0024 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0006,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0401 seconds total (24.9 hz, 1.89 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.080,0.709,0.061 | p_IinG = 0.248,0.084,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0017,0.0009 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00329
-[run_subscribe_msckf-12] cam0 intrinsics = 406.580,407.237,325.675,203.900 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.455,402.198,306.618,180.335 | 0.046,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0014,-0.0076 | 1.0002,0.0024 | 0.9915 |
-[INFO] [navsat_transform_node-14]: process started with pid [13513]
-[INFO] [ekf_node-15]: process started with pid [13516]
-[vio_odom_adapter_node-13] [INFO] [1783086082.640785881] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.062, +0.086, -0.008] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.062, +0.079, -0.009] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+1.3, -0.5, +2.8] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+1.3, -0.5, +2.8] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+86.1, +78.5, -95.4] deg
+[vio_odom_adapter_node-13] [INFO] [1783088843.953484802] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.012, -0.007, +0.044] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.011, -0.005, +0.013] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-1.7, -6.3, +9.6] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-1.7, -6.3, +9.6] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+61.0, +78.7, -118.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.048, +0.023, -0.066] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+3.4, -4.3, +0.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[ekf_node-8] Failed to meet update rate! Took 0.024693254000000001286seconds. Try decreasing the rate, limiting sensor output frequency, or limiting the number of sensors.
-[ekf_node-8] Failed to meet update rate! Took 0.021283786999999998457seconds. Try decreasing the rate, limiting sensor output frequency, or limiting the number of sensors.
-[ekf_node-8] Failed to meet update rate! Took 0.11573993600000000159seconds. Try decreasing the rate, limiting sensor output frequency, or limiting the number of sensors.
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0006,0.0004 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0384 seconds total (26.1 hz, 0.61 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.080,0.709,0.061 | p_IinG = 0.247,0.084,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0017,0.0009 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00329
-[run_subscribe_msckf-12] cam0 intrinsics = 406.580,407.237,325.675,203.900 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.455,402.198,306.618,180.335 | 0.046,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0014,-0.0076 | 1.0002,0.0024 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0006,0.0004 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0484 seconds total (20.7 hz, 0.86 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.080,0.709,0.061 | p_IinG = 0.247,0.084,-0.015 | dist = 1.76 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0017,0.0009 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00329
-[run_subscribe_msckf-12] cam0 intrinsics = 406.580,407.237,325.675,203.900 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.455,402.198,306.618,180.335 | 0.046,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0014,-0.0076 | 1.0002,0.0024 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0006,0.0004 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0566 seconds total (17.7 hz, 1.92 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.080,0.709,0.061 | p_IinG = 0.246,0.084,-0.015 | dist = 1.77 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0017,0.0009 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00329
-[run_subscribe_msckf-12] cam0 intrinsics = 406.580,407.237,325.675,203.900 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.455,402.198,306.618,180.335 | 0.046,-0.101,0.005,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9995,-0.0014,-0.0076 | 1.0002,0.0024 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0006,0.0004 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0430 seconds total (23.3 hz, 1.40 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.080,0.709,0.062 | p_IinG = 0.250,0.084,-0.014 | dist = 1.77 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0016,0.0009 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00328
-[run_subscribe_msckf-12] cam0 intrinsics = 406.582,407.247,325.692,203.849 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.458,402.195,306.605,180.393 | 0.046,-0.101,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.001 | -0.010,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0015,-0.0076 | 1.0002,0.0025 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0005,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.1129 seconds total (8.9 hz, 0.92 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.080,0.709,0.062 | p_IinG = 0.248,0.084,-0.014 | dist = 1.77 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0016,0.0010 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00328
-[run_subscribe_msckf-12] cam0 intrinsics = 406.580,407.252,325.701,203.963 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.459,402.186,306.586,180.267 | 0.046,-0.101,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0015,-0.0076 | 1.0002,0.0025 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0005,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.1155 seconds total (8.7 hz, 0.38 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.077,0.710,0.060 | p_IinG = 0.247,0.084,-0.014 | dist = 1.77 (meters)
-[navsat_transform_node-14] [WARN] [1783086083.256991944] [navsat_transform_node]: Parameter 'broadcast_utm_transform' has been deprecated. Please use 'broadcast_cartesian_transform' instead.
-[run_subscribe_msckf-12] bg = -0.0025,-0.0016,0.0010 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00328
-[run_subscribe_msckf-12] cam0 intrinsics = 406.575,407.241,325.709,203.945 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.468,402.200,306.579,180.294 | 0.046,-0.101,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0015,-0.0076 | 1.0002,0.0025 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0005,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.1566 seconds total (6.4 hz, 2.25 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.698,0.075,0.710,0.057 | p_IinG = 0.242,0.085,-0.015 | dist = 1.77 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0016,0.0010 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00328
-[run_subscribe_msckf-12] cam0 intrinsics = 406.575,407.241,325.709,203.945 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.468,402.200,306.579,180.294 | 0.046,-0.101,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0015,-0.0076 | 1.0002,0.0025 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0005,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0687 seconds total (14.6 hz, 7.26 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.071,0.711,0.057 | p_IinG = 0.237,0.084,-0.014 | dist = 1.78 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0016,0.0010 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00328
-[run_subscribe_msckf-12] cam0 intrinsics = 406.575,407.241,325.709,203.945 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.468,402.200,306.579,180.294 | 0.046,-0.101,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0015,-0.0076 | 1.0002,0.0025 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0005,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0657 seconds total (15.2 hz, 0.42 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.694,0.068,0.715,0.059 | p_IinG = 0.222,0.083,-0.013 | dist = 1.79 (meters)
-[run_subscribe_msckf-12] bg = -0.0025,-0.0016,0.0010 | ba = 0.0683,-0.0003,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00328
-[run_subscribe_msckf-12] cam0 intrinsics = 406.575,407.241,325.709,203.945 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.468,402.200,306.579,180.294 | 0.046,-0.101,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.000 | 0.073,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.707,0.708,-0.003,0.000 | -0.010,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.001,1.000
-[run_subscribe_msckf-12] Dw = | 1.0002,-0.0029,-0.0036 | 0.9999,0.0002 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9994,-0.0015,-0.0076 | 1.0002,0.0025 | 0.9915 |
-[run_subscribe_msckf-12] Tg = | -0.0003,-0.0002,0.0001 |  0.0010,-0.0005,0.0003 | -0.0026,-0.0003,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0803 seconds total (12.5 hz, 11.78 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.693,0.060,0.716,0.055 | p_IinG = 0.207,0.096,-0.005 | dist = 1.81 (meters)
-[run_subscribe_msckf-12] bg = -0.0047,0.0009,0.0007 | ba = 0.0683,-0.0008,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00318
-[run_subscribe_msckf-12] cam0 intrinsics = 406.657,407.264,325.719,203.938 | 0.039,-0.078,0.005,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.360,402.240,306.662,180.318 | 0.046,-0.101,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.005,0.000 | 0.074,-0.003,-0.009
-[run_subscribe_msckf-12] cam1 extrinsics = 0.706,0.708,-0.004,0.001 | -0.009,-0.004,-0.018
-[run_subscribe_msckf-12] q_GYROtoI = -0.001,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0010,-0.0034,-0.0031 | 0.9995,0.0004 | 1.0004 |
-[run_subscribe_msckf-12] Da = | 0.9996,-0.0022,-0.0075 | 1.0003,0.0025 | 0.9912 |
-[run_subscribe_msckf-12] Tg = | -0.0005,0.0001,0.0001 |  0.0002,0.0014,-0.0003 | 0.0008,-0.0025,-0.0020 |
-[run_subscribe_msckf-12] [TIME]: 0.0785 seconds total (12.7 hz, 1.78 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.695,0.047,0.716,0.046 | p_IinG = 0.159,0.086,-0.003 | dist = 1.85 (meters)
-[run_subscribe_msckf-12] bg = -0.0048,0.0014,-0.0004 | ba = 0.0683,-0.0009,-0.0065
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00319
-[run_subscribe_msckf-12] cam0 intrinsics = 406.635,407.292,325.710,204.039 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.345,402.205,306.607,180.156 | 0.046,-0.100,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = 0.710,0.704,-0.004,0.000 | 0.074,-0.003,-0.009
-[vio_odom_adapter_node-13] [INFO] [1783086083.643556618] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.031, +0.088, -0.006] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.031, +0.085, -0.013] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, -1.4, +1.5] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, -1.4, +1.5] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+79.6, +79.7, -101.0] deg
+[vio_odom_adapter_node-13] [INFO] [1783088844.961772974] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.026, -0.020, +0.384] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.025, -0.022, +0.360] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.8, -4.9, +13.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.8, -4.9, +13.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+74.1, +75.7, -106.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.504, +0.059, +0.016] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+5.7, +4.4, -3.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] cam1 extrinsics = 0.706,0.708,-0.003,0.001 | -0.009,-0.004,-0.019
-[run_subscribe_msckf-12] q_GYROtoI = -0.001,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0025,-0.0036,-0.0035 | 0.9996,0.0006 | 1.0002 |
-[run_subscribe_msckf-12] Da = | 0.9996,-0.0025,-0.0074 | 1.0000,0.0024 | 0.9916 |
-[run_subscribe_msckf-12] Tg = | -0.0007,0.0002,-0.0000 |  -0.0003,0.0015,0.0020 | 0.0031,-0.0026,-0.0028 |
-[run_subscribe_msckf-12] [TIME]: 0.1243 seconds total (8.0 hz, 3.66 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.695,0.037,0.717,0.039 | p_IinG = 0.121,0.100,-0.004 | dist = 1.89 (meters)
-[run_subscribe_msckf-12] bg = -0.0055,0.0024,-0.0012 | ba = 0.0682,-0.0009,-0.0063
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00310
-[run_subscribe_msckf-12] cam0 intrinsics = 406.604,407.269,325.683,203.990 | 0.039,-0.078,0.005,-0.006
-[run_subscribe_msckf-12] cam1 intrinsics = 402.378,402.210,306.584,180.157 | 0.046,-0.100,0.004,-0.007
-[run_subscribe_msckf-12] cam0 extrinsics = 0.710,0.704,-0.004,0.000 | 0.074,-0.003,-0.008
-[run_subscribe_msckf-12] cam1 extrinsics = 0.706,0.708,-0.003,0.001 | -0.009,-0.004,-0.018
-[run_subscribe_msckf-12] q_GYROtoI = -0.001,-0.003,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0024,-0.0033,-0.0036 | 0.9995,0.0006 | 1.0001 |
-[run_subscribe_msckf-12] Da = | 0.9996,-0.0024,-0.0072 | 0.9996,0.0026 | 0.9912 |
-[run_subscribe_msckf-12] Tg = | -0.0007,0.0003,-0.0001 |  0.0002,0.0010,0.0028 | 0.0035,-0.0026,-0.0031 |
-[run_subscribe_msckf-12] [TIME]: 0.0977 seconds total (10.2 hz, 2.31 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.697,0.032,0.716,0.025 | p_IinG = 0.081,0.104,-0.006 | dist = 1.93 (meters)
-[run_subscribe_msckf-12] bg = -0.0044,0.0009,0.0000 | ba = 0.0685,-0.0015,-0.0062
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00315
-[run_subscribe_msckf-12] cam0 intrinsics = 406.601,407.242,325.576,204.033 | 0.040,-0.078,0.005,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.355,402.171,306.520,180.194 | 0.046,-0.100,0.004,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.000 | 0.072,-0.002,-0.006
-[run_subscribe_msckf-12] cam1 extrinsics = 0.706,0.708,-0.003,0.000 | -0.011,-0.003,-0.016
-[run_subscribe_msckf-12] q_GYROtoI = -0.001,-0.003,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0021,-0.0032,-0.0039 | 0.9995,0.0006 | 0.9998 |
-[run_subscribe_msckf-12] Da = | 0.9996,-0.0032,-0.0070 | 0.9990,0.0028 | 0.9910 |
-[run_subscribe_msckf-12] Tg = | -0.0005,0.0001,0.0001 |  0.0024,-0.0008,0.0042 | 0.0041,-0.0029,-0.0029 |
-[run_subscribe_msckf-12] [TIME]: 0.0412 seconds total (24.3 hz, 6.58 ms behind)
-[run_subscribe_msckf-12] q_GtoI = -0.700,0.024,0.714,0.010 | p_IinG = 0.047,0.102,-0.006 | dist = 1.96 (meters)
-[run_subscribe_msckf-12] bg = -0.0046,0.0018,0.0013 | ba = 0.0688,-0.0017,-0.0063
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00324
-[run_subscribe_msckf-12] cam0 intrinsics = 406.617,407.217,325.513,204.029 | 0.040,-0.078,0.005,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.363,402.138,306.489,180.244 | 0.046,-0.100,0.004,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.071,-0.002,-0.005
-[run_subscribe_msckf-12] cam1 extrinsics = 0.706,0.708,-0.003,0.000 | -0.012,-0.003,-0.015
-[run_subscribe_msckf-12] q_GYROtoI = -0.001,-0.002,0.002,1.000
-[run_subscribe_msckf-12] Dw = | 1.0022,-0.0033,-0.0037 | 0.9996,0.0005 | 0.9996 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0035,-0.0069 | 0.9983,0.0027 | 0.9910 |
-[run_subscribe_msckf-12] Tg = | -0.0006,0.0002,0.0002 |  0.0026,-0.0009,0.0042 | 0.0043,-0.0021,-0.0028 |
-[run_subscribe_msckf-12] [TIME]: 0.0708 seconds total (14.1 hz, 2.11 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.701,-0.022,-0.713,0.006 | p_IinG = 0.033,0.113,-0.007 | dist = 1.98 (meters)
-[run_subscribe_msckf-12] bg = -0.0053,0.0029,0.0023 | ba = 0.0687,-0.0016,-0.0057
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00328
-[run_subscribe_msckf-12] cam0 intrinsics = 406.588,407.248,325.422,204.057 | 0.040,-0.078,0.005,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.325,402.164,306.466,180.283 | 0.046,-0.100,0.004,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.072,0.001,-0.004
-[run_subscribe_msckf-12] cam1 extrinsics = 0.706,0.708,-0.003,0.000 | -0.012,-0.000,-0.013
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0022,-0.0036,-0.0038 | 0.9997,0.0004 | 0.9992 |
-[run_subscribe_msckf-12] Da = | 0.9997,-0.0038,-0.0061 | 0.9985,0.0026 | 0.9911 |
-[run_subscribe_msckf-12] Tg = | -0.0006,0.0003,0.0003 |  0.0032,-0.0003,0.0050 | 0.0033,-0.0015,-0.0029 |
-[run_subscribe_msckf-12] [TIME]: 0.0404 seconds total (24.7 hz, 3.17 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.702,-0.014,-0.712,0.020 | p_IinG = 0.005,0.118,-0.008 | dist = 1.99 (meters)
-[run_subscribe_msckf-12] bg = -0.0023,0.0029,0.0037 | ba = 0.0690,-0.0015,-0.0058
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00356
-[run_subscribe_msckf-12] cam0 intrinsics = 406.789,407.246,325.430,204.121 | 0.039,-0.078,0.004,-0.005
-[run_subscribe_msckf-12] cam1 intrinsics = 402.312,402.178,306.391,180.467 | 0.045,-0.101,0.003,-0.006
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.002 | 0.071,0.004,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.003,0.001 | -0.012,0.003,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0030,-0.0040,-0.0038 | 0.9997,0.0002 | 0.9983 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0037,-0.0055 | 0.9981,0.0016 | 0.9912 |
-[run_subscribe_msckf-12] Tg = | -0.0004,0.0003,0.0005 |  0.0046,-0.0007,0.0053 | 0.0022,-0.0011,-0.0041 |
-[run_subscribe_msckf-12] [TIME]: 0.0696 seconds total (14.4 hz, 0.27 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.702,-0.008,-0.712,0.025 | p_IinG = -0.004,0.103,-0.009 | dist = 1.99 (meters)
-[run_subscribe_msckf-12] bg = 0.0004,0.0049,0.0046 | ba = 0.0691,-0.0010,-0.0062
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00376
-[run_subscribe_msckf-12] cam0 intrinsics = 406.868,407.187,325.810,204.129 | 0.041,-0.075,0.003,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.655,402.132,306.635,180.259 | 0.047,-0.096,0.002,-0.005
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.073,0.005,-0.001
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.004,0.000 | -0.010,0.004,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0030,-0.0039,-0.0048 | 0.9998,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0027,-0.0061 | 0.9986,0.0017 | 0.9901 |
-[run_subscribe_msckf-12] Tg = | -0.0001,0.0006,0.0006 |  0.0057,0.0010,0.0069 | 0.0021,-0.0015,-0.0026 |
-[run_subscribe_msckf-12] [TIME]: 0.0339 seconds total (29.5 hz, 9.57 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.703,-0.009,-0.711,0.023 | p_IinG = -0.001,0.105,-0.011 | dist = 2.00 (meters)
-[run_subscribe_msckf-12] bg = 0.0004,0.0050,0.0050 | ba = 0.0692,-0.0006,-0.0061
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00370
-[run_subscribe_msckf-12] cam0 intrinsics = 406.803,407.154,325.821,204.088 | 0.041,-0.074,0.003,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.765,402.210,306.731,180.287 | 0.047,-0.095,0.002,-0.005
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.073,0.006,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.003,0.000 | -0.010,0.005,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0029,-0.0038,-0.0047 | 0.9998,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0021,-0.0060 | 0.9988,0.0019 | 0.9893 |
-[run_subscribe_msckf-12] Tg = | -0.0001,0.0006,0.0006 |  0.0057,0.0010,0.0070 | 0.0027,-0.0015,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0277 seconds total (36.1 hz, 4.57 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.701,-0.008,-0.713,0.022 | p_IinG = 0.004,0.104,-0.010 | dist = 2.00 (meters)
-[run_subscribe_msckf-12] bg = 0.0004,0.0050,0.0050 | ba = 0.0692,-0.0006,-0.0061
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00370
-[run_subscribe_msckf-12] cam0 intrinsics = 406.803,407.154,325.821,204.088 | 0.041,-0.074,0.003,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.765,402.210,306.731,180.287 | 0.047,-0.095,0.002,-0.005
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.073,0.006,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.003,0.000 | -0.010,0.005,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0029,-0.0038,-0.0047 | 0.9998,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0021,-0.0060 | 0.9988,0.0019 | 0.9893 |
-[run_subscribe_msckf-12] Tg = | -0.0001,0.0006,0.0006 |  0.0057,0.0010,0.0070 | 0.0027,-0.0015,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0266 seconds total (37.6 hz, 2.49 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.701,-0.009,-0.712,0.021 | p_IinG = 0.005,0.104,-0.010 | dist = 2.00 (meters)
-[run_subscribe_msckf-12] bg = 0.0004,0.0050,0.0050 | ba = 0.0692,-0.0006,-0.0061
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00370
-[run_subscribe_msckf-12] cam0 intrinsics = 406.803,407.154,325.821,204.088 | 0.041,-0.074,0.003,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.765,402.210,306.731,180.287 | 0.047,-0.095,0.002,-0.005
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.073,0.006,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.003,0.000 | -0.010,0.005,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0029,-0.0038,-0.0047 | 0.9998,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0021,-0.0060 | 0.9988,0.0019 | 0.9893 |
-[run_subscribe_msckf-12] Tg = | -0.0001,0.0006,0.0006 |  0.0057,0.0010,0.0070 | 0.0027,-0.0015,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0367 seconds total (27.3 hz, 1.40 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.701,-0.009,-0.712,0.021 | p_IinG = 0.006,0.103,-0.010 | dist = 2.00 (meters)
-[run_subscribe_msckf-12] bg = 0.0004,0.0050,0.0050 | ba = 0.0692,-0.0006,-0.0061
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00370
-[run_subscribe_msckf-12] cam0 intrinsics = 406.803,407.154,325.821,204.088 | 0.041,-0.074,0.003,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.765,402.210,306.731,180.287 | 0.047,-0.095,0.002,-0.005
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.073,0.006,-0.002
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.003,0.000 | -0.010,0.005,-0.011
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0029,-0.0038,-0.0047 | 0.9998,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0021,-0.0060 | 0.9988,0.0019 | 0.9893 |
-[run_subscribe_msckf-12] Tg = | -0.0001,0.0006,0.0006 |  0.0057,0.0010,0.0070 | 0.0027,-0.0015,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0322 seconds total (31.1 hz, 0.36 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.702,-0.009,-0.712,0.019 | p_IinG = 0.006,0.102,-0.013 | dist = 2.00 (meters)
-[run_subscribe_msckf-12] bg = 0.0017,0.0044,0.0050 | ba = 0.0691,-0.0003,-0.0062
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00365
-[vio_odom_adapter_node-13] [INFO] [1783086084.646086477] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.183, +0.100, -0.008] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.183, +0.091, -0.009] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+1.9, -0.2, -9.4] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+1.9, -0.2, -9.4] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [-42.4, +88.9, +135.5] deg
+[vio_odom_adapter_node-13] [INFO] [1783088845.974283308] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.035, -0.019, +0.241] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.033, -0.020, +0.206] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-1.2, -7.0, +11.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-1.2, -7.0, +11.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+62.2, +76.8, -117.6] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.479, -0.068, -0.091] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-11.3, +1.3, -4.9] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[run_subscribe_msckf-12] cam0 intrinsics = 406.787,407.147,325.818,204.090 | 0.041,-0.074,0.003,-0.004
-[run_subscribe_msckf-12] cam1 intrinsics = 402.773,402.224,306.740,180.295 | 0.047,-0.095,0.003,-0.005
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.072,0.006,-0.003
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.004,0.000 | -0.012,0.005,-0.012
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.002,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0029,-0.0037,-0.0048 | 0.9997,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0016,-0.0061 | 0.9989,0.0022 | 0.9888 |
-[run_subscribe_msckf-12] Tg = | 0.0000,0.0006,0.0006 |  0.0058,0.0010,0.0070 | 0.0024,-0.0013,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0640 seconds total (15.6 hz, 1.46 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.702,-0.008,-0.712,0.019 | p_IinG = 0.002,0.100,-0.015 | dist = 2.01 (meters)
-[run_subscribe_msckf-12] bg = 0.0020,0.0041,0.0051 | ba = 0.0691,-0.0001,-0.0061
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00364
-[run_subscribe_msckf-12] cam0 intrinsics = 406.769,407.117,325.865,204.119 | 0.041,-0.074,0.004,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.781,402.268,306.701,180.260 | 0.047,-0.095,0.003,-0.004
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.071,0.006,-0.003
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.004,0.000 | -0.013,0.005,-0.012
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0028,-0.0036,-0.0047 | 0.9997,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0013,-0.0061 | 0.9990,0.0024 | 0.9885 |
-[run_subscribe_msckf-12] Tg = | 0.0001,0.0005,0.0006 |  0.0060,0.0010,0.0070 | 0.0023,-0.0012,-0.0025 |
-[run_subscribe_msckf-12] [TIME]: 0.0297 seconds total (33.7 hz, 0.95 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.702,-0.008,-0.712,0.018 | p_IinG = 0.002,0.099,-0.015 | dist = 2.01 (meters)
-[run_subscribe_msckf-12] bg = 0.0020,0.0040,0.0051 | ba = 0.0691,-0.0000,-0.0061
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00364
-[run_subscribe_msckf-12] cam0 intrinsics = 406.753,407.090,325.873,204.064 | 0.041,-0.074,0.004,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.801,402.299,306.698,180.323 | 0.048,-0.095,0.003,-0.004
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.071,0.006,-0.003
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.004,0.000 | -0.013,0.005,-0.012
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0028,-0.0036,-0.0047 | 0.9997,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0012,-0.0061 | 0.9990,0.0024 | 0.9885 |
-[run_subscribe_msckf-12] Tg = | 0.0001,0.0005,0.0006 |  0.0059,0.0010,0.0070 | 0.0023,-0.0012,-0.0026 |
-[run_subscribe_msckf-12] [TIME]: 0.0415 seconds total (24.1 hz, 2.01 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.702,-0.008,-0.712,0.017 | p_IinG = 0.001,0.099,-0.015 | dist = 2.01 (meters)
-[run_subscribe_msckf-12] bg = 0.0020,0.0040,0.0051 | ba = 0.0691,-0.0000,-0.0061
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00364
-[run_subscribe_msckf-12] cam0 intrinsics = 406.753,407.090,325.873,204.064 | 0.041,-0.074,0.004,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.801,402.299,306.698,180.323 | 0.048,-0.095,0.003,-0.004
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.071,0.006,-0.003
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.004,0.000 | -0.013,0.005,-0.012
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0028,-0.0036,-0.0047 | 0.9997,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0012,-0.0061 | 0.9990,0.0024 | 0.9885 |
-[run_subscribe_msckf-12] Tg = | 0.0001,0.0005,0.0006 |  0.0059,0.0010,0.0070 | 0.0023,-0.0012,-0.0026 |
-[run_subscribe_msckf-12] [TIME]: 0.0294 seconds total (34.0 hz, 1.50 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.702,-0.008,-0.712,0.017 | p_IinG = -0.000,0.098,-0.015 | dist = 2.01 (meters)
-[run_subscribe_msckf-12] bg = 0.0020,0.0040,0.0051 | ba = 0.0691,-0.0000,-0.0061
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00364
-[run_subscribe_msckf-12] cam0 intrinsics = 406.753,407.090,325.873,204.064 | 0.041,-0.074,0.004,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.801,402.299,306.698,180.323 | 0.048,-0.095,0.003,-0.004
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.071,0.006,-0.003
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.004,0.000 | -0.013,0.005,-0.012
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.003,1.000
-[run_subscribe_msckf-12] Dw = | 1.0028,-0.0036,-0.0047 | 0.9997,0.0000 | 0.9981 |
-[run_subscribe_msckf-12] Da = | 0.9998,-0.0012,-0.0061 | 0.9990,0.0024 | 0.9885 |
-[run_subscribe_msckf-12] Tg = | 0.0001,0.0005,0.0006 |  0.0059,0.0010,0.0070 | 0.0023,-0.0012,-0.0026 |
-[run_subscribe_msckf-12] [TIME]: 0.0441 seconds total (22.7 hz, 0.99 ms behind)
-[run_subscribe_msckf-12] q_GtoI = 0.702,-0.008,-0.712,0.017 | p_IinG = -0.002,0.098,-0.014 | dist = 2.01 (meters)
-[run_subscribe_msckf-12] bg = 0.0020,0.0040,0.0051 | ba = 0.0691,-0.0000,-0.0061
-[run_subscribe_msckf-12] camera-imu timeoffset = -0.00364
-[run_subscribe_msckf-12] cam0 intrinsics = 406.753,407.090,325.873,204.064 | 0.041,-0.074,0.004,-0.003
-[run_subscribe_msckf-12] cam1 intrinsics = 402.801,402.299,306.698,180.323 | 0.048,-0.095,0.003,-0.004
-[run_subscribe_msckf-12] cam0 extrinsics = -0.710,-0.704,0.004,0.001 | 0.071,0.006,-0.003
-[run_subscribe_msckf-12] cam1 extrinsics = -0.707,-0.708,0.004,0.000 | -0.013,0.005,-0.012
-[run_subscribe_msckf-12] q_GYROtoI = -0.000,-0.001,0.003,1.000
+[vio_odom_adapter_node-13] [INFO] [1783088846.977593044] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.013, +0.008, +0.020] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.013, +0.006, +0.016] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, -0.8, +6.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.3, -0.8, +6.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+92.0, +83.6, -88.6] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.001, -0.076, -0.023] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-7.9, -1.2, -2.0] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13] [INFO] [1783088847.982634843] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.028, +0.013, +0.014] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.028, +0.013, +0.012] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -0.4, +6.5] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, -0.4, +6.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+95.0, +83.1, -85.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.002, -0.015, -0.036] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.1, -0.0, -0.1] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13] [INFO] [1783088848.984105059] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.012, +0.008, +0.005] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.012, +0.010, +0.003] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.3, -0.3, +6.6] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.3, -0.3, +6.6] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+95.7, +83.0, -84.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.001, -0.003, -0.007] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.1, +0.1, -0.1] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13] [INFO] [1783088849.987229540] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.010, +0.007, +0.003] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.010, +0.008, +0.001] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.4, -0.2, +6.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.4, -0.2, +6.7] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+95.9, +82.9, -83.9] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.003, -0.003, -0.001] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.2, -0.1, -0.3] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
 ^C[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
-[navsat_transform_node-14] [INFO] [1783086085.138991040] [rclcpp]: signal_handler(signal_value=2)
-[INFO] [teleop_node-2]: process has finished cleanly [pid 12037]
-[ublox_gps_node-5] [INFO] [1783086085.139062020] [rclcpp]: signal_handler(signal_value=2)
-[teleop_node-2] [INFO] [1783086085.139123750] [rclcpp]: signal_handler(signal_value=2)
-[joy_node-1] [INFO] [1783086085.139854216] [rclcpp]: signal_handler(signal_value=2)
-[robot_state_publisher-3] [INFO] [1783086085.140853301] [rclcpp]: signal_handler(signal_value=2)
-[ekf_node-15] [INFO] [1783086085.142029259] [rclcpp]: signal_handler(signal_value=2)
-[run_subscribe_msckf-12] [INFO] [1783086085.142553955] [rclcpp]: signal_handler(signal_value=2)
-[run_subscribe_msckf-12] [ERROR] [1783086085.167411121] [ov_msckf.run_subscribe_msckf.rclcpp]: Error in destruction of rcl subscription handle: failed to remove subscriber, at /tmp/binarydeb/ros-foxy-rmw-fastrtps-shared-cpp-1.3.2/src/subscription.cpp:53, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/subscription.c:243
-[vehicle_interface_node-10] [INFO] [1783086085.147192214] [vehicle_interface_node]: Shutting down gracefully...
-[INFO] [ekf_node-15]: process has finished cleanly [pid 13516]
-[navsat_transform_node-14] terminate called after throwing an instance of 'rclcpp::exceptions::RCLError'
-[navsat_transform_node-14]   what():  Couldn't initialize rcl timer handle: the given context is not valid, either rcl_init() was not called or rcl_shutdown() was called., at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/guard_condition.c:67
-[hwt905_imu_node-6] [INFO] [1783086085.160897895] [hwt905_imu_node]: IMU読み取りループを終了します
-[ekf_node-8] [INFO] [1783086085.161622665] [rclcpp]: signal_handler(signal_value=2)
-[ublox_gps_node-5] [ERROR] [1783086085.182054957] [ublox_gps_node]: U-Blox ASIO input buffer read error: Operation aborted., 0
-[ublox_gps_node-5] [INFO] [1783086085.182823472] [ublox_gps_node]: Closed connection to /dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00.
+[navsat_transform_node-14] [INFO] [1783088850.789816961] [rclcpp]: signal_handler(signal_value=2)
+[INFO] [robot_state_publisher-3]: process has finished cleanly [pid 28970]
+[INFO] [teleop_node-2]: process has finished cleanly [pid 28968]
+[INFO] [joy_node-1]: process has finished cleanly [pid 28966]
+[ekf_node-15] [INFO] [1783088850.789793055] [rclcpp]: signal_handler(signal_value=2)
+[INFO] [ublox_gps_node-5]: process has finished cleanly [pid 28974]
+[run_subscribe_msckf-12] [INFO] [1783088850.790180539] [rclcpp]: signal_handler(signal_value=2)
+[ublox_gps_node-5] [INFO] [1783088850.790351911] [rclcpp]: signal_handler(signal_value=2)
+[robot_state_publisher-3] [INFO] [1783088850.790404651] [rclcpp]: signal_handler(signal_value=2)
+[teleop_node-2] [INFO] [1783088850.790711009] [rclcpp]: signal_handler(signal_value=2)
+[joy_node-1] [INFO] [1783088850.790931601] [rclcpp]: signal_handler(signal_value=2)
+[ekf_node-8] [INFO] [1783088850.796012575] [rclcpp]: signal_handler(signal_value=2)
+[INFO] [ekf_node-8]: process has finished cleanly [pid 29040]
+[INFO] [ekf_node-15]: process has finished cleanly [pid 31155]
+[ublox_gps_node-5] [ERROR] [1783088850.806084884] [ublox_gps_node]: U-Blox ASIO input buffer read error: Operation aborted., 0
+[ublox_gps_node-5] [INFO] [1783088850.807438453] [ublox_gps_node]: Closed connection to /dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00.
+[INFO] [navsat_transform_node-14]: process has finished cleanly [pid 31151]
+[run_subscribe_msckf-12] [ERROR] [1783088850.824020095] [ov_msckf.run_subscribe_msckf.rclcpp]: Error in destruction of rcl subscription handle: failed to remove subscriber, at /tmp/binarydeb/ros-foxy-rmw-fastrtps-shared-cpp-1.3.2/src/subscription.cpp:53, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/subscription.c:243
+[hwt905_imu_node-6] [INFO] [1783088850.880054978] [hwt905_imu_node]: IMU読み取りループを終了します
+[vehicle_interface_node-10] [INFO] [1783088850.948401115] [vehicle_interface_node]: Shutting down gracefully...
 [oakd_vio_rgbd_node-11] Traceback (most recent call last):
 [oakd_vio_rgbd_node-11]   File "/home/nvidia/ros2_ws/install/depthai_driver/lib/depthai_driver/oakd_vio_rgbd_node", line 11, in <module>
 [oakd_vio_rgbd_node-11]     load_entry_point('depthai-driver==0.0.0', 'console_scripts', 'oakd_vio_rgbd_node')()
@@ -1871,31 +222,18 @@
 [oakd_vio_rgbd_node-11]     rclpy.spin(node)
 [oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py", line 191, in spin
 [oakd_vio_rgbd_node-11]     executor.spin_once()
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 717, in spin_once
-[oakd_vio_rgbd_node-11]     handler()
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/task.py", line 239, in __call__
-[oakd_vio_rgbd_node-11]     self._handler.send(None)
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 429, in handler
-[oakd_vio_rgbd_node-11]     await call_coroutine(entity, arg)
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 343, in _execute_timer
-[oakd_vio_rgbd_node-11]     await await_or_execute(tmr.callback)
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 118, in await_or_execute
-[oakd_vio_rgbd_node-11]     return callback(*args)
-[oakd_vio_rgbd_node-11]   File "/home/nvidia/ros2_ws/install/depthai_driver/lib/python3.8/site-packages/depthai_driver/oakd_vio_rgbd_node.py", line 257, in poll
-[oakd_vio_rgbd_node-11]     msg.orientation_covariance[0] = -1.0
+[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 711, in spin_once
+[oakd_vio_rgbd_node-11]     handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 697, in wait_for_ready_callbacks
+[oakd_vio_rgbd_node-11]     return next(self._cb_iter)
+[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 593, in _wait_for_ready_callbacks
+[oakd_vio_rgbd_node-11]     _rclpy.rclpy_wait(wait_set, timeout_nsec)
 [oakd_vio_rgbd_node-11] KeyboardInterrupt
-[INFO] [robot_state_publisher-3]: process has finished cleanly [pid 12039]
-[INFO] [ekf_node-8]: process has finished cleanly [pid 12110]
-[INFO] [joy_node-1]: process has finished cleanly [pid 12035]
-[INFO] [ublox_gps_node-5]: process has finished cleanly [pid 12043]
-[INFO] [ntrip_client_node-9]: process has finished cleanly [pid 12112]
-[INFO] [hwt905_imu_node-6]: process has finished cleanly [pid 12106]
-[INFO] [wheel_odometry_node-7]: process has finished cleanly [pid 12108]
-[INFO] [joint_state_publisher-4]: process has finished cleanly [pid 12041]
-[INFO] [vehicle_interface_node-10]: process has finished cleanly [pid 12164]
-[INFO] [vio_odom_adapter_node-13]: process has finished cleanly [pid 12170]
-^C[WARNING] [launch]: user interrupted with ctrl-c (SIGINT) again, ignoring...
-[ERROR] [oakd_vio_rgbd_node-11]: process has died [pid 12166, exit code -2, cmd '/home/nvidia/ros2_ws/install/depthai_driver/lib/depthai_driver/oakd_vio_rgbd_node --ros-args -r __node:=oakd_vio_rgbd_node'].
-[ERROR] [navsat_transform_node-14]: process has died [pid 13513, exit code -6, cmd '/opt/ros/foxy/lib/robot_localization/navsat_transform_node --ros-args -r __node:=navsat_transform_node --params-file /home/nvidia/patasmonkey_ws/install/pm_config/share/pm_config/config/navsat_transform.yaml -r imu/data:=/imu/data -r gps/fix:=/fix -r odometry/filtered:=/odometry/local -r odometry/gps:=/odometry/gps'].
-[ERROR] [run_subscribe_msckf-12]: process has died [pid 12168, exit code -7, cmd '/home/nvidia/ros2_ws/install/ov_msckf/lib/ov_msckf/run_subscribe_msckf --ros-args -r __ns:=/ov_msckf --params-file /tmp/launch_params_5n4a1rim --params-file /tmp/launch_params_u0qqfgei --params-file /tmp/launch_params_pmh496dd --params-file /tmp/launch_params_s9e1orkn --params-file /tmp/launch_params_686lpd21'].
-[run_subscribe_msckf-12] Dw = | 1.0028,-0.0036
+[INFO] [vio_odom_adapter_node-13]: process has finished cleanly [pid 29101]
+[INFO] [hwt905_imu_node-6]: process has finished cleanly [pid 29036]
+[INFO] [ntrip_client_node-9]: process has finished cleanly [pid 29042]
+[INFO] [joint_state_publisher-4]: process has finished cleanly [pid 28972]
+[INFO] [vehicle_interface_node-10]: process has finished cleanly [pid 29095]
+[INFO] [wheel_odometry_node-7]: process has finished cleanly [pid 29038]
+[ERROR] [run_subscribe_msckf-12]: process has died [pid 29099, exit code -7, cmd '/home/nvidia/ros2_ws/install/ov_msckf/lib/ov_msckf/run_subscribe_msckf --ros-args -r __ns:=/ov_msckf --params-file /tmp/launch_params__ppq4ea3 --params-file /tmp/launch_params_sgajpo50 --params-file /tmp/launch_params_yyg04lb1 --params-file /tmp/launch_params_b7itcl6v --params-file /tmp/launch_params_n4a92s2t'].
+[ERROR] [oakd_vio_rgbd_node-11]: process has died [pid 29097, exit code -2, cmd '/home/nvidia/ros2_ws/install/depthai_driver/lib/depthai_driver/oakd_vio_rgbd_node --ros-args -r __node:=oakd_vio_rgbd_node'].

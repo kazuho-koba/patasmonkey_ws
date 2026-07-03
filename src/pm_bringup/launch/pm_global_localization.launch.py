@@ -127,7 +127,7 @@ def generate_launch_description():
 
             # 診断用パラメータ
             'enable_diagnostics': True,
-            'diagnostics_interval_sec': 1.0,
+            'diagnostics_interval_sec': 0.2,
 
             # This adapter publishes Odometry only.
             # Let robot_localization publish odom -> base_link TF.
