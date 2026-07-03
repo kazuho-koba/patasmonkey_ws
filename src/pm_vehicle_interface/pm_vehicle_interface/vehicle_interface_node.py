@@ -351,31 +351,45 @@ class VehicleInterfaceNode(Node):
         """
         車両運動制約をTwistに適用する。
 
-        制約:
-        1. v=0でyaw回転しない
-        2. 最小旋回半径を守る
-        3. 最大yaw rateを守る
-        4. 最大yaw加速度を守る
+        方針:
+        1. min_turn_radius は旋回半径制約なので、必要なら ang_z を下げて半径を大きくする
+        2. max_yaw_rate はVO保護制約なので、lin_x と ang_z を同率縮小して半径を維持する
+        3. max_yaw_accel もVO保護制約なので、lin_x と ang_z を同率縮小して半径を維持する
         """
         eps = 1e-6
+
+        lin_x = float(lin_x)
+        ang_z = float(ang_z)
+
+        # ------------------------
+        # 0. 停止時はyawもゼロ
+        # ------------------------
+        if abs(lin_x) < eps:
+            ang_z = 0.0
+            self.prev_yaw_rate_cmd = 0.0
+            self.prev_yaw_rate_time = self.get_clock().now()
+            return 0.0, 0.0
 
         # ------------------------
         # 1. 最小旋回半径制限
         # ------------------------
-        if abs(lin_x) < eps:
-            ang_z = 0.0
-        else:
-            max_ang_by_radius = abs(lin_x) / max(self.min_turn_radius, eps)
-            ang_z = self.clamp(ang_z, -max_ang_by_radius, max_ang_by_radius)
+        # これは速度を落としても解決しないため、
+        # ang_zを制限して旋回半径を大きくする。
+        max_ang_by_radius = abs(lin_x) / max(self.min_turn_radius, eps)
+        ang_z = self.clamp(ang_z, -max_ang_by_radius, max_ang_by_radius)
 
         # ------------------------
         # 2. 最大yaw rate制限
         # ------------------------
-        if self.max_yaw_rate > 0.0:
-            ang_z = self.clamp(ang_z, -self.max_yaw_rate, self.max_yaw_rate)
+        # ここでは旋回半径を維持するため、
+        # lin_x と ang_z を同率縮小する。
+        if self.max_yaw_rate > 0.0 and abs(ang_z) > self.max_yaw_rate:
+            scale = self.max_yaw_rate / abs(ang_z)
+            lin_x *= scale
+            ang_z *= scale
 
         # ------------------------
-        # 3. yaw加速度制限
+        # 3. 最大yaw加速度制限
         # ------------------------
         now = self.get_clock().now()
 
@@ -385,8 +399,25 @@ class VehicleInterfaceNode(Node):
             if dt > eps:
                 max_delta = self.max_yaw_accel * dt
                 delta = ang_z - self.prev_yaw_rate_cmd
-                delta = self.clamp(delta, -max_delta, max_delta)
-                ang_z = self.prev_yaw_rate_cmd + delta
+
+                if abs(delta) > max_delta:
+                    limited_ang_z = self.prev_yaw_rate_cmd + math.copysign(
+                        max_delta, delta
+                    )
+
+                    # 基本方針:
+                    # limited_ang_z が要求yawと同じ符号なら、
+                    # lin_x と ang_z を同率縮小して旋回半径を維持する。
+                    if abs(ang_z) > eps and (limited_ang_z * ang_z) > 0.0:
+                        scale = abs(limited_ang_z) / abs(ang_z)
+                        lin_x *= scale
+                        ang_z = limited_ang_z
+
+                    else:
+                        # 符号反転付近では、半径維持が不安定になりやすい。
+                        # 一旦停止扱いにすることで、逆向きの旋回やその場回転を避ける。
+                        lin_x = 0.0
+                        ang_z = 0.0
 
         self.prev_yaw_rate_cmd = ang_z
         self.prev_yaw_rate_time = now
