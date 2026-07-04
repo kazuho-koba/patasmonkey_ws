@@ -125,9 +125,12 @@ def generate_launch_description():
             'align_initial_to_tf': False,
             'zero_initial_pose': True,
 
+            'zero_initial_rotation': True,
+            'invert_relative_rotation': True,   
+
             # 診断用パラメータ
             'enable_diagnostics': True,
-            'diagnostics_interval_sec': 0.2,
+            'diagnostics_interval_sec': 0.1,
 
             # This adapter publishes Odometry only.
             # Let robot_localization publish odom -> base_link TF.

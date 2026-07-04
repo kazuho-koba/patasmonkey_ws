@@ -361,6 +361,11 @@ class VioOdomAdapterNode(Node):
         self.declare_parameter("invert_openvins_orientation", True)
         self.declare_parameter("align_initial_to_tf", True)
 
+        # Output orientation correction.
+        # Position is kept as-is; only pose.orientation is corrected.
+        self.declare_parameter("zero_initial_rotation", True)
+        self.declare_parameter("invert_relative_rotation", True)
+
         self.declare_parameter("enable_diagnostics", False)
         self.declare_parameter("diagnostics_interval_sec", 1.0)
 
@@ -379,6 +384,13 @@ class VioOdomAdapterNode(Node):
         )
         self.align_initial_to_tf = bool(self.get_parameter("align_initial_to_tf").value)
 
+        self.zero_initial_rotation = bool(
+        self.get_parameter("zero_initial_rotation").value
+        )
+        self.invert_relative_rotation = bool(
+            self.get_parameter("invert_relative_rotation").value
+        )
+
         self.enable_diagnostics = bool(self.get_parameter("enable_diagnostics").value)
         self.diagnostics_interval_sec = float(
             self.get_parameter("diagnostics_interval_sec").value
@@ -390,6 +402,8 @@ class VioOdomAdapterNode(Node):
         self.T_base_imu = None
         self.T_imu_base = None
         self.T_odom_global = None
+
+        self.R_odom_base_first_for_output = None
 
         self.T_global_imu_first = None
         self.T_global_base_first = None
@@ -486,6 +500,40 @@ class VioOdomAdapterNode(Node):
         return True
 
 
+    def correct_output_rotation(self, R_odom_base):
+        """
+        Correct pose.orientation only.
+
+        Position is already considered usable, so this function does not
+        modify translation.
+
+        zero_initial_rotation:
+          Treat the first received orientation as identity.
+
+        invert_relative_rotation:
+          Invert relative rotation direction.
+          This compensates the observed sign inversion of roll/pitch/yaw.
+        """
+        R_current = R_odom_base
+
+        if self.zero_initial_rotation:
+            if self.R_odom_base_first_for_output is None:
+                self.R_odom_base_first_for_output = R_current.copy()
+                self.get_logger().info(
+                    "Initialized output rotation reference; "
+                    "first output orientation will be identity"
+                )
+
+            R_out = self.R_odom_base_first_for_output.T @ R_current
+        else:
+            R_out = R_current
+
+        if self.invert_relative_rotation:
+            R_out = R_out.T
+
+        return R_out
+    
+
     def maybe_print_diagnostics(
         self,
         msg,
@@ -552,7 +600,9 @@ class VioOdomAdapterNode(Node):
             f"  msg frame             = {msg.header.frame_id} -> {msg.child_frame_id}\n"
             f"  adapter frame         = {self.output_frame_id} -> {self.output_child_frame_id}\n"
             f"  tf used               = {self.base_frame_id} -> {self.oak_imu_frame_id}\n"
-            f"  invert_orientation    = {self.invert_openvins_orientation}"
+            f"  invert_orientation    = {self.invert_openvins_orientation}\n"
+            f"  zero_initial_rotation = {self.zero_initial_rotation}\n"
+            f"  invert_rel_rotation   = {self.invert_relative_rotation}"
         )
 
 
@@ -580,16 +630,21 @@ class VioOdomAdapterNode(Node):
 
         T_odom_base = self.T_odom_global @ T_global_base
 
+        # Publish pose uses corrected orientation.
+        # Translation remains unchanged because x/y/z have already been validated.
+        T_odom_base_pub = T_odom_base.copy()
+        T_odom_base_pub[:3, :3] = self.correct_output_rotation(T_odom_base[:3, :3])
+
         out = Odometry()
         out.header.stamp = msg.header.stamp
         out.header.frame_id = self.output_frame_id
         out.child_frame_id = self.output_child_frame_id
 
-        out.pose.pose.position.x = float(T_odom_base[0, 3])
-        out.pose.pose.position.y = float(T_odom_base[1, 3])
-        out.pose.pose.position.z = float(T_odom_base[2, 3])
+        out.pose.pose.position.x = float(T_odom_base_pub[0, 3])
+        out.pose.pose.position.y = float(T_odom_base_pub[1, 3])
+        out.pose.pose.position.z = float(T_odom_base_pub[2, 3])
 
-        qx, qy, qz, qw = rot_to_quat(T_odom_base[:3, :3])
+        qx, qy, qz, qw = rot_to_quat(T_odom_base_pub[:3, :3])
         out.pose.pose.orientation.x = qx
         out.pose.pose.orientation.y = qy
         out.pose.pose.orientation.z = qz
@@ -653,7 +708,7 @@ class VioOdomAdapterNode(Node):
             msg,
             T_global_imu,
             T_global_base,
-            T_odom_base,
+            T_odom_base_pub,
             v_base,
             w_base,
         )
