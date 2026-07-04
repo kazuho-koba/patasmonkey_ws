@@ -117,6 +117,14 @@ def rpy_from_rot(R):
 def rad2deg(x):
     return x * 180.0 / math.pi
 
+def stamp_to_sec(stamp):
+    return float(stamp.sec) + float(stamp.nanosec) * 1e-9
+
+def wrap_to_pi(x):
+    """
+    Normalize angle to [-pi, pi].
+    """
+    return (x + math.pi) % (2.0 * math.pi) - math.pi
 
 def transform_to_matrix(t: TransformStamped):
     """
@@ -410,6 +418,11 @@ class VioOdomAdapterNode(Node):
         self.T_odom_base_first = None
         self.last_diag_time = self.get_clock().now()
 
+        # Previous corrected output pose for velocity diagnostics.
+        # This is only for diagnostics, not for publishing.
+        self.prev_diag_T_odom_base_pub = None
+        self.prev_diag_stamp_sec = None
+
         self.pub = self.create_publisher(Odometry, self.output_topic, 10)
         self.sub = self.create_subscription(
             Odometry, self.input_topic, self.odom_callback, 50
@@ -534,6 +547,57 @@ class VioOdomAdapterNode(Node):
         return R_out
     
 
+    def compute_pose_diff_velocity_for_diagnostics(self, msg, T_odom_base_pub):
+        """
+        Compute finite-difference velocity from corrected published pose.
+
+        Returns:
+          v_pose_odom:
+            Linear velocity from position difference, expressed in odom frame.
+
+          rpy_rate_pose:
+            Approximate roll/pitch/yaw rate from RPY difference, expressed as
+            rates of corrected output RPY. This is not a strict body angular
+            velocity, but it is useful for identifying sign/axis mapping in
+            low-speed single-axis tests.
+
+          diag_dt:
+            Time interval used for finite difference.
+        """
+        stamp_sec = stamp_to_sec(msg.header.stamp)
+
+        if self.prev_diag_T_odom_base_pub is None:
+            self.prev_diag_T_odom_base_pub = T_odom_base_pub.copy()
+            self.prev_diag_stamp_sec = stamp_sec
+            return None, None, None
+
+        diag_dt = stamp_sec - self.prev_diag_stamp_sec
+
+        # Always update previous pose, but reject invalid dt for output.
+        prev_T = self.prev_diag_T_odom_base_pub.copy()
+        self.prev_diag_T_odom_base_pub = T_odom_base_pub.copy()
+        self.prev_diag_stamp_sec = stamp_sec
+
+        if diag_dt <= 1e-6:
+            return None, None, diag_dt
+
+        # Linear velocity from corrected output position.
+        dp = T_odom_base_pub[:3, 3] - prev_T[:3, 3]
+        v_pose_odom = dp / diag_dt
+
+        # RPY-rate approximation from corrected output orientation.
+        r_prev, p_prev, y_prev = rpy_from_rot(prev_T[:3, :3])
+        r_now, p_now, y_now = rpy_from_rot(T_odom_base_pub[:3, :3])
+
+        dr = wrap_to_pi(r_now - r_prev)
+        dpitch = wrap_to_pi(p_now - p_prev)
+        dyaw = wrap_to_pi(y_now - y_prev)
+
+        rpy_rate_pose = np.array([dr, dpitch, dyaw], dtype=float) / diag_dt
+
+        return v_pose_odom, rpy_rate_pose, diag_dt
+    
+
     def maybe_print_diagnostics(
         self,
         msg,
@@ -542,6 +606,9 @@ class VioOdomAdapterNode(Node):
         T_odom_base,
         v_base=None,
         w_base=None,
+        v_pose_odom=None,
+        rpy_rate_pose=None,
+        pose_diff_dt=None,
     ):
         if not self.enable_diagnostics:
             return
@@ -576,6 +643,38 @@ class VioOdomAdapterNode(Node):
         r_abs, p_abs, y_abs = rpy_from_rot(T_odom_base[:3, :3])
 
         twist_text = ""
+
+        pose_diff_text = ""
+        if v_pose_odom is not None and rpy_rate_pose is not None:
+            pose_diff_text = (
+                f"\n  pose diff dt         = {pose_diff_dt:.4f} s\n"
+                f"  pose diff linear    = "
+                f"[{v_pose_odom[0]:+.3f}, {v_pose_odom[1]:+.3f}, {v_pose_odom[2]:+.3f}] m/s\n"
+                f"  pose diff rpy_rate  = "
+                f"[{rad2deg(rpy_rate_pose[0]):+.1f}, "
+                f"{rad2deg(rpy_rate_pose[1]):+.1f}, "
+                f"{rad2deg(rpy_rate_pose[2]):+.1f}] deg/s"
+            )
+
+        twist_diff_text = ""
+        if (
+            v_base is not None
+            and w_base is not None
+            and v_pose_odom is not None
+            and rpy_rate_pose is not None
+        ):
+            dv = v_base - v_pose_odom
+            dw = w_base - rpy_rate_pose
+
+            twist_diff_text = (
+                f"\n  twist - pose linear = "
+                f"[{dv[0]:+.3f}, {dv[1]:+.3f}, {dv[2]:+.3f}] m/s\n"
+                f"  twist - pose angular= "
+                f"[{rad2deg(dw[0]):+.1f}, "
+                f"{rad2deg(dw[1]):+.1f}, "
+                f"{rad2deg(dw[2]):+.1f}] deg/s"
+            )
+
         if v_base is not None and w_base is not None:
             twist_text = (
                 f"\n  out twist linear     = "
@@ -596,7 +695,9 @@ class VioOdomAdapterNode(Node):
             f"[{rad2deg(r_out):+.1f}, {rad2deg(p_out):+.1f}, {rad2deg(y_out):+.1f}] deg\n"
             f"  out abs RPY           = "
             f"[{rad2deg(r_abs):+.1f}, {rad2deg(p_abs):+.1f}, {rad2deg(y_abs):+.1f}] deg"
-            f"{twist_text}\n"
+            f"{twist_text}"
+            f"{pose_diff_text}"
+            f"{twist_diff_text}\n"
             f"  msg frame             = {msg.header.frame_id} -> {msg.child_frame_id}\n"
             f"  adapter frame         = {self.output_frame_id} -> {self.output_child_frame_id}\n"
             f"  tf used               = {self.base_frame_id} -> {self.oak_imu_frame_id}\n"
@@ -704,6 +805,13 @@ class VioOdomAdapterNode(Node):
             p_imu_in_base,
         )
 
+        v_pose_odom, rpy_rate_pose, pose_diff_dt = (
+            self.compute_pose_diff_velocity_for_diagnostics(
+                msg,
+                T_odom_base_pub,
+            )
+        )
+
         self.maybe_print_diagnostics(
             msg,
             T_global_imu,
@@ -711,6 +819,9 @@ class VioOdomAdapterNode(Node):
             T_odom_base_pub,
             v_base,
             w_base,
+            v_pose_odom,
+            rpy_rate_pose,
+            pose_diff_dt,
         )
 
         out.twist.twist.linear.x = float(v_base[0])
