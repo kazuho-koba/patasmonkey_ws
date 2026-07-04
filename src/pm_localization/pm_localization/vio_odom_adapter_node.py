@@ -267,6 +267,81 @@ def transform_pose_covariance_ros_approx(
     return cov_mat6_to_list(P_out)
 
 
+def correct_pose_covariance_for_output_rotation(
+    pose_cov_base,
+    zero_initial_rotation,
+    invert_relative_rotation,
+    orientation_var_floor=0.03,
+    zero_position_orientation_cross=False,
+):
+    """
+    Correct pose covariance after pose.orientation correction.
+
+    Input:
+      pose_cov_base:
+        pose covariance after imu->base_link and global->odom transform.
+        Ordering: [x, y, z, roll, pitch, yaw]
+
+    The published pose value is:
+      - position: kept as-is
+      - orientation: optionally zero-initialized and relative-rotation-inverted
+
+    For ROS Odometry covariance, orientation is represented approximately as
+    fixed-axis roll/pitch/yaw.  Therefore, this function applies a practical
+    small-angle correction.
+
+    If invert_relative_rotation is True:
+      orientation error sign is inverted:
+        [droll, dpitch, dyaw] -> -[droll, dpitch, dyaw]
+
+      Position is unchanged:
+        [dx, dy, dz] -> [dx, dy, dz]
+
+      So:
+        A = diag([1, 1, 1, -1, -1, -1])
+
+    This mainly affects position-orientation cross covariance terms.
+    The pure orientation covariance block is unchanged by sign inversion
+    because (-I) * P * (-I).T = P.
+
+    Parameters:
+      orientation_var_floor:
+        Optional minimum variance for roll/pitch/yaw in rad^2.
+        Example:
+          0.05  -> std dev about 12.8 deg
+          0.10  -> std dev about 18.1 deg
+
+      zero_position_orientation_cross:
+        If True, clears position-orientation cross covariance.
+        This is safer for EKF if the exact correlation is uncertain.
+    """
+    P = cov_list_to_mat6(pose_cov_base)
+
+    A = np.eye(6, dtype=float)
+
+    if zero_initial_rotation or invert_relative_rotation:
+        # The output orientation is no longer exactly the same tangent
+        # representation as the uncorrected T_odom_base orientation.
+        #
+        # The dominant correction we know from the current adapter is the
+        # relative rotation inversion, which corresponds to a sign inversion
+        # of small roll/pitch/yaw errors.
+        if invert_relative_rotation:
+            A[3:6, 3:6] = -np.eye(3, dtype=float)
+
+    P_out = A @ P @ A.T
+
+    if zero_position_orientation_cross:
+        P_out[0:3, 3:6] = 0.0
+        P_out[3:6, 0:3] = 0.0
+
+    if orientation_var_floor is not None:
+        for i in range(3, 6):
+            P_out[i, i] = max(P_out[i, i], float(orientation_var_floor))
+
+    return cov_mat6_to_list(P_out)
+
+
 def transform_twist_and_covariance_ros_approx(
     twist,
     twist_cov,
@@ -331,16 +406,24 @@ def transform_twist_and_covariance_ros_approx(
     return v_base, w_base, cov_mat6_to_list(P_out)
 
 
-def linear_velocity_fix_matrix():
+def twist_axis_fix_matrix3():
     """
-    Axis/sign correction for already-converted v_base.
+    Axis/sign correction for already-converted base_link twist components.
 
-    Current observed mapping:
-      corrected vx = - current vz
-      corrected vy = - current vy
-      corrected vz = - current vx
+    Observed mapping for both linear and angular velocity:
+      corrected x = - raw z
+      corrected y = - raw y
+      corrected z = - raw x
 
-    v_corrected = A_v @ v_current
+    For linear velocity:
+      corrected vx = - raw vz
+      corrected vy = - raw vy
+      corrected vz = - raw vx
+
+    For angular velocity:
+      corrected wx = - raw wz
+      corrected wy = - raw wy
+      corrected wz = - raw wx
     """
     return np.array(
         [
@@ -352,31 +435,58 @@ def linear_velocity_fix_matrix():
     )
 
 
-def correct_linear_velocity(v_base):
+def twist_axis_fix_matrix6():
     """
-    Correct only linear velocity axes/signs.
-    Angular velocity is intentionally not corrected here.
-    """
-    A_v = linear_velocity_fix_matrix()
-    return A_v @ v_base
-
-
-def correct_linear_velocity_in_twist_covariance(twist_cov_base):
-    """
-    Apply the linear-velocity axis/sign correction to the 6x6 twist covariance.
+    6x6 correction matrix for ROS Odometry twist covariance.
 
     Ordering:
       [vx, vy, vz, wx, wy, wz]
 
-    Since angular velocity is not corrected yet:
-      A = block_diag(A_v, I_3)
+    The same 3x3 axis/sign correction is applied to:
+      - linear velocity block
+      - angular velocity block
+      - linear-angular cross covariance blocks
+    """
+    A3 = twist_axis_fix_matrix3()
+
+    A6 = np.zeros((6, 6), dtype=float)
+    A6[0:3, 0:3] = A3
+    A6[3:6, 3:6] = A3
+
+    return A6
+
+
+def correct_twist_velocity(v_base, w_base):
+    """
+    Correct both linear and angular twist components.
+
+    Inputs:
+      v_base:
+        raw linear velocity after imu->base_link transform
+
+      w_base:
+        raw angular velocity after imu->base_link transform
+
+    Returns:
+      v_corrected, w_corrected
+    """
+    A3 = twist_axis_fix_matrix3()
+    return A3 @ v_base, A3 @ w_base
+
+
+def correct_twist_covariance(twist_cov_base):
+    """
+    Apply the full 6-axis twist correction to twist covariance.
+
+    P_corrected = A6 * P_raw * A6.T
+
+    Ordering:
+      [vx, vy, vz, wx, wy, wz]
     """
     P = cov_list_to_mat6(twist_cov_base)
+    A6 = twist_axis_fix_matrix6()
 
-    A = np.eye(6, dtype=float)
-    A[0:3, 0:3] = linear_velocity_fix_matrix()
-
-    P_out = A @ P @ A.T
+    P_out = A6 @ P @ A6.T
     return cov_mat6_to_list(P_out)
 
 
@@ -660,6 +770,7 @@ class VioOdomAdapterNode(Node):
         v_base=None,
         w_base=None,
         v_base_corrected=None,
+        w_base_corrected=None,
     ):
         if not self.enable_diagnostics:
             return
@@ -719,6 +830,14 @@ class VioOdomAdapterNode(Node):
                     f"{v_base_corrected[2]:+.3f}] m/s"
                 )
 
+            if w_base_corrected is not None:
+                twist_text += (
+                    f"\n  corrected twist ang  = "
+                    f"[{rad2deg(w_base_corrected[0]):+.1f}, "
+                    f"{rad2deg(w_base_corrected[1]):+.1f}, "
+                    f"{rad2deg(w_base_corrected[2]):+.1f}] deg/s"
+                )
+
         pose_diff_text = ""
         if v_pose_odom is not None and rpy_rate_pose is not None:
             pose_diff_text = (
@@ -733,8 +852,7 @@ class VioOdomAdapterNode(Node):
 
         twist_diff_text = ""
         if (
-            w_base is not None
-            and v_pose_odom is not None
+            v_pose_odom is not None
             and rpy_rate_pose is not None
         ):
             if v_base_corrected is not None:
@@ -744,9 +862,14 @@ class VioOdomAdapterNode(Node):
             else:
                 dv = None
 
-            dw = w_base - rpy_rate_pose
+            if w_base_corrected is not None:
+                dw = w_base_corrected - rpy_rate_pose
+            elif w_base is not None:
+                dw = w_base - rpy_rate_pose
+            else:
+                dw = None
 
-            if dv is not None:
+            if dv is not None and dw is not None:
                 twist_diff_text = (
                     f"\n  twist - pose linear = "
                     f"[{dv[0]:+.3f}, {dv[1]:+.3f}, {dv[2]:+.3f}] m/s\n"
@@ -843,11 +966,18 @@ class VioOdomAdapterNode(Node):
         # T_imu_base maps base_link coordinates into imu coordinates.
         p_base_in_imu = self.T_imu_base[:3, 3]
 
-        out.pose.covariance = transform_pose_covariance_ros_approx(
+        pose_cov_base_raw = transform_pose_covariance_ros_approx(
             msg.pose.covariance,
             R_odom_global,
             R_global_imu,
             p_base_in_imu,
+        )
+        out.pose.covariance = correct_pose_covariance_for_output_rotation(
+            pose_cov_base_raw,
+            zero_initial_rotation=self.zero_initial_rotation,
+            invert_relative_rotation=self.invert_relative_rotation,
+            orientation_var_floor=0.05,
+            zero_position_orientation_cross=False,
         )
 
         # ------------------------------------------------------------
@@ -878,12 +1008,14 @@ class VioOdomAdapterNode(Node):
             p_imu_in_base,
         )
 
-        # Correct only linear velocity for now.
-        # Angular velocity is intentionally kept raw until roll/pitch/yaw-rate tests are done.
-        v_base_corrected = correct_linear_velocity(v_base_raw)
-        twist_cov_partially_corrected = correct_linear_velocity_in_twist_covariance(
-            twist_cov_base_raw
-        )       
+        # Correct both linear and angular velocity axes/signs.
+        v_base_corrected, w_base_corrected = correct_twist_velocity(
+            v_base_raw,
+            w_base_raw,
+        )      
+
+        # Apply the same 6-axis correction to twist covariance.
+        twist_cov_corrected = correct_twist_covariance(twist_cov_base_raw)
 
         self.maybe_print_diagnostics(
             msg,
@@ -893,17 +1025,18 @@ class VioOdomAdapterNode(Node):
             v_base_raw,
             w_base_raw,
             v_base_corrected,
+            w_base_corrected,
         )
 
         out.twist.twist.linear.x = float(v_base_corrected[0])
         out.twist.twist.linear.y = float(v_base_corrected[1])
         out.twist.twist.linear.z = float(v_base_corrected[2])
 
-        out.twist.twist.angular.x = float(w_base_raw[0])
-        out.twist.twist.angular.y = float(w_base_raw[1])
-        out.twist.twist.angular.z = float(w_base_raw[2])
+        out.twist.twist.angular.x = float(w_base_corrected[0])
+        out.twist.twist.angular.y = float(w_base_corrected[1])
+        out.twist.twist.angular.z = float(w_base_corrected[2])
 
-        out.twist.covariance = twist_cov_partially_corrected
+        out.twist.covariance = twist_cov_corrected
 
         self.pub.publish(out)
 
