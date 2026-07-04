@@ -184,7 +184,7 @@ class VehicleInterfaceNode(Node):
 
         # タイマーを定義、設定時間（sec）ごとに関数を呼び出す（遠隔操縦指令の受領関数と、モータ制御情報の発信関数）
         self._timer = self.create_timer(0.05, self.command_selector)
-        self._motor_state_timer = self.create_timer(0.02, self.publish_motor_state)
+        self._motor_state_timer = self.create_timer(0.0333, self.publish_motor_state)
 
         # publihser config
         self.motor_state_pub = self.create_publisher(
