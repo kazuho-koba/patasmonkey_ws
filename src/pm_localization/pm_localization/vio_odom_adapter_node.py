@@ -551,17 +551,20 @@ class VioOdomAdapterNode(Node):
         """
         Compute finite-difference velocity from corrected published pose.
 
+        This function is called only when diagnostics are actually printed.
+        Therefore, pose_diff_dt should be close to diagnostics_interval_sec,
+        not the raw OpenVINS callback period.
+
         Returns:
           v_pose_odom:
             Linear velocity from position difference, expressed in odom frame.
 
           rpy_rate_pose:
-            Approximate roll/pitch/yaw rate from RPY difference, expressed as
-            rates of corrected output RPY. This is not a strict body angular
-            velocity, but it is useful for identifying sign/axis mapping in
-            low-speed single-axis tests.
+            Approximate roll/pitch/yaw rate from corrected output RPY.
+            This is not a strict body angular velocity, but it is useful for
+            sign/axis diagnosis in low-speed single-axis tests.
 
-          diag_dt:
+          pose_diff_dt:
             Time interval used for finite difference.
         """
         stamp_sec = stamp_to_sec(msg.header.stamp)
@@ -571,19 +574,16 @@ class VioOdomAdapterNode(Node):
             self.prev_diag_stamp_sec = stamp_sec
             return None, None, None
 
-        diag_dt = stamp_sec - self.prev_diag_stamp_sec
+        pose_diff_dt = stamp_sec - self.prev_diag_stamp_sec
 
-        # Always update previous pose, but reject invalid dt for output.
-        prev_T = self.prev_diag_T_odom_base_pub.copy()
-        self.prev_diag_T_odom_base_pub = T_odom_base_pub.copy()
-        self.prev_diag_stamp_sec = stamp_sec
+        if pose_diff_dt <= 1e-6:
+            return None, None, pose_diff_dt
 
-        if diag_dt <= 1e-6:
-            return None, None, diag_dt
+        prev_T = self.prev_diag_T_odom_base_pub
 
         # Linear velocity from corrected output position.
         dp = T_odom_base_pub[:3, 3] - prev_T[:3, 3]
-        v_pose_odom = dp / diag_dt
+        v_pose_odom = dp / pose_diff_dt
 
         # RPY-rate approximation from corrected output orientation.
         r_prev, p_prev, y_prev = rpy_from_rot(prev_T[:3, :3])
@@ -593,9 +593,13 @@ class VioOdomAdapterNode(Node):
         dpitch = wrap_to_pi(p_now - p_prev)
         dyaw = wrap_to_pi(y_now - y_prev)
 
-        rpy_rate_pose = np.array([dr, dpitch, dyaw], dtype=float) / diag_dt
+        rpy_rate_pose = np.array([dr, dpitch, dyaw], dtype=float) / pose_diff_dt
 
-        return v_pose_odom, rpy_rate_pose, diag_dt
+        # Update previous pose only after computing the diagnostic finite difference.
+        self.prev_diag_T_odom_base_pub = T_odom_base_pub.copy()
+        self.prev_diag_stamp_sec = stamp_sec
+
+        return v_pose_odom, rpy_rate_pose, pose_diff_dt
     
 
     def maybe_print_diagnostics(
@@ -606,9 +610,6 @@ class VioOdomAdapterNode(Node):
         T_odom_base,
         v_base=None,
         w_base=None,
-        v_pose_odom=None,
-        rpy_rate_pose=None,
-        pose_diff_dt=None,
     ):
         if not self.enable_diagnostics:
             return
@@ -618,6 +619,13 @@ class VioOdomAdapterNode(Node):
         if dt < self.diagnostics_interval_sec:
             return
         self.last_diag_time = now
+
+        v_pose_odom, rpy_rate_pose, pose_diff_dt = (
+            self.compute_pose_diff_velocity_for_diagnostics(
+                msg,
+                T_odom_base,
+            )
+        )        
 
         if self.T_global_imu_first is None:
             self.T_global_imu_first = T_global_imu.copy()
@@ -805,13 +813,6 @@ class VioOdomAdapterNode(Node):
             p_imu_in_base,
         )
 
-        v_pose_odom, rpy_rate_pose, pose_diff_dt = (
-            self.compute_pose_diff_velocity_for_diagnostics(
-                msg,
-                T_odom_base_pub,
-            )
-        )
-
         self.maybe_print_diagnostics(
             msg,
             T_global_imu,
@@ -819,9 +820,6 @@ class VioOdomAdapterNode(Node):
             T_odom_base_pub,
             v_base,
             w_base,
-            v_pose_odom,
-            rpy_rate_pose,
-            pose_diff_dt,
         )
 
         out.twist.twist.linear.x = float(v_base[0])

@@ -1,878 +1,1405 @@
-[vio_odom_adapter_node-13] [INFO] [1783178338.872471222] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.006, -0.014, +0.004] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.006, -0.014, +0.004] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.0, -0.1, +0.0] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.0, -0.1, +0.0] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+102.2, +86.2, -77.6] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.004, +0.030, -0.119] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+1.8, -0.2, -0.3] deg/s
+[vio_odom_adapter_node-13] [INFO] [1783179813.289056837] [vio_odom_adapter_node]: Got TF: base_link -> openvins_imu_link
+[vio_odom_adapter_node-13] [INFO] [1783179813.308924872] [vio_odom_adapter_node]: Initialized T_odom_global with translation-only zeroing
+[vio_odom_adapter_node-13] [INFO] [1783179813.311858880] [vio_odom_adapter_node]: Initialized output rotation reference; first output orientation will be identity
+[vio_odom_adapter_node-13] [INFO] [1783179813.338097237] [vio_odom_adapter_node]: [VIO_DIAG] Initialized diagnostic reference pose
+[vio_odom_adapter_node-13] [INFO] [1783179813.420811342] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.033, +0.062, +0.011] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.033, +0.061, +0.011] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, -0.0, +2.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.0, -2.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, +0.0, -2.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.015, -0.048, +0.018] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.2, +1.2, -0.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178339.075322732] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.021, -0.021, +0.005] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.021, -0.021, +0.005] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -0.1, +0.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.1, -0.1, +0.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+100.0, +85.4, -79.8] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.005, +0.046, -0.124] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+4.3, +0.4, -0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179813.530638962] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.033, +0.067, +0.012] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.033, +0.066, +0.011] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, -0.2, +2.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.2, -2.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, +0.2, -2.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.008, -0.048, +0.004] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.2, -0.5, -0.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178339.279781798] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.047, -0.029, +0.007] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.047, -0.029, +0.007] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -0.0, +1.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.1, -0.0, +1.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+99.5, +84.7, -80.2] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.006, +0.034, -0.140] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+0.9, +0.1, -0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179813.630455296] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.033, +0.071, +0.013] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.033, +0.071, +0.012] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, -0.2, +2.5] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.2, -2.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, +0.2, -2.5] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.012, -0.051, +0.003] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.2, +0.2, -0.3] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178339.481690624] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.075, -0.034, +0.001] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.075, -0.035, +0.002] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.2, +2.2] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.2, +2.2] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+101.3, +84.1, -78.6] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.003, +0.042, -0.124] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.3, +0.9, +0.6] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179813.733556413] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.033, +0.077, +0.014] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.033, +0.076, +0.013] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, -0.3, +2.6] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.0, +0.3, -2.6] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.0, +0.3, -2.6] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.013, -0.053, -0.000] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.9, +0.3, -0.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178339.688842084] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.102, -0.027, -0.003] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.102, -0.028, -0.002] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, +0.3, +3.7] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.3, +3.7] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+99.2, +82.5, -80.8] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.004, +0.024, -0.130] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+4.1, +0.2, +0.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179813.837841252] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.031, +0.074, +0.016] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.031, +0.075, +0.015] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.2, +2.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.2, -2.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.2, -2.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.014, -0.032, -0.004] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.6, +0.2, -0.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178339.889067572] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.134, -0.040, -0.004] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.134, -0.040, -0.002] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.4, +4.3] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.4, +4.3] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+99.6, +81.9, -80.3] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.006, +0.056, -0.136] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+6.0, -1.1, +1.3] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179813.945774545] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.030, +0.079, +0.018] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.030, +0.079, +0.017] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.3, +2.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.3, -2.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.3, -2.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.014, -0.028, -0.011] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.6, -0.0, -0.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178340.111860719] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.160, -0.050, -0.004] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.160, -0.050, -0.002] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.3, +5.4] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.3, +5.4] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+97.8, +80.9, -82.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.010, +0.061, -0.124] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.7, -1.3, -0.8] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.045605856] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.028, +0.082, +0.020] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.028, +0.083, +0.019] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.3, +2.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.3, -2.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.3, -2.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.014, -0.025, -0.020] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.8, -0.3, +0.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178340.320551890] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.179, -0.073, -0.000] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.179, -0.073, +0.001] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, +0.2, +5.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.2, +5.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+96.9, +80.7, -83.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.005, +0.049, -0.133] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+3.6, +0.1, +1.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.149867973] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.025, +0.085, +0.022] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.025, +0.086, +0.020] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.3, +2.5] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.3, -2.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.3, -2.5] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.014, -0.023, -0.028] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.5, -0.5, -0.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178340.525062959] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.204, -0.085, +0.001] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.204, -0.086, +0.003] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, +0.2, +6.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.2, +6.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+96.5, +79.7, -83.6] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.015, +0.077, -0.134] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.9, +1.0, -0.9] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.257497279] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.021, +0.088, +0.024] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.021, +0.089, +0.022] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.3, +2.6] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.3, -2.6] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.3, -2.6] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.015, -0.018, -0.035] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.8, -0.3, -0.3] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178340.725494411] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.233, -0.090, +0.003] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.233, -0.091, +0.003] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, +0.1, +7.7] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.1, +7.7] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+95.2, +78.7, -84.9] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.010, +0.043, -0.151] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.3, -0.1, +2.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.356096800] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.024, +0.073, +0.012] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.024, +0.073, +0.011] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -0.1, +2.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.1, -2.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.1, +0.1, -2.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.006, -0.019, -0.006] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.9, +0.1, -0.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178340.926352226] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.260, -0.099, +0.004] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.260, -0.101, +0.005] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, +0.1, +8.7] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, +0.1, +8.7] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+95.0, +77.6, -85.2] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.002, +0.035, -0.143] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+4.3, -0.2, -0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.454896173] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.022, +0.075, +0.013] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.022, +0.076, +0.012] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.1, +2.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.1, -2.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.1, -2.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.006, -0.016, -0.011] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.0, +0.1, -0.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178341.127612818] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.294, -0.097, +0.005] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.294, -0.098, +0.006] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, +0.2, +10.4] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.2, +10.4] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+94.7, +75.9, -85.4] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.007, +0.048, -0.158] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+6.5, +0.4, -1.9] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.559063725] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.021, +0.077, +0.013] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.021, +0.078, +0.013] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.1, +2.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.1, -2.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.1, -2.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.006, -0.010, -0.014] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.2, -0.1, -0.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178341.331487398] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.322, -0.105, +0.003] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.322, -0.105, +0.005] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, +0.3, +11.5] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.3, +11.5] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+94.6, +74.8, -85.4] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.002, +0.019, -0.153] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.6, +0.0, +1.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.666167846] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.019, +0.079, +0.014] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.019, +0.080, +0.013] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.1, +2.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.1, -2.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.1, -2.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.006, -0.012, -0.020] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.6, -0.3, -0.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178341.533078730] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.348, -0.111, +0.004] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.348, -0.112, +0.006] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, +0.3, +12.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, +0.3, +12.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+94.5, +73.7, -85.7] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.004, +0.024, -0.156] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.2, -0.6, +0.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.767597561] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.016, +0.080, +0.015] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.016, +0.081, +0.014] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.2, +2.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.2, -2.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.2, -2.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.006, -0.007, -0.023] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.9, -0.3, -0.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178341.739255439] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.385, -0.119, +0.007] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.385, -0.120, +0.009] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, +0.3, +14.3] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, +0.3, +14.3] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+94.0, +72.0, -86.2] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.013, +0.031, -0.168] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+7.0, +1.8, +1.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.870384257] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.014, +0.081, +0.015] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.014, +0.082, +0.014] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.2, +2.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.2, -2.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.2, -2.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.007, -0.003, -0.027] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.9, -0.1, +0.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178341.944724039] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.414, -0.132, +0.009] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.414, -0.133, +0.012] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, +0.4, +15.5] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, +0.4, +15.5] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+94.3, +70.8, -86.0] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.004, +0.012, -0.138] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+4.5, +1.4, +2.9] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179814.973677290] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.017, +0.062, +0.009] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.017, +0.063, +0.009] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -0.0, +1.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.0, -1.7] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.1, +0.0, -1.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.003, -0.011, -0.006] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.7, -0.3, -0.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178342.145846861] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.440, -0.142, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.440, -0.144, +0.013] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.5, +0.4, +16.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.5, +0.4, +16.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+94.3, +69.7, -86.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.004, +0.040, -0.164] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.0, -0.8, -0.7] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179815.079640954] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.017, +0.064, +0.009] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.017, +0.064, +0.009] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -0.0, +1.8] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.0, -1.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.1, +0.0, -1.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.005, -0.010, -0.009] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.7, +0.0, +0.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178342.349619897] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.478, -0.154, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.478, -0.155, +0.013] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, +0.4, +18.2] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, +0.4, +18.2] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.8, +68.2, -86.4] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.001, +0.038, -0.166] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.8, -0.0, -1.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179815.182052875] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.015, +0.065, +0.010] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.015, +0.065, +0.009] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -0.0, +1.8] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.0, -1.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.1, +0.0, -1.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.002, -0.008, -0.013] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.7, -0.8, +0.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178342.552387239] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.506, -0.168, +0.012] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.506, -0.169, +0.015] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, +0.6, +19.5] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, +0.6, +19.5] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+94.0, +66.9, -86.2] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.007, +0.043, -0.163] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+7.3, +0.8, +0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179815.290028314] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.014, +0.066, +0.010] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.014, +0.067, +0.010] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -0.1, +1.9] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.1, -1.9] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.1, +0.1, -1.9] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.005, -0.010, -0.014] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.1, +0.0, -0.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178342.755734553] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.536, -0.183, +0.013] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.536, -0.183, +0.016] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, +0.6, +20.8] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, +0.6, +20.8] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.8, +65.5, -86.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.001, +0.037, -0.154] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.5, +0.7, -0.8] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179815.395277853] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.012, +0.067, +0.011] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.012, +0.067, +0.010] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.0, -0.2, +2.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.0, +0.2, -2.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.0, +0.2, -2.0] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.006, -0.013, -0.014] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.2, +0.1, -0.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178342.956835453] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.571, -0.194, +0.011] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.571, -0.194, +0.014] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, +0.6, +22.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, +0.6, +22.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.6, +63.8, -86.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.004, +0.033, -0.180] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.1, -0.6, -0.7] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179815.510087802] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.016, +0.045, +0.006] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.016, +0.046, +0.006] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, +0.0, +1.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.1, -0.0, -1.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.1, -0.0, -1.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.004, -0.004, -0.005] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.0, -1.3, +0.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178343.161377978] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.604, -0.209, +0.012] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.604, -0.209, +0.015] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, +0.5, +24.0] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, +0.5, +24.0] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.2, +62.3, -87.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.006, +0.035, -0.181] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+8.0, -1.6, -0.8] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179815.609921033] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.016, +0.046, +0.006] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.016, +0.046, +0.006] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.0, -0.0, +1.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.0, +0.0, -1.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.0, +0.0, -1.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.011, -0.002, +0.000] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.2, +1.5, +0.7] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178343.365451096] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.636, -0.225, +0.013] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.636, -0.225, +0.015] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, +0.5, +25.3] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, +0.5, +25.3] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.0, +61.1, -87.2] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.006, +0.038, -0.179] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+5.9, +1.3, -2.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179815.711091179] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.015, +0.046, +0.007] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.015, +0.046, +0.007] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, +0.0, +1.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.0, -0.0, -1.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.0, -0.0, -1.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.001, -0.003, -0.006] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.2, -0.6, -0.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178343.571628731] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.666, -0.239, +0.011] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.666, -0.242, +0.014] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.8, +0.4, +26.4] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.8, +0.4, +26.4] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.2, +59.9, -87.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.023, +0.020, -0.105] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+13.1, +4.9, -9.6] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179815.820144126] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.015, +0.047, +0.006] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.015, +0.045, +0.006] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, +0.0, +1.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.3, -0.0, -1.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.3, -0.0, -1.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.032, -0.067, -0.010] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+2.0, +0.1, +15.6] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178343.777612306] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.701, -0.255, +0.011] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.701, -0.257, +0.014] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.7, +0.4, +29.2] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.7, +0.4, +29.2] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.9, +57.1, -87.7] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.029, +0.041, -0.197] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+6.2, -6.1, -1.3] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179815.925756728] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.015, +0.057, +0.003] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.015, +0.053, +0.004] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.8, +0.3, +1.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.8, -0.3, -1.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.8, -0.3, -1.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.034, -0.118, -0.004] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-3.4, +3.0, +2.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178343.979222005] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.728, -0.274, +0.013] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.728, -0.275, +0.017] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.6, +0.5, +30.2] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.6, +0.5, +30.2] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.0, +56.1, -87.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.022, +0.021, -0.200] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+4.5, -4.7, +1.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.030127812] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.015, +0.066, +0.001] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.015, +0.060, +0.003] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+1.2, +0.5, +1.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-1.2, -0.5, -1.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-1.2, -0.5, -1.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.015, -0.066, -0.010] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.0, +1.4, +1.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178344.182963870] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.779, -0.304, +0.012] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.779, -0.304, +0.016] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, +0.6, +31.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, +0.6, +31.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.8, +54.5, -87.4] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.008, +0.044, -0.191] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+7.0, -0.4, -1.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.133024211] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.014, +0.069, -0.000] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.014, +0.062, +0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+1.5, +0.5, +1.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-1.5, -0.5, -1.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-1.5, -0.5, -1.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.008, -0.001, +0.002] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-3.2, +0.1, -0.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178344.386345617] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.808, -0.327, +0.013] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.808, -0.326, +0.017] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, +0.7, +33.0] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, +0.7, +33.0] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.8, +53.3, -87.3] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.003, +0.055, -0.184] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+9.6, -0.4, -2.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.233829214] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.019, +0.043, -0.001] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.019, +0.040, -0.000] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.6, +0.2, +0.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.6, -0.2, -0.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.6, -0.2, -0.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.027, +0.113, -0.016] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.1, -3.4, -15.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178344.599135314] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.840, -0.350, +0.015] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.840, -0.349, +0.018] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, +0.7, +34.7] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.7, +34.7] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.6, +51.6, -87.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.005, +0.020, -0.179] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+6.5, -0.2, +2.9] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.340619074] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.018, +0.025, +0.006] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.018, +0.035, +0.008] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-2.1, +0.6, +1.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+2.1, -0.5, -1.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+2.1, -0.5, -1.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.086, +0.201, -0.009] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+6.6, +3.0, -26.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178344.822677112] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.865, -0.379, +0.011] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.865, -0.379, +0.012] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.4, +35.8] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.4, +35.8] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.0, +50.6, -88.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.015, +0.215, -0.117] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+27.1, -17.9, +7.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.445682969] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.014, -0.014, +0.014] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.015, +0.011, +0.016] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-5.2, +0.6, +1.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+5.2, -0.5, -1.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+5.2, -0.5, -1.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.070, +0.222, -0.023] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.7, -1.9, -27.7] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178345.025906273] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.855, -0.378, +0.011] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.855, -0.375, +0.015] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, +0.9, +36.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.9, +36.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.7, +49.8, -87.3] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.016, +0.048, +0.007] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+0.6, +2.3, +1.4] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.545582923] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.018, -0.070, +0.018] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.021, -0.033, +0.019] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-7.7, +0.2, -0.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+7.7, -0.2, -0.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+7.7, -0.2, -0.0] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.054, +0.225, -0.009] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-2.3, -4.4, -29.7] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178345.230096645] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.854, -0.381, +0.013] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.854, -0.379, +0.014] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, +0.5, +36.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.2, +0.5, +36.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.7, +49.8, -88.0] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.013, +0.030, +0.006] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.2, +1.9, +1.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.649705287] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.018, -0.098, +0.022] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.023, -0.045, +0.022] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-10.9, -0.1, -0.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+10.9, +0.1, +0.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+10.9, +0.1, +0.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.056, +0.190, +0.008] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.3, -1.1, -23.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178345.432619040] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.871, -0.386, +0.011] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.871, -0.384, +0.012] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, +0.4, +36.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.2, +0.4, +36.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.6, +49.8, -88.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.006, +0.012, -0.009] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.4, -1.0, +0.3] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.752856678] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.028, -0.097, +0.022] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.034, -0.039, +0.021] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-12.1, -0.1, +0.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+12.1, +0.1, -0.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+12.1, +0.1, -0.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.060, +0.189, +0.010] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.5, +0.9, -22.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178345.634374412] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.867, -0.385, +0.011] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.867, -0.383, +0.012] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, +0.4, +36.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.2, +0.4, +36.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.6, +49.7, -88.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.003, +0.009, -0.001] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.3, -0.6, +0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.854862652] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.030, -0.121, +0.026] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.040, -0.049, +0.026] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-14.9, -0.1, +0.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+14.9, +0.1, -0.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+14.9, +0.1, -0.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.053, +0.172, -0.000] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.4, -0.4, -22.3] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178345.836800001] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.866, -0.387, +0.012] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.866, -0.384, +0.012] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, +0.4, +36.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.2, +0.4, +36.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.6, +49.8, -88.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.003, +0.009, +0.004] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.3, +0.4, -0.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179816.959029531] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.029, -0.143, +0.026] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.042, -0.059, +0.025] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-17.5, -0.3, +0.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+17.5, +0.3, +0.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+17.5, +0.3, +0.0] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.044, +0.168, +0.001] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.7, -2.2, -21.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178346.040432258] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.869, -0.388, +0.011] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.869, -0.386, +0.012] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, +0.4, +36.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.2, +0.4, +36.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.6, +49.8, -88.2] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.001, +0.006, -0.003] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.3, -0.0, +0.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.062934793] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.030, -0.168, +0.026] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.047, -0.073, +0.025] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-19.9, -0.4, -0.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+19.9, +0.3, +0.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+19.9, +0.3, +0.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.056, +0.173, +0.020] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-2.6, +0.1, -21.7] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178346.242467966] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.864, -0.387, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.864, -0.385, +0.011] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, +0.4, +36.5] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.2, +0.4, +36.5] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.6, +49.8, -88.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.000, +0.007, +0.001] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.0, +0.2, +0.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.171890549] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.033, -0.190, +0.024] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, -0.084, +0.023] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-22.4, -0.4, -0.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+22.4, +0.2, +0.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+22.4, +0.2, +0.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.052, +0.194, +0.026] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.2, -0.3, -24.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178346.445901842] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.863, -0.388, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.863, -0.386, +0.011] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, +0.4, +36.5] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.2, +0.4, +36.5] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.6, +49.9, -88.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.001, +0.008, +0.003] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+0.2, +0.1, +0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.268468822] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.034, -0.210, +0.023] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.060, -0.093, +0.021] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-24.5, -0.6, -0.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+24.5, +0.5, +0.6] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+24.5, +0.5, +0.6] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.043, +0.189, +0.005] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.7, -1.5, -21.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[INFO] [navsat_transform_node-14]: process started with pid [10895]
-[INFO] [ekf_node-15]: process started with pid [10899]
-[vio_odom_adapter_node-13] [INFO] [1783178346.646524661] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.857, -0.382, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.857, -0.380, +0.010] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.3, +0.3, +36.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.3, +0.3, +36.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.5, +50.2, -88.2] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.007, -0.013, +0.126] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-4.7, -1.1, -0.7] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.373324927] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.032, -0.230, +0.019] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.063, -0.104, +0.016] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-26.7, -0.9, -0.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+26.7, +0.8, +0.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+26.7, +0.8, +0.5] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.023, +0.144, +0.007] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.7, -1.3, -15.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178346.851501514] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.833, -0.363, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.833, -0.361, +0.011] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, +0.4, +35.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.2, +0.4, +35.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.8, +51.3, -88.0] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.001, -0.025, +0.209] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-7.8, +0.7, -0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.474566182] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.034, -0.219, +0.022] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.067, -0.089, +0.019] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-27.7, -0.9, +0.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+27.7, +0.9, +0.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+27.7, +0.9, +0.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.008, +0.059, +0.012] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.9, -0.8, -7.9] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178347.052957345] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.805, -0.343, +0.008] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.805, -0.342, +0.010] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.0, +0.4, +34.2] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.0, +0.4, +34.2] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.0, +52.2, -87.9] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.001, -0.019, +0.219] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-7.4, +0.9, +1.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.579088634] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.038, -0.228, +0.021] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.072, -0.096, +0.018] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-28.2, -1.0, -0.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+28.2, +0.9, +0.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+28.2, +0.9, +0.5] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.018, -0.019, +0.014] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.4, -0.5, +3.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178347.261289960] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.773, -0.318, +0.006] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.773, -0.317, +0.007] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, +0.3, +32.4] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.0, +0.3, +32.4] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.0, +54.0, -88.0] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.002, -0.071, +0.304] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-15.9, +1.6, -0.4] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.686769878] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.038, -0.221, +0.020] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.070, -0.092, +0.017] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-27.3, -1.1, -0.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+27.3, +0.9, +0.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+27.3, +0.9, +0.5] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.049, -0.085, +0.014] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.3, -0.8, +12.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178347.488593943] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.746, -0.297, +0.005] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.746, -0.297, +0.007] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.4, +31.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.4, +31.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.3, +55.3, -87.8] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.010, -0.034, +0.309] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-10.4, -2.0, +0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.791326573] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.041, -0.207, +0.020] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.069, -0.086, +0.017] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-25.6, -1.1, -0.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+25.6, +0.9, +0.6] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+25.6, +0.9, +0.6] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.061, -0.133, +0.026] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.5, +0.6, +18.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[navsat_transform_node-14] [WARN] [1783178347.687798752] [navsat_transform_node]: Parameter 'broadcast_utm_transform' has been deprecated. Please use 'broadcast_cartesian_transform' instead.
-[vio_odom_adapter_node-13] [INFO] [1783178347.709866860] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.707, -0.276, +0.004] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.707, -0.276, +0.006] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, +0.4, +29.4] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.4, +29.4] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.4, +56.9, -87.7] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.002, -0.023, +0.308] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-10.9, +1.1, -0.8] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.891614615] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.042, -0.190, +0.022] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.066, -0.079, +0.018] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-23.4, -1.1, -0.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+23.4, +0.9, +0.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+23.4, +0.9, +0.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.075, -0.165, +0.022] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.3, -0.1, +22.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178347.913222874] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.701, -0.282, +0.014] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.701, -0.281, +0.014] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, +0.1, +28.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.0, +0.1, +28.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.9, +57.4, -88.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.000, +0.009, +0.262] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-9.6, -1.6, +0.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179817.994897566] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.045, -0.172, +0.022] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.065, -0.071, +0.018] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-21.2, -1.1, -0.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+21.3, +0.8, +0.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+21.3, +0.8, +0.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.075, -0.177, +0.031] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.2, +1.3, +23.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178348.115340025] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.644, -0.260, +0.013] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.644, -0.260, +0.013] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.2, +26.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.1, +0.2, +26.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.1, +59.7, -87.9] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.014, +0.037, +0.259] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-5.8, +1.2, +0.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179818.097359600] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.043, -0.159, +0.025] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.058, -0.069, +0.022] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-18.7, -1.0, -0.8] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+18.7, +0.7, +1.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+18.7, +0.7, +1.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.070, -0.186, +0.017] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.8, +1.1, +24.7] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178348.320917266] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.596, -0.202, +0.001] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.595, -0.202, +0.003] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, +0.3, +23.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, +0.3, +23.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.9, +62.8, -87.3] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.006, -0.064, +0.290] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-12.7, -0.2, -1.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179818.200654936] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.044, -0.137, +0.026] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.055, -0.060, +0.023] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-15.9, -1.0, -1.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+15.9, +0.7, +1.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+15.9, +0.7, +1.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.077, -0.199, +0.009] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-3.3, -0.4, +24.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178348.524816066] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.545, -0.170, -0.001] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.545, -0.173, +0.003] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+1.1, +0.5, +21.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+1.1, +0.5, +21.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+94.3, +64.5, -86.6] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.039, +0.012, -0.004] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-1.7, -7.1, +1.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179818.303219857] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.047, -0.120, +0.026] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.055, -0.054, +0.023] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-13.5, -1.1, -1.6] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+13.5, +0.7, +1.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+13.5, +0.7, +1.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.072, -0.195, +0.008] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.7, +0.2, +24.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178348.725660753] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.541, -0.173, +0.001] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.540, -0.176, +0.003] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.8, +0.1, +21.7] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.8, +0.1, +21.7] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.1, +64.6, -87.7] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.003, +0.001, +0.015] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.4, +0.9, -0.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179818.409122428] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.049, -0.091, +0.025] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, -0.037, +0.022] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-11.0, -0.9, -1.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+11.0, +0.6, +1.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+11.0, +0.6, +1.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.070, -0.212, +0.010] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.7, +0.6, +24.7] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178348.929924087] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.540, -0.173, +0.003] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.540, -0.177, +0.005] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.8, +0.1, +21.8] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.8, +0.1, +21.8] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.2, +64.6, -87.6] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.002, +0.003, -0.001] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+0.0, -0.2, +0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179818.517261204] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.050, -0.073, +0.022] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, -0.029, +0.020] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-9.0, -0.7, -1.9] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+9.0, +0.4, +1.9] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+9.0, +0.4, +1.9] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.060, -0.208, +0.012] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.9, +2.2, +24.9] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178349.135500368] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.538, -0.176, +0.003] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.538, -0.179, +0.005] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.7, +0.1, +21.7] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.7, +0.1, +21.7] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+93.0, +64.7, -87.6] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.008, -0.008, +0.019] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-2.4, -1.8, -0.4] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179818.615755373] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.054, -0.058, +0.017] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.057, -0.024, +0.016] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-7.1, -0.5, -2.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+7.1, +0.2, +2.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+7.1, +0.2, +2.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.059, -0.187, +0.018] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.6, +1.4, +22.3] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178349.335029644] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.519, -0.171, +0.002] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.519, -0.173, +0.003] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, -0.1, +20.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, -0.1, +20.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.4, +65.5, -87.9] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.003, -0.023, +0.171] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-9.9, -0.9, -2.7] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179818.719364392] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.059, -0.043, +0.013] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.060, -0.020, +0.012] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-4.6, -0.3, -2.5] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+4.7, +0.1, +2.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+4.7, +0.1, +2.5] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.045, -0.129, +0.009] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-2.4, -0.2, +16.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178349.541940855] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.478, -0.158, +0.002] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.478, -0.159, +0.002] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.0, -0.2, +19.3] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.0, -0.2, +19.3] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.9, +67.0, -88.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.014, -0.025, +0.292] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-9.6, +1.0, -1.4] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179818.826686540] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.059, -0.007, +0.011] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.060, +0.007, +0.010] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-2.9, -0.3, -2.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+3.0, +0.2, +2.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+3.0, +0.2, +2.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.022, -0.086, +0.002] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.1, +0.6, +9.7] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178349.743441935] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.396, -0.129, +0.001] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.396, -0.128, +0.000] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.2, +16.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.2, -0.2, +16.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.1, +70.2, -87.7] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.008, -0.085, +0.377] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-13.6, -1.0, +1.9] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179818.929264998] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.060, -0.001, +0.009] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.060, +0.009, +0.009] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-2.1, -0.2, -2.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+2.1, +0.2, +2.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+2.1, +0.2, +2.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.017, -0.075, -0.002] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.6, +0.7, +9.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178349.949884638] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.313, -0.102, -0.001] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.313, -0.102, -0.003] m
-[vio_odom_adapter_node-13]   raw dRPY              = [-0.1, -0.2, +13.4] deg
-[vio_odom_adapter_node-13]   out dRPY              = [-0.1, -0.2, +13.4] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.3, +73.0, -87.6] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.004, -0.052, +0.406] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-12.1, +0.5, -1.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179819.041232847] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.058, +0.003, +0.007] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.058, +0.009, +0.006] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-1.2, -0.1, -2.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+1.2, +0.0, +2.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+1.2, +0.0, +2.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.016, -0.043, -0.010] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.9, +1.3, +8.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178350.153553021] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.231, -0.077, -0.002] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.231, -0.078, -0.005] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, -0.5, +10.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.1, -0.5, +10.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+91.9, +76.2, -88.2] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.006, -0.066, +0.416] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-15.3, +0.3, -3.0] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179819.144769637] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.056, +0.009, +0.004] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.056, +0.010, +0.004] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.3, -0.1, -2.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.3, +0.0, +2.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.3, +0.0, +2.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.026, -0.049, -0.023] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.4, -0.1, +9.9] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178350.358047408] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.156, -0.057, +0.000] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.156, -0.059, -0.002] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, -0.6, +7.3] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, -0.6, +7.3] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.2, +79.1, -88.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.000, -0.080, +0.386] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-12.9, -0.9, -0.6] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[ekf_node-8] Failed to meet update rate! Took 0.026247987999999999875seconds. Try decreasing the rate, limiting sensor output frequency, or limiting the number of sensors.
+[vio_odom_adapter_node-13] [INFO] [1783179819.249544649] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.055, +0.011, +0.003] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.055, +0.011, +0.003] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, -0.0, -2.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.2, +0.0, +2.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.2, +0.0, +2.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.022, -0.054, -0.023] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.3, +0.5, +8.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178350.561072647] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.077, -0.040, -0.000] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.077, -0.042, -0.003] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.2, -0.6, +4.6] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.2, -0.6, +4.6] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+92.7, +81.8, -87.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.002, -0.091, +0.386] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-12.5, -0.5, +2.9] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179819.351348786] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.058, +0.015, +0.001] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.058, +0.013, +0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, +0.1, -2.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.4, -0.1, +2.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.4, -0.1, +2.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.013, +0.008, -0.009] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.1, +0.5, +0.8] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178350.761225993] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [+0.007, -0.023, +0.002] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [+0.007, -0.025, +0.001] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.5, -0.3, +2.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.5, -0.3, +2.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+96.3, +84.2, -84.0] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.022, -0.057, +0.318] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-9.8, +1.1, -3.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179819.457335586] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.056, +0.014, +0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.056, +0.012, +0.003] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, +0.1, -2.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.4, -0.1, +2.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.4, -0.1, +2.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.016, +0.015, -0.012] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.2, +0.7, -3.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178350.963831078] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.043, -0.007, +0.004] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.043, -0.011, +0.004] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.8, -0.1, -0.5] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.8, -0.1, -0.5] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+105.9, +86.7, -74.6] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.027, -0.115, +0.123] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-6.8, +3.9, -0.9] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179819.560128617] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.054, +0.010, +0.004] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, +0.011, +0.004] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.2, -0.0, -2.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.2, +0.0, +2.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.2, +0.0, +2.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.022, +0.074, -0.028] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.2, -2.8, -11.0] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178351.183545588] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.050, -0.005, +0.007] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.049, -0.009, +0.005] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.9, -0.4, -1.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.9, -0.4, -1.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+103.2, +87.4, -77.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.007, -0.012, +0.022] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-3.2, -0.1, -1.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179819.664878156] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.053, -0.015, +0.005] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.053, -0.004, +0.004] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-2.3, -0.2, -2.4] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+2.3, +0.1, +2.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+2.3, +0.1, +2.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.060, +0.207, -0.024] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+3.4, -0.8, -22.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178351.387082026] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.052, +0.001, +0.007] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.052, -0.002, +0.005] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.7, -0.5, -0.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.7, -0.5, -0.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+100.0, +87.3, -80.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.005, -0.006, +0.025] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+0.2, +0.6, -0.6] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179819.767163987] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.052, -0.021, +0.010] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.053, +0.000, +0.009] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-4.4, -0.3, -1.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+4.4, +0.1, +1.7] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+4.4, +0.1, +1.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.084, +0.235, -0.016] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+4.2, +1.0, -26.6] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178351.590385522] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.052, +0.000, +0.009] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.052, -0.003, +0.006] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.7, -0.5, -0.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.7, -0.5, -0.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+99.0, +87.2, -81.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.004, -0.000, +0.015] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+0.3, +0.3, -0.3] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179819.870956761] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.049, -0.049, +0.016] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.051, -0.011, +0.015] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-7.8, -0.4, -1.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+7.9, +0.2, +1.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+7.9, +0.2, +1.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.084, +0.241, -0.020] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.8, -0.7, -30.4] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178351.791308772] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.053, -0.001, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.053, -0.004, +0.007] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.6, -0.5, -0.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.6, -0.5, -0.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+98.7, +87.2, -81.7] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.002, +0.002, +0.012] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.0, -0.0, -0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179819.974353830] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.044, -0.069, +0.019] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.049, -0.018, +0.017] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-10.4, -0.5, -1.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+10.4, +0.3, +1.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+10.4, +0.3, +1.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.068, +0.234, -0.026] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.2, -2.6, -29.5] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178351.994122988] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.054, -0.003, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, -0.006, +0.008] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.5, -0.5, -0.9] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.5, -0.5, -0.9] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+98.4, +87.3, -81.9] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.001, +0.006, +0.010] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.0, -0.1, -0.4] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179820.075896542] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.040, -0.103, +0.021] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.049, -0.036, +0.017] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-13.7, -1.1, -1.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+13.7, +0.8, +1.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+13.7, +0.8, +1.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.052, +0.235, -0.029] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.6, -4.9, -29.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178352.206836674] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.053, -0.007, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.053, -0.010, +0.008] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.5, -0.5, -1.0] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.5, -0.5, -1.0] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+98.4, +87.3, -81.9] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.001, +0.005, +0.008] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.9, -0.1, -0.3] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179820.176452216] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.040, -0.118, +0.024] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.052, -0.039, +0.019] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-16.4, -1.3, -1.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+16.4, +0.9, +1.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+16.4, +0.9, +1.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.076, +0.206, -0.015] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-3.6, -1.3, -26.2] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178352.408869657] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.054, -0.008, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, -0.011, +0.008] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, -0.5, -1.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, -0.5, -1.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+99.4, +87.5, -80.8] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.000, +0.004, +0.007] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.9, -0.2, -0.2] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179820.280062066] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.038, -0.149, +0.024] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.055, -0.056, +0.020] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-19.5, -1.5, -1.3] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+19.5, +1.0, +1.7] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+19.5, +1.0, +1.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.078, +0.225, -0.009] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.2, -0.3, -25.9] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178352.615455790] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.053, -0.009, +0.010] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.053, -0.011, +0.007] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, -0.5, -1.2] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, -0.5, -1.2] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+98.8, +87.5, -81.5] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.001, +0.004, -0.004] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [-0.3, -0.3, -0.6] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179820.379978532] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.035, -0.179, +0.022] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.057, -0.072, +0.018] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-22.5, -1.5, -1.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+22.5, +0.9, +1.7] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+22.5, +0.9, +1.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.090, +0.247, -0.012] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.3, +1.3, -29.8] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178352.818535878] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.054, -0.009, +0.009] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, -0.011, +0.007] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, -0.5, -1.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, -0.5, -1.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+99.1, +87.5, -81.1] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.000, +0.008, -0.000] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+0.1, -0.0, -0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179820.488574744] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.034, -0.198, +0.022] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.062, -0.078, +0.018] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-25.4, -1.4, -0.9] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+25.4, +0.9, +1.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+25.4, +0.9, +1.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.078, +0.224, -0.013] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.4, +0.5, -26.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178353.022548794] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.054, -0.010, +0.009] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, -0.012, +0.006] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.4, -0.5, -1.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.4, -0.5, -1.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+99.4, +87.5, -80.8] deg
-[vio_odom_adapter_node-13]   out twist linear     = [+0.000, +0.008, -0.001] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+0.1, -0.0, -0.3] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179820.588917444] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.034, -0.220, +0.019] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.067, -0.090, +0.015] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-27.8, -1.4, -0.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+27.8, +0.9, +1.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+27.8, +0.9, +1.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.060, +0.176, -0.008] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+1.2, +0.5, -20.1] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
-[vio_odom_adapter_node-13] [INFO] [1783178353.233909498] [vio_odom_adapter_node]: [VIO_DIAG]
-[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.054, -0.011, +0.009] m
-[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, -0.013, +0.006] m
-[vio_odom_adapter_node-13]   raw dRPY              = [+0.3, -0.5, -1.1] deg
-[vio_odom_adapter_node-13]   out dRPY              = [+0.3, -0.5, -1.1] deg
-[vio_odom_adapter_node-13]   out abs RPY           = [+99.5, +87.5, -80.7] deg
-[vio_odom_adapter_node-13]   out twist linear     = [-0.000, +0.011, +0.000] m/s
-[vio_odom_adapter_node-13]   out twist angular    = [+0.4, +0.2, +0.1] deg/s
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179820.691648839] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.034, -0.235, +0.014] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.071, -0.098, +0.011] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-29.5, -1.5, -0.6] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+29.5, +1.0, +1.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+29.5, +1.0, +1.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.020, +0.089, -0.003] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.8, -1.3, -9.9] deg/s
 [vio_odom_adapter_node-13]   msg frame             = global -> imu
 [vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
 [vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
 [vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179820.796741279] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.034, -0.241, +0.013] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.072, -0.101, +0.009] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-30.0, -1.5, -0.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+30.1, +1.0, +1.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+30.1, +1.0, +1.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.002, +0.018, +0.005] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.4, -0.9, -2.3] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179820.904091044] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.034, -0.238, +0.012] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.072, -0.100, +0.009] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-29.6, -1.6, -0.8] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+29.6, +1.0, +1.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+29.6, +1.0, +1.5] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.036, -0.054, +0.004] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.3, -1.2, +9.2] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179821.020651406] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.035, -0.222, +0.016] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.070, -0.089, +0.011] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-28.3, -1.6, -0.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+28.3, +1.1, +1.4] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+28.3, +1.1, +1.4] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.050, -0.106, +0.006] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+2.3, -0.0, +15.9] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179821.121063998] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.037, -0.207, +0.017] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.067, -0.082, +0.013] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-26.4, -1.6, -0.6] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+26.4, +1.1, +1.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+26.4, +1.1, +1.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.058, -0.152, +0.016] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.9, +1.2, +21.6] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179821.224885189] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.039, -0.192, +0.018] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.065, -0.076, +0.014] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-24.6, -1.5, -0.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+24.6, +1.1, +1.2] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+24.6, +1.1, +1.2] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.073, -0.182, +0.013] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.1, +0.0, +24.9] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179821.327680940] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.041, -0.171, +0.019] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.062, -0.066, +0.014] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-21.9, -1.4, -0.8] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+21.9, +1.0, +1.3] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+21.9, +1.0, +1.3] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.079, -0.208, +0.017] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.8, +0.5, +26.9] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179821.438726202] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.043, -0.139, +0.020] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.058, -0.051, +0.016] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-18.4, -1.3, -1.2] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+18.4, +0.9, +1.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+18.4, +0.9, +1.5] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.080, -0.236, +0.024] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.7, +1.7, +29.1] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179821.540455069] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.046, -0.113, +0.020] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.056, -0.039, +0.018] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-15.3, -1.0, -1.5] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+15.3, +0.6, +1.7] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+15.3, +0.6, +1.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.077, -0.239, +0.018] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-1.0, +1.5, +27.7] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179821.645264770] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.048, -0.077, +0.018] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.054, -0.020, +0.016] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-11.8, -0.7, -1.5] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+11.8, +0.4, +1.6] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+11.8, +0.4, +1.6] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.073, -0.239, +0.019] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.1, +2.2, +28.1] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179821.746682674] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.052, -0.059, +0.017] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.056, -0.013, +0.016] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-9.4, -0.5, -1.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+9.5, +0.2, +1.7] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+9.5, +0.2, +1.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.068, -0.237, +0.019] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.0, +2.0, +28.7] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179821.849916916] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.054, -0.032, +0.012] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.056, -0.001, +0.012] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-6.2, -0.2, -1.7] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+6.2, -0.0, +1.7] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+6.2, -0.0, +1.7] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.054, -0.199, +0.014] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.1, +1.7, +24.2] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[INFO] [navsat_transform_node-14]: process started with pid [17220]
+[INFO] [ekf_node-15]: process started with pid [17222]
+[vio_odom_adapter_node-13] [INFO] [1783179821.953564433] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.056, -0.015, +0.009] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.057, +0.006, +0.009] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-4.2, +0.0, -1.9] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+4.2, -0.1, +1.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+4.2, -0.1, +1.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.045, -0.166, +0.011] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-2.6, +0.5, +19.3] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179822.055824309] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.059, +0.008, +0.005] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.060, +0.021, +0.006] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-2.6, +0.1, -2.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+2.6, -0.1, +2.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+2.6, -0.1, +2.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.039, -0.151, +0.011] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-4.9, -0.6, +15.2] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[ekf_node-8] Failed to meet update rate! Took 0.021326686000000000948seconds. Try decreasing the rate, limiting sensor output frequency, or limiting the number of sensors.
+[vio_odom_adapter_node-13] [INFO] [1783179822.243202023] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.060, +0.017, +0.003] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.061, +0.024, +0.003] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-1.4, +0.0, -2.5] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+1.4, -0.1, +2.5] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+1.4, -0.1, +2.5] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.036, -0.129, +0.006] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-3.4, -0.7, +13.5] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179822.362399254] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.063, +0.007, +0.001] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.063, +0.014, +0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-1.3, +0.0, -2.8] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+1.3, -0.1, +2.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+1.3, -0.1, +2.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.038, -0.115, +0.009] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-3.2, -0.9, +13.1] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179822.471735319] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.065, +0.010, -0.001] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.065, +0.013, -0.000] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.7, +0.1, -3.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [+0.7, -0.1, +3.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [+0.7, -0.1, +3.0] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.029, -0.110, +0.014] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-2.4, +0.6, +12.5] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[navsat_transform_node-14] [WARN] [1783179822.516947733] [navsat_transform_node]: Parameter 'broadcast_utm_transform' has been deprecated. Please use 'broadcast_cartesian_transform' instead.
+[vio_odom_adapter_node-13] [INFO] [1783179822.601738094] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.066, +0.015, -0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.066, +0.015, -0.001] m
+[vio_odom_adapter_node-13]   raw dRPY              = [-0.0, +0.2, -3.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.0, -0.2, +3.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.0, -0.2, +3.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.007, -0.047, +0.013] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+4.5, +3.9, +5.4] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179822.708560498] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.068, +0.016, -0.001] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.068, +0.015, -0.001] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.1, -2.9] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, -0.1, +2.9] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, -0.1, +2.9] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.008, -0.019, -0.001] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.9, -4.8, +0.5] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179822.838476387] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.069, +0.019, +0.001] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.069, +0.018, +0.001] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.0, -2.9] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, -0.0, +2.9] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, -0.0, +2.9] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.005, -0.034, +0.005] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.4, -1.6, -0.3] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179822.944875436] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.065, +0.020, -0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.065, +0.020, -0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, -0.0, -2.8] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.0, +2.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, +0.0, +2.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.007, -0.010, -0.006] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.7, -1.0, -0.3] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179823.058061216] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.065, +0.021, -0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.065, +0.020, -0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, -0.0, -2.8] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.1, +2.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, +0.1, +2.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.003, -0.004, -0.004] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.1, +1.1, -0.1] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179823.152845037] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.065, +0.021, -0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.065, +0.020, -0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, -0.0, -2.8] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.0, +2.8] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, +0.0, +2.8] deg
+[vio_odom_adapter_node-13]   out twist linear     = [+0.000, +0.002, -0.005] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.4, +0.4, -0.3] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179823.259704051] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.065, +0.008, -0.000] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.065, +0.008, -0.000] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, -0.1, -3.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.1, +3.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, +0.1, +3.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.005, +0.007, -0.012] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.3, +0.2, -0.1] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179823.371038738] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.061, +0.006, +0.001] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.061, +0.006, +0.000] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, -0.1, -3.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.1, +3.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, +0.1, +3.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.005, +0.015, -0.023] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [-0.2, +0.3, -0.2] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179823.471451458] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.055, +0.000, +0.000] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.055, -0.000, +0.000] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, -0.1, -3.1] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, +0.1, +3.1] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, +0.1, +3.1] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.003, +0.027, -0.025] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.4, -0.2, +0.1] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179823.587308094] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.060, +0.008, -0.003] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.060, +0.008, -0.003] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.0, -3.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, -0.0, +3.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, -0.0, +3.0] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.004, +0.012, -0.013] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.1, -0.0, -0.2] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
+[vio_odom_adapter_node-13] [INFO] [1783179823.684103626] [vio_odom_adapter_node]: [VIO_DIAG]
+[vio_odom_adapter_node-13]   raw dp_global_imu     = [-0.058, +0.007, -0.002] m
+[vio_odom_adapter_node-13]   out dp_odom_base      = [-0.058, +0.006, -0.002] m
+[vio_odom_adapter_node-13]   raw dRPY              = [+0.1, +0.0, -3.0] deg
+[vio_odom_adapter_node-13]   out dRPY              = [-0.1, -0.0, +3.0] deg
+[vio_odom_adapter_node-13]   out abs RPY           = [-0.1, -0.0, +3.0] deg
+[vio_odom_adapter_node-13]   out twist linear     = [-0.005, +0.017, -0.017] m/s
+[vio_odom_adapter_node-13]   out twist angular    = [+0.2, -0.0, -0.2] deg/s
+[vio_odom_adapter_node-13]   msg frame             = global -> imu
+[vio_odom_adapter_node-13]   adapter frame         = odom -> base_link
+[vio_odom_adapter_node-13]   tf used               = base_link -> openvins_imu_link
+[vio_odom_adapter_node-13]   invert_orientation    = True
+[vio_odom_adapter_node-13]   zero_initial_rotation = True
+[vio_odom_adapter_node-13]   invert_rel_rotation   = True
 ^C[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
-[navsat_transform_node-14] [INFO] [1783178353.293086816] [rclcpp]: signal_handler(signal_value=2)
-[INFO] [teleop_node-2]: process has finished cleanly [pid 9264]
-[teleop_node-2] [INFO] [1783178353.293171141] [rclcpp]: signal_handler(signal_value=2)
-[INFO] [ekf_node-8]: process has finished cleanly [pid 9363]
-[INFO] [robot_state_publisher-3]: process has finished cleanly [pid 9266]
-[INFO] [ublox_gps_node-5]: process has finished cleanly [pid 9270]
-[INFO] [navsat_transform_node-14]: process has finished cleanly [pid 10895]
-[joy_node-1] [INFO] [1783178353.293192102] [rclcpp]: signal_handler(signal_value=2)
-[INFO] [joy_node-1]: process has finished cleanly [pid 9262]
-[ekf_node-15] [INFO] [1783178353.293108737] [rclcpp]: signal_handler(signal_value=2)
-[INFO] [ekf_node-15]: process has finished cleanly [pid 10899]
-[ekf_node-8] [INFO] [1783178353.293145187] [rclcpp]: signal_handler(signal_value=2)
-[ublox_gps_node-5] [INFO] [1783178353.293963159] [rclcpp]: signal_handler(signal_value=2)
-[robot_state_publisher-3] [INFO] [1783178353.294286699] [rclcpp]: signal_handler(signal_value=2)
-[run_subscribe_msckf-12] [INFO] [1783178353.302468525] [rclcpp]: signal_handler(signal_value=2)
-[ublox_gps_node-5] [ERROR] [1783178353.316111814] [ublox_gps_node]: U-Blox ASIO input buffer read error: Operation aborted., 0
-[ublox_gps_node-5] [INFO] [1783178353.316722285] [ublox_gps_node]: Closed connection to /dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00.
-[vehicle_interface_node-10] [INFO] [1783178353.327608153] [vehicle_interface_node]: Shutting down gracefully...
-[hwt905_imu_node-6] [INFO] [1783178353.365797528] [hwt905_imu_node]: IMU読み取りループを終了します
+[joy_node-1] [INFO] [1783179823.761382442] [rclcpp]: signal_handler(signal_value=2)
+[navsat_transform_node-14] [INFO] [1783179823.761429613] [rclcpp]: signal_handler(signal_value=2)
+[navsat_transform_node-14] terminate called after throwing an instance of 'rclcpp::exceptions::RCLError'
+[navsat_transform_node-14]   what():  Couldn't initialize rcl timer handle: the given context is not valid, either rcl_init() was not called or rcl_shutdown() was called., at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/guard_condition.c:67
+[ekf_node-15] [INFO] [1783179823.761281603] [rclcpp]: signal_handler(signal_value=2)
+[run_subscribe_msckf-12] [INFO] [1783179823.761467343] [rclcpp]: signal_handler(signal_value=2)
+[ublox_gps_node-5] [INFO] [1783179823.761690045] [rclcpp]: signal_handler(signal_value=2)
+[robot_state_publisher-3] [INFO] [1783179823.763052147] [rclcpp]: signal_handler(signal_value=2)
+[teleop_node-2] [INFO] [1783179823.765745052] [rclcpp]: signal_handler(signal_value=2)
+[ublox_gps_node-5] [ERROR] [1783179823.790090937] [ublox_gps_node]: U-Blox ASIO input buffer read error: Operation aborted., 0
+[ublox_gps_node-5] [INFO] [1783179823.790907628] [ublox_gps_node]: Closed connection to /dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00.
+[INFO] [robot_state_publisher-3]: process has finished cleanly [pid 15613]
+[hwt905_imu_node-6] [INFO] [1783179823.812650276] [hwt905_imu_node]: IMU読み取りループを終了します
+[ekf_node-8] [INFO] [1783179823.828890819] [rclcpp]: signal_handler(signal_value=2)
+[INFO] [ublox_gps_node-5]: process has finished cleanly [pid 15617]
+[vehicle_interface_node-10] [INFO] [1783179823.843473976] [vehicle_interface_node]: Shutting down gracefully...
+[INFO] [ekf_node-8]: process has finished cleanly [pid 15682]
+[INFO] [teleop_node-2]: process has finished cleanly [pid 15611]
+[INFO] [joy_node-1]: process has finished cleanly [pid 15609]
+[INFO] [ekf_node-15]: process has finished cleanly [pid 17222]
 [oakd_vio_rgbd_node-11] Traceback (most recent call last):
 [oakd_vio_rgbd_node-11]   File "/home/nvidia/ros2_ws/install/depthai_driver/lib/depthai_driver/oakd_vio_rgbd_node", line 11, in <module>
 [oakd_vio_rgbd_node-11]     load_entry_point('depthai-driver==0.0.0', 'console_scripts', 'oakd_vio_rgbd_node')()
@@ -880,24 +1407,6 @@
 [oakd_vio_rgbd_node-11]     rclpy.spin(node)
 [oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py", line 191, in spin
 [oakd_vio_rgbd_node-11]     executor.spin_once()
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 717, in spin_once
-[oakd_vio_rgbd_node-11]     handler()
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/task.py", line 239, in __call__
-[oakd_vio_rgbd_node-11]     self._handler.send(None)
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 429, in handler
-[oakd_vio_rgbd_node-11]     await call_coroutine(entity, arg)
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 343, in _execute_timer
-[oakd_vio_rgbd_node-11]     await await_or_execute(tmr.callback)
-[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 118, in await_or_execute
-[oakd_vio_rgbd_node-11]     return callback(*args)
-[oakd_vio_rgbd_node-11]   File "/home/nvidia/ros2_ws/install/depthai_driver/lib/python3.8/site-packages/depthai_driver/oakd_vio_rgbd_node.py", line 169, in poll
-[oakd_vio_rgbd_node-11]     left = self.q_left.tryGet()
-[oakd_vio_rgbd_node-11] KeyboardInterrupt
-[INFO] [ntrip_client_node-9]: process has finished cleanly [pid 9366]
-[INFO] [joint_state_publisher-4]: process has finished cleanly [pid 9268]
-[INFO] [hwt905_imu_node-6]: process has finished cleanly [pid 9359]
-[INFO] [wheel_odometry_node-7]: process has finished cleanly [pid 9361]
-[INFO] [vio_odom_adapter_node-13]: process has finished cleanly [pid 9423]
-[INFO] [vehicle_interface_node-10]: process has finished cleanly [pid 9417]
-[ERROR] [run_subscribe_msckf-12]: process has died [pid 9421, exit code -11, cmd '/home/nvidia/ros2_ws/install/ov_msckf/lib/ov_msckf/run_subscribe_msckf --ros-args -r __ns:=/ov_msckf --params-file /tmp/launch_params_ak4bbisb --params-file /tmp/launch_params_zm1pywwb --params-file /tmp/launch_params_7jth29e5 --params-file /tmp/launch_params_021l0qa8 --params-file /tmp/launch_params_ar6f7ghw'].
-[ERROR] [oakd_vio_rgbd_node-11]: process has died [pid 9419, exit code -2, cmd '/home/nvidia/ros2_ws/install/depthai_driver/lib/depthai_driver/oakd_vio_rgbd_node --ros-args -r __node:=oakd_vio_rgbd_node'].
+[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 711, in spin_once
+[oakd_vio_rgbd_node-11]     handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+[oakd_vio_rgbd_node-11]   File "/opt/ros/foxy/lib/python3.
