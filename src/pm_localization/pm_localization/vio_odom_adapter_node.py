@@ -331,6 +331,55 @@ def transform_twist_and_covariance_ros_approx(
     return v_base, w_base, cov_mat6_to_list(P_out)
 
 
+def linear_velocity_fix_matrix():
+    """
+    Axis/sign correction for already-converted v_base.
+
+    Current observed mapping:
+      corrected vx = - current vz
+      corrected vy = - current vy
+      corrected vz = - current vx
+
+    v_corrected = A_v @ v_current
+    """
+    return np.array(
+        [
+            [0.0,  0.0, -1.0],
+            [0.0, -1.0,  0.0],
+            [-1.0, 0.0,  0.0],
+        ],
+        dtype=float,
+    )
+
+
+def correct_linear_velocity(v_base):
+    """
+    Correct only linear velocity axes/signs.
+    Angular velocity is intentionally not corrected here.
+    """
+    A_v = linear_velocity_fix_matrix()
+    return A_v @ v_base
+
+
+def correct_linear_velocity_in_twist_covariance(twist_cov_base):
+    """
+    Apply the linear-velocity axis/sign correction to the 6x6 twist covariance.
+
+    Ordering:
+      [vx, vy, vz, wx, wy, wz]
+
+    Since angular velocity is not corrected yet:
+      A = block_diag(A_v, I_3)
+    """
+    P = cov_list_to_mat6(twist_cov_base)
+
+    A = np.eye(6, dtype=float)
+    A[0:3, 0:3] = linear_velocity_fix_matrix()
+
+    P_out = A @ P @ A.T
+    return cov_mat6_to_list(P_out)
+
+
 class VioOdomAdapterNode(Node):
     """
     Convert OpenVINS odometry:
@@ -610,6 +659,7 @@ class VioOdomAdapterNode(Node):
         T_odom_base,
         v_base=None,
         w_base=None,
+        v_base_corrected=None,
     ):
         if not self.enable_diagnostics:
             return
@@ -651,6 +701,23 @@ class VioOdomAdapterNode(Node):
         r_abs, p_abs, y_abs = rpy_from_rot(T_odom_base[:3, :3])
 
         twist_text = ""
+        if v_base is not None and w_base is not None:
+            twist_text = (
+                f"\n  raw twist linear     = "
+                f"[{v_base[0]:+.3f}, {v_base[1]:+.3f}, {v_base[2]:+.3f}] m/s\n"
+                f"  raw twist angular    = "
+                f"[{rad2deg(w_base[0]):+.1f}, "
+                f"{rad2deg(w_base[1]):+.1f}, "
+                f"{rad2deg(w_base[2]):+.1f}] deg/s"
+            )
+
+            if v_base_corrected is not None:
+                twist_text += (
+                    f"\n  corrected twist lin  = "
+                    f"[{v_base_corrected[0]:+.3f}, "
+                    f"{v_base_corrected[1]:+.3f}, "
+                    f"{v_base_corrected[2]:+.3f}] m/s"
+                )
 
         pose_diff_text = ""
         if v_pose_odom is not None and rpy_rate_pose is not None:
@@ -666,30 +733,28 @@ class VioOdomAdapterNode(Node):
 
         twist_diff_text = ""
         if (
-            v_base is not None
-            and w_base is not None
+            w_base is not None
             and v_pose_odom is not None
             and rpy_rate_pose is not None
         ):
-            dv = v_base - v_pose_odom
+            if v_base_corrected is not None:
+                dv = v_base_corrected - v_pose_odom
+            elif v_base is not None:
+                dv = v_base - v_pose_odom
+            else:
+                dv = None
+
             dw = w_base - rpy_rate_pose
 
-            twist_diff_text = (
-                f"\n  twist - pose linear = "
-                f"[{dv[0]:+.3f}, {dv[1]:+.3f}, {dv[2]:+.3f}] m/s\n"
-                f"  twist - pose angular= "
-                f"[{rad2deg(dw[0]):+.1f}, "
-                f"{rad2deg(dw[1]):+.1f}, "
-                f"{rad2deg(dw[2]):+.1f}] deg/s"
-            )
-
-        if v_base is not None and w_base is not None:
-            twist_text = (
-                f"\n  out twist linear     = "
-                f"[{v_base[0]:+.3f}, {v_base[1]:+.3f}, {v_base[2]:+.3f}] m/s\n"
-                f"  out twist angular    = "
-                f"[{rad2deg(w_base[0]):+.1f}, {rad2deg(w_base[1]):+.1f}, {rad2deg(w_base[2]):+.1f}] deg/s"
-            )
+            if dv is not None:
+                twist_diff_text = (
+                    f"\n  twist - pose linear = "
+                    f"[{dv[0]:+.3f}, {dv[1]:+.3f}, {dv[2]:+.3f}] m/s\n"
+                    f"  twist - pose angular= "
+                    f"[{rad2deg(dw[0]):+.1f}, "
+                    f"{rad2deg(dw[1]):+.1f}, "
+                    f"{rad2deg(dw[2]):+.1f}] deg/s"
+                )
 
         self.get_logger().info(
             "[VIO_DIAG]\n"
@@ -806,31 +871,39 @@ class VioOdomAdapterNode(Node):
         # T_base_imu maps imu coordinates into base_link coordinates.
         p_imu_in_base = self.T_base_imu[:3, 3]
 
-        v_base, w_base, twist_cov_base = transform_twist_and_covariance_ros_approx(
+        v_base_raw, w_base_raw, twist_cov_base_raw = transform_twist_and_covariance_ros_approx(
             msg.twist.twist,
             msg.twist.covariance,
             R_base_imu,
             p_imu_in_base,
         )
 
+        # Correct only linear velocity for now.
+        # Angular velocity is intentionally kept raw until roll/pitch/yaw-rate tests are done.
+        v_base_corrected = correct_linear_velocity(v_base_raw)
+        twist_cov_partially_corrected = correct_linear_velocity_in_twist_covariance(
+            twist_cov_base_raw
+        )       
+
         self.maybe_print_diagnostics(
             msg,
             T_global_imu,
             T_global_base,
             T_odom_base_pub,
-            v_base,
-            w_base,
+            v_base_raw,
+            w_base_raw,
+            v_base_corrected,
         )
 
-        out.twist.twist.linear.x = float(v_base[0])
-        out.twist.twist.linear.y = float(v_base[1])
-        out.twist.twist.linear.z = float(v_base[2])
+        out.twist.twist.linear.x = float(v_base_corrected[0])
+        out.twist.twist.linear.y = float(v_base_corrected[1])
+        out.twist.twist.linear.z = float(v_base_corrected[2])
 
-        out.twist.twist.angular.x = float(w_base[0])
-        out.twist.twist.angular.y = float(w_base[1])
-        out.twist.twist.angular.z = float(w_base[2])
+        out.twist.twist.angular.x = float(w_base_raw[0])
+        out.twist.twist.angular.y = float(w_base_raw[1])
+        out.twist.twist.angular.z = float(w_base_raw[2])
 
-        out.twist.covariance = twist_cov_base
+        out.twist.covariance = twist_cov_partially_corrected
 
         self.pub.publish(out)
 
