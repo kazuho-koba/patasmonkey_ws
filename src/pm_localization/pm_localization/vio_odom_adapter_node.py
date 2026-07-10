@@ -113,6 +113,25 @@ def rpy_from_rot(R):
 
     return roll, pitch, yaw
 
+def yaw_to_rot(yaw):
+    """
+    Create a rotation matrix containing yaw only.
+
+    roll  = 0
+    pitch = 0
+    yaw   = input yaw
+    """
+    c = math.cos(yaw)
+    s = math.sin(yaw)
+
+    return np.array(
+        [
+            [c, -s, 0.0],
+            [s,  c, 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=float,
+    )
 
 def rad2deg(x):
     return x * 180.0 / math.pi
@@ -207,6 +226,54 @@ def skew(v):
         dtype=float,
     )
 
+def so3_exp(rotvec):
+    """
+    Exponential map from a 3D rotation vector to a 3x3 rotation matrix.
+
+    rotvec:
+      rotation axis * rotation angle [rad]
+    """
+    rotvec = np.asarray(rotvec, dtype=float)
+    theta = np.linalg.norm(rotvec)
+
+    if theta < 1e-12:
+        return np.eye(3) + skew(rotvec)
+
+    axis = rotvec / theta
+    K = skew(axis)
+
+    return (
+        np.eye(3)
+        + math.sin(theta) * K
+        + (1.0 - math.cos(theta)) * (K @ K)
+    )
+
+
+def so3_log(R):
+    """
+    Logarithmic map from a 3x3 rotation matrix to a 3D rotation vector.
+
+    Intended mainly for small rotations in covariance Jacobian calculation.
+    """
+    R = np.asarray(R, dtype=float)
+
+    cos_theta = 0.5 * (np.trace(R) - 1.0)
+    cos_theta = max(-1.0, min(1.0, cos_theta))
+    theta = math.acos(cos_theta)
+
+    vee = np.array(
+        [
+            R[2, 1] - R[1, 2],
+            R[0, 2] - R[2, 0],
+            R[1, 0] - R[0, 1],
+        ],
+        dtype=float,
+    )
+
+    if theta < 1e-8:
+        return 0.5 * vee
+
+    return theta / (2.0 * math.sin(theta)) * vee
 
 def cov_list_to_mat6(cov_list):
     """
@@ -267,77 +334,141 @@ def transform_pose_covariance_ros_approx(
     return cov_mat6_to_list(P_out)
 
 
+def calculate_corrected_output_rotation(
+    R_current,
+    R_first,
+    R_initial_output,
+    align_output_orientation_to_initial_tf,
+    invert_relative_rotation,
+):
+    """
+    Stateless version of output orientation correction.
+
+    This function does not modify node state.
+
+    When alignment is enabled:
+    R_relative = R_first.T @ R_current
+
+    if invert_relative_rotation:
+        R_relative = R_relative.T
+
+    R_out = R_initial_output @ R_relative
+    """
+    if align_output_orientation_to_initial_tf:
+        if R_first is None:
+            raise ValueError(
+                "R_first must be initialized before covariance correction"
+            )
+
+        R_relative = R_first.T @ R_current
+
+        if invert_relative_rotation:
+            R_relative = R_relative.T
+
+        if R_initial_output is not None:
+            return R_initial_output @ R_relative
+
+        return R_relative
+
+    R_out = R_current
+
+    if invert_relative_rotation:
+        R_out = R_out.T
+
+    return R_out
+    
+
 def correct_pose_covariance_for_output_rotation(
     pose_cov_base,
-    zero_initial_rotation,
+    R_current,
+    R_first,
+    R_initial_output,
+    align_output_orientation_to_initial_tf,
     invert_relative_rotation,
     orientation_var_floor=0.03,
     zero_position_orientation_cross=False,
+    jacobian_epsilon=1e-6,
 ):
     """
-    Correct pose covariance after pose.orientation correction.
+    Correct pose covariance for the orientation transformation used by
+    correct_output_rotation().
 
-    Input:
-      pose_cov_base:
-        pose covariance after imu->base_link and global->odom transform.
-        Ordering: [x, y, z, roll, pitch, yaw]
+    Input covariance ordering:
+      [x, y, z, rot_x, rot_y, rot_z]
 
-    The published pose value is:
-      - position: kept as-is
-      - orientation: optionally zero-initialized and relative-rotation-inverted
+    Position itself is not changed by correct_output_rotation().
+    Orientation is transformed as:
 
-    For ROS Odometry covariance, orientation is represented approximately as
-    fixed-axis roll/pitch/yaw.  Therefore, this function applies a practical
-    small-angle correction.
+      R_relative = R_first.T @ R_current
 
-    If invert_relative_rotation is True:
-      orientation error sign is inverted:
-        [droll, dpitch, dyaw] -> -[droll, dpitch, dyaw]
+      if invert_relative_rotation:
+          R_relative = R_relative.T
 
-      Position is unchanged:
-        [dx, dy, dz] -> [dx, dy, dz]
+      R_out = R_initial_output @ R_relative
 
-      So:
-        A = diag([1, 1, 1, -1, -1, -1])
+    A numerical Jacobian is used to map small fixed-axis orientation errors
+    from the uncorrected orientation to the published orientation.
 
-    This mainly affects position-orientation cross covariance terms.
-    The pure orientation covariance block is unchanged by sign inversion
-    because (-I) * P * (-I).T = P.
+    The resulting 6x6 Jacobian is:
 
-    Parameters:
-      orientation_var_floor:
-        Optional minimum variance for roll/pitch/yaw in rad^2.
-        Example:
-          0.05  -> std dev about 12.8 deg
-          0.10  -> std dev about 18.1 deg
+      J_pose = block_diag(I_3, J_rotation)
 
-      zero_position_orientation_cross:
-        If True, clears position-orientation cross covariance.
-        This is safer for EKF if the exact correlation is uncertain.
+    This also transforms position-orientation cross covariance terms.
     """
     P = cov_list_to_mat6(pose_cov_base)
 
-    A = np.eye(6, dtype=float)
+    R_out_nominal = calculate_corrected_output_rotation(
+        R_current=R_current,
+        R_first=R_first,
+        R_initial_output=R_initial_output,
+        align_output_orientation_to_initial_tf=(
+            align_output_orientation_to_initial_tf
+        ),
+        invert_relative_rotation=invert_relative_rotation,
+    )
 
-    if zero_initial_rotation or invert_relative_rotation:
-        # The output orientation is no longer exactly the same tangent
-        # representation as the uncorrected T_odom_base orientation.
-        #
-        # The dominant correction we know from the current adapter is the
-        # relative rotation inversion, which corresponds to a sign inversion
-        # of small roll/pitch/yaw errors.
-        if invert_relative_rotation:
-            A[3:6, 3:6] = -np.eye(3, dtype=float)
+    J_rotation = np.zeros((3, 3), dtype=float)
 
-    P_out = A @ P @ A.T
+    for axis_index in range(3):
+        delta = np.zeros(3, dtype=float)
+        delta[axis_index] = jacobian_epsilon
+
+        # Fixed-axis perturbation in the odom frame.
+        R_current_perturbed = so3_exp(delta) @ R_current
+
+        R_out_perturbed = calculate_corrected_output_rotation(
+            R_current=R_current_perturbed,
+            R_first=R_first,
+            R_initial_output=R_initial_output,
+            align_output_orientation_to_initial_tf=(
+                align_output_orientation_to_initial_tf
+            ),
+            invert_relative_rotation=invert_relative_rotation,
+        )
+
+        # Output orientation perturbation expressed in the output/odom frame.
+        dR_out = R_out_perturbed @ R_out_nominal.T
+        delta_out = so3_log(dR_out)
+
+        J_rotation[:, axis_index] = (
+            delta_out / jacobian_epsilon
+        )
+
+    J_pose = np.eye(6, dtype=float)
+    J_pose[3:6, 3:6] = J_rotation
+
+    P_out = J_pose @ P @ J_pose.T
 
     if zero_position_orientation_cross:
         P_out[0:3, 3:6] = 0.0
         P_out[3:6, 0:3] = 0.0
 
     if orientation_var_floor is not None:
-        for i in range(3, 6):
-            P_out[i, i] = max(P_out[i, i], float(orientation_var_floor))
+        for index in range(3, 6):
+            P_out[index, index] = max(
+                P_out[index, index],
+                float(orientation_var_floor),
+            )
 
     return cov_mat6_to_list(P_out)
 
@@ -530,7 +661,7 @@ class VioOdomAdapterNode(Node):
 
         # Output orientation correction.
         # Position is kept as-is; only pose.orientation is corrected.
-        self.declare_parameter("zero_initial_rotation", True)
+        self.declare_parameter("align_output_orientation_to_initial_tf", True)
         self.declare_parameter("invert_relative_rotation", True)
 
         self.declare_parameter("enable_diagnostics", False)
@@ -551,8 +682,8 @@ class VioOdomAdapterNode(Node):
         )
         self.align_initial_to_tf = bool(self.get_parameter("align_initial_to_tf").value)
 
-        self.zero_initial_rotation = bool(
-        self.get_parameter("zero_initial_rotation").value
+        self.align_output_orientation_to_initial_tf = bool(
+        self.get_parameter("align_output_orientation_to_initial_tf").value
         )
         self.invert_relative_rotation = bool(
             self.get_parameter("invert_relative_rotation").value
@@ -571,6 +702,9 @@ class VioOdomAdapterNode(Node):
         self.T_odom_global = None
 
         self.R_odom_base_first_for_output = None
+        # Initial full orientation obtained from the existing
+        # odom -> base_link TF.
+        self.R_output_initial_orientation = None
 
         self.T_global_imu_first = None
         self.T_global_base_first = None
@@ -641,9 +775,21 @@ class VioOdomAdapterNode(Node):
 
                 self.T_odom_global = T_odom_base_ref @ np.linalg.inv(T_global_base)
 
+                # Store the full initial roll/pitch/yaw orientation from the
+                # existing odom -> base_link TF.
+                self.R_output_initial_orientation = T_odom_base_ref[:3, :3].copy()
+
+                initial_roll, initial_pitch, initial_yaw = rpy_from_rot(
+                    self.R_output_initial_orientation
+                )
+
                 self.get_logger().info(
                     f"Initialized T_odom_global from TF "
-                    f"{self.output_frame_id} -> {self.output_child_frame_id}"
+                    f"{self.output_frame_id} -> {self.output_child_frame_id}; "
+                    f"initial output RPY="
+                    f"[{rad2deg(initial_roll):+.1f}, "
+                    f"{rad2deg(initial_pitch):+.1f}, "
+                    f"{rad2deg(initial_yaw):+.1f}] deg"
                 )
                 return True
 
@@ -674,31 +820,52 @@ class VioOdomAdapterNode(Node):
 
     def correct_output_rotation(self, R_odom_base):
         """
-        Correct pose.orientation only.
+        Correct pose.orientation.
 
-        Position is already considered usable, so this function does not
-        modify translation.
+        When align_output_orientation_to_initial_tf is True:
+        - use the first VIO orientation as the relative-rotation reference
+        - use the full initial orientation obtained from odom -> base_link TF
+        - apply subsequent VIO relative rotation to that initial orientation
 
-        zero_initial_rotation:
-          Treat the first received orientation as identity.
+        Output model:
+        R_out = R_initial_tf @ R_relative
 
         invert_relative_rotation:
-          Invert relative rotation direction.
-          This compensates the observed sign inversion of roll/pitch/yaw.
+        Invert the observed OpenVINS relative rotation direction.
         """
         R_current = R_odom_base
 
-        if self.zero_initial_rotation:
+        if self.align_output_orientation_to_initial_tf:
             if self.R_odom_base_first_for_output is None:
                 self.R_odom_base_first_for_output = R_current.copy()
+
                 self.get_logger().info(
-                    "Initialized output rotation reference; "
-                    "first output orientation will be identity"
+                    "Initialized VIO relative rotation reference"
                 )
 
-            R_out = self.R_odom_base_first_for_output.T @ R_current
-        else:
-            R_out = R_current
+            # Relative VIO rotation from the first received orientation.
+            R_relative = (
+                self.R_odom_base_first_for_output.T
+                @ R_current
+            )
+
+            # Compensate the observed OpenVINS rotation direction.
+            if self.invert_relative_rotation:
+                R_relative = R_relative.T
+
+            # Apply the full initial roll/pitch/yaw orientation from TF.
+            if self.R_output_initial_orientation is not None:
+                R_out = (
+                    self.R_output_initial_orientation
+                    @ R_relative
+                )
+            else:
+                # Fallback if the initial TF orientation is unavailable.
+                R_out = R_relative
+
+            return R_out
+
+        R_out = R_current
 
         if self.invert_relative_rotation:
             R_out = R_out.T
@@ -898,7 +1065,7 @@ class VioOdomAdapterNode(Node):
             f"  adapter frame         = {self.output_frame_id} -> {self.output_child_frame_id}\n"
             f"  tf used               = {self.base_frame_id} -> {self.oak_imu_frame_id}\n"
             f"  invert_orientation    = {self.invert_openvins_orientation}\n"
-            f"  zero_initial_rotation = {self.zero_initial_rotation}\n"
+            f"  align_output_orientation_to_initial_tf = {self.align_output_orientation_to_initial_tf}\n"
             f"  invert_rel_rotation   = {self.invert_relative_rotation}"
         )
 
@@ -974,7 +1141,12 @@ class VioOdomAdapterNode(Node):
         )
         out.pose.covariance = correct_pose_covariance_for_output_rotation(
             pose_cov_base_raw,
-            zero_initial_rotation=self.zero_initial_rotation,
+            R_current=T_odom_base[:3, :3],
+            R_first=self.R_odom_base_first_for_output,
+            R_initial_output=self.R_output_initial_orientation,
+            align_output_orientation_to_initial_tf=(
+                self.align_output_orientation_to_initial_tf
+            ),
             invert_relative_rotation=self.invert_relative_rotation,
             orientation_var_floor=0.05,
             zero_position_orientation_cross=False,

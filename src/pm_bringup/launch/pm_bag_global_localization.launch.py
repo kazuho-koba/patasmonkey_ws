@@ -135,7 +135,7 @@ def generate_launch_description():
             'align_initial_to_tf': False,
             'zero_initial_pose': True,
 
-            'zero_initial_rotation': True,
+            'align_output_orientation_to_initial_tf': True,
             'invert_relative_rotation': True,   
 
             # 診断用パラメータ
