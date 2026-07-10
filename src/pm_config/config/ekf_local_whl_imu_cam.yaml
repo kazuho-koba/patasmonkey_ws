@@ -4,8 +4,8 @@ ekf_local_node:
     sensor_timeout: 0.1
 
     # まずは2Dオドメトリとして扱う
-    two_d_mode: true
-    # two_d_mode: false
+    # two_d_mode: true
+    two_d_mode: false
 
     publish_tf: true
     publish_acceleration: false

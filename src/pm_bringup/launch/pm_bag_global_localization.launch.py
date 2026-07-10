@@ -147,12 +147,16 @@ def generate_launch_description():
             'publish_tf': False,
         }]
     )
+
     ekf_local_node = Node(
         package="robot_localization",
         executable="ekf_node",
         name="ekf_local_node",
         output="screen",
         parameters=[str(ekf_local_config_file)],
+        remappings=[
+            ("odometry/filtered", "/odometry/local"),
+        ],
     )
 
     ublox_gps_node = Node(
@@ -182,7 +186,7 @@ def generate_launch_description():
         output="screen",
         parameters=[str(navsat_config_file)],
         remappings=[
-            ("imu/data", "/imu/data"),
+            ("imu/data", "/wit/imu"),
             ("gps/fix", "/fix"),
             ("odometry/filtered", "/odometry/local"),
             ("odometry/gps", "/odometry/gps"),
@@ -196,6 +200,9 @@ def generate_launch_description():
         name="ekf_global_node",
         output="screen",
         parameters=[str(ekf_global_config_file)],
+        remappings=[
+            ("odometry/filtered", "/odometry/global"),
+        ],
         condition=IfCondition(use_gnss),
     )
 
