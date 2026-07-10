@@ -51,7 +51,7 @@ vehicle_interface_node:
     # tread_width=0.36m, min_turn_radius=0.5m の場合、
     # 最大旋回時でも内側ホイールは停止せず回転する。
     #
-    min_turn_radius: 0.75
+    min_turn_radius: 0.7
 
     # 最大ヨーレート [rad/s]
     #
