@@ -46,7 +46,7 @@ ekf_local_node:
     # visual odometry
     odom1: /vio/odometry
     odom1_config: [
-      true,  true,  false,  # x, y, z
+      true,  true,  true,  # x, y, z
       false, false, false,  # roll, pitch, yaw
       false, false, false,  # vx, vy, vz
       false, false, false,  # vroll, vpitch, vyaw
