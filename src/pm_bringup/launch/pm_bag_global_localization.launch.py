@@ -214,8 +214,6 @@ def generate_launch_description():
             "-s",
             "mcap",
             "-a",
-            "--max-bag-duration",
-            "60",
         ],
         cwd=str(bag_output_directory),
         output="screen",
