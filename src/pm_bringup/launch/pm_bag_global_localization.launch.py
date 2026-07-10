@@ -214,6 +214,8 @@ def generate_launch_description():
             "-s",
             "mcap",
             "-a",
+            "-x",
+            ".*compressedDepth.*",
         ],
         cwd=str(bag_output_directory),
         output="screen",
