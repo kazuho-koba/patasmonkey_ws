@@ -216,6 +216,8 @@ def generate_launch_description():
             "-a",
             "-x",
             ".*compressedDepth.*",
+            "--max-bag-size",
+            "1000000000",
         ],
         cwd=str(bag_output_directory),
         output="screen",
