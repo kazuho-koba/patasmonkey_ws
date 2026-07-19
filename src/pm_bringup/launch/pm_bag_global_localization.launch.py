@@ -59,6 +59,108 @@ def generate_launch_description():
     # rosbag保存先
     bag_output_directory = Path.home() / "patasmonkey_ws" / "bags"
     bag_output_directory.mkdir(parents=True, exist_ok=True)
+    # rosbagに記録するトピック
+    #
+    # 方針:
+    # - VO、wheel odometry、EKF、GNSSをオフライン再計算できる入力を保存
+    # - オンライン計算結果も比較用に保存
+    # - RGB、Depthを認識・自律走行研究用に保存
+    # - OpenVINSの画像transport派生トピックやGT系は保存しない
+    bag_topics = [
+        # -------------------------------------------------------------
+        # OAK-D：OpenVINS再計算用
+        # -------------------------------------------------------------
+        "/oak/stereo/left/image_raw",
+        "/oak/stereo/right/image_raw",
+        "/oak/imu/data",
+
+        # -------------------------------------------------------------
+        # OAK-D：RGB-D認識、オフロード走行解析用
+        # -------------------------------------------------------------
+        "/oak/color/image_raw",
+        "/oak/depth/image_raw",
+
+        # -------------------------------------------------------------
+        # 外部IMU・磁気センサ
+        # -------------------------------------------------------------
+        "/wit/imu",
+        "/wit/mag",
+        "/imu",
+
+        # -------------------------------------------------------------
+        # 車両状態・wheel odometry
+        # -------------------------------------------------------------
+        "/motor_state",
+        "/wheel/odometry",
+
+        # -------------------------------------------------------------
+        # OpenVINS・VIOオンライン出力
+        # -------------------------------------------------------------
+        "/ov_msckf/odomimu",
+        "/ov_msckf/poseimu",
+        "/ov_msckf/pathimu",
+        "/vio/odometry",
+        # VOの作動状況を一応記録
+        "/ov_msckf/trackhist",
+
+        # -------------------------------------------------------------
+        # robot_localization出力
+        # -------------------------------------------------------------
+        "/odometry/local",
+        "/odometry/global",
+        "/odometry/gps",
+        "/gps/filtered",
+
+        # -------------------------------------------------------------
+        # GNSS測位結果
+        # -------------------------------------------------------------
+        "/fix",
+        "/fix_velocity",
+        "/navpvt",
+        "/navrelposned",
+        "/navheading",
+        "/navstatus",
+        "/navstate",
+        "/navclock",
+        "/navsvin",
+
+        # GNSS受信機・ハードウェア診断
+        "/monhw",
+
+        # -------------------------------------------------------------
+        # RTK補正情報
+        # -------------------------------------------------------------
+        # NTRIP clientが受信し、F9Pへ渡すRTCM
+        "/rtcm",
+
+        # F9Pが実際に受信・解析したRTCM情報
+        "/rxmrtcm",
+
+        # -------------------------------------------------------------
+        # 車両への指令・操作履歴
+        # -------------------------------------------------------------
+        "/pm/joy",
+        "/cmd_vel_joy",
+        "/cmd_vel",
+        "/sim_cmd_vel",
+        "/emergency_stop",
+
+        # -------------------------------------------------------------
+        # TF・RobotModel・RViz再現用
+        # -------------------------------------------------------------
+        "/tf",
+        "/tf_static",
+        "/robot_description",
+        "/joint_states",
+
+        # -------------------------------------------------------------
+        # 診断・実験状態
+        # -------------------------------------------------------------
+        "/diagnostics",
+        "/rosout",
+        "/parameter_events",
+        "/set_pose",
+    ]
 
     with open(urdf_file, "r") as f:
         robot_description = f.read()
@@ -213,11 +315,9 @@ def generate_launch_description():
             "record",
             "-s",
             "mcap",
-            "-a",
-            "-x",
-            ".*compressedDepth.*",
             "--max-bag-size",
             "1000000000",
+            *bag_topics,
         ],
         cwd=str(bag_output_directory),
         output="screen",

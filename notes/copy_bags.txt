@@ -1,0 +1,6 @@
+ディレクトリ単位なので-rオプションをつける。最初がコピー対象ディレクトリ、次がその置き場所
+scp -r nvidia@pmjet1:~/patasmonkey_ws/bags  ~/Projects/patasmonkey_ws
+
+
+rsyncコマンドのほうが途中で中断した時に同じコマンドで再開しやすい（途中から再開できる）
+rsync -avh --progress nvidia@pmjet1:~/patasmonkey_ws/bags ~/Projects/patasmonkey_ws

@@ -27,9 +27,10 @@ Thumbs.db
 build/
 install/
 log/
-build_foxy 
-install_foxy
-log_foxy
+build_foxy/
+install_foxy/
+log_foxy/
+bags/
 
 # credentials / local configs
 src/pm_config/config/*secret*.yaml
