@@ -100,8 +100,8 @@ def generate_launch_description():
         "/ov_msckf/poseimu",
         "/ov_msckf/pathimu",
         "/vio/odometry",
-        # VOの作動状況を一応記録
-        "/ov_msckf/trackhist",
+        # VOの作動状況を一応記録する場合は/trackhistを記録
+        # "/ov_msckf/trackhist",
 
         # -------------------------------------------------------------
         # robot_localization出力
