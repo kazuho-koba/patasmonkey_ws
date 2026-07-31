@@ -1,20 +1,25 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<?xml-model
+  href="http://download.ros.org/schema/package_format3.xsd"
+  schematypens="http://www.w3.org/2001/XMLSchema"?>
+
 <package format="3">
   <name>pm_evaluation</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="kazuho.kobayashi.ynu@gmail.com">kazuho</maintainer>
-  <license>TODO: License declaration</license>
+  <version>0.0.1</version>
 
-  <depend>rclpy</depend>
-  <depend>rosbag2_py</depend>
-  <depend>rosidl_runtime_py</depend>
-  <depend>sensor_msgs</depend>
-  <depend>nav_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>tf2_msgs</depend>
-  <depend>std_msgs</depend>
+  <description>
+    Offline evaluation tools for Patasmonkey rosbag data.
+  </description>
+
+  <maintainer email="kazuho.kobayashi.ynu@gmail.com">
+    kazuho
+  </maintainer>
+
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>python3-yaml</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
