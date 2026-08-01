@@ -67,7 +67,10 @@ RUN python3 -m pip install --no-cache-dir \
     "setuptools<70" \
     "importlib-metadata>=4.6,<7" \
     wheel \
-    mcap
+    mcap \
+    pyproj \
+    matplotlib \
+    contextily
 
 # ODrive関係
 RUN python3 -m pip install --upgrade odrive
