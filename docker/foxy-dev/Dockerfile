@@ -70,7 +70,8 @@ RUN python3 -m pip install --no-cache-dir \
     mcap \
     pyproj \
     matplotlib \
-    contextily
+    contextily \
+    mcap-ros2-support
 
 # ODrive関係
 RUN python3 -m pip install --upgrade odrive
