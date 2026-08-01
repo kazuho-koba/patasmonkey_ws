@@ -33,10 +33,8 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            (
-                "analyze_bag_frequencies = "
-                "pm_evaluation.cli.analyze_bag_frequencies:main"
-            ),
+            "analyze_bag_frequencies = pm_evaluation.cli.analyze_bag_frequencies:main",
+            "plot_bag_trajectories = pm_evaluation.cli.plot_bag_trajectories:main",
         ],
     },
 )
