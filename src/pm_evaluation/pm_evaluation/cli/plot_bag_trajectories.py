@@ -45,9 +45,7 @@ import matplotlib.pyplot as plt
 
 from pyproj import Transformer
 
-import rosbag2_py
-from rclpy.serialization import deserialize_message
-from rosidl_runtime_py.utilities import get_message
+from mcap_ros2.reader import read_ros2_messages
 
 
 # contextilyはOpenStreetMap等のタイル背景を取得するための任意依存。
@@ -302,75 +300,30 @@ def finite_number(x) -> bool:
     """
     return x is not None and math.isfinite(float(x))
 
-
-def get_topic_type_map(bag_dir: Path):
+def natural_mcap_sort_key(path: Path):
     """
-    rosbag2を開き、SequentialReaderとトピック型対応表を返す。
+    分割MCAPファイルを末尾番号の数値順に並べる。
 
-    rosbag2_pyではシリアライズ済みデータを読み取るため、
-    各トピックがどのROSメッセージ型を使用しているかを先に取得する必要がある。
-
-    Args:
-        bag_dir:
-            rosbagディレクトリ。
-
-    Returns:
-        tuple:
-            reader:
-                開いた状態のrosbag2_py.SequentialReader。
-
-            topic_type_map:
-                {トピック名: ROSメッセージ型名}の辞書。
-                例: {"/fix": "sensor_msgs/msg/NavSatFix"}
+    文字列順では_10が_2より前に来るため、
+    末尾の数字を整数として解釈する。
     """
-    # MCAP形式のrosbagディレクトリを指定する。
-    storage_options = rosbag2_py.StorageOptions(
-        uri=str(bag_dir),
-        storage_id="mcap",
+    stem = path.stem
+    prefix, separator, suffix = stem.rpartition("_")
+
+    if separator and suffix.isdigit():
+        return prefix, int(suffix)
+
+    return stem, -1
+
+
+def find_mcap_files(bag_dir: Path):
+    """
+    rosbagディレクトリ直下の全MCAPファイルを取得する。
+    """
+    return sorted(
+        bag_dir.glob("*.mcap"),
+        key=natural_mcap_sort_key,
     )
-
-    # 入出力ともROS 2のCDRシリアライズ形式を使用する。
-    # 型変換は行わず、保存されたデータをそのままデシリアライズする。
-    converter_options = rosbag2_py.ConverterOptions(
-        input_serialization_format="cdr",
-        output_serialization_format="cdr",
-    )
-
-    reader = rosbag2_py.SequentialReader()
-    reader.open(storage_options, converter_options)
-
-    # TopicMetadataの一覧を、後から参照しやすい辞書へ変換する。
-    topic_types = reader.get_all_topics_and_types()
-    topic_type_map = {
-        item.name: item.type
-        for item in topic_types
-    }
-
-    return reader, topic_type_map
-
-
-def get_message_class(topic_type_map, topic_name):
-    """
-    トピック名から対応するROSメッセージクラスを動的に取得する。
-
-    rosbagには異なるメッセージ型が混在するため、読み込み時に
-    rosidl_runtime_py.utilities.get_message()を使って型クラスを得る。
-
-    Args:
-        topic_type_map:
-            {トピック名: ROSメッセージ型名}の辞書。
-
-        topic_name:
-            型を調べたいトピック名。
-
-    Returns:
-        対応するROSメッセージクラス。
-        トピックがbag内に存在しない場合はNone。
-    """
-    if topic_name not in topic_type_map:
-        return None
-
-    return get_message(topic_type_map[topic_name])
 
 
 def infer_rtk_state_from_msg(msg) -> str:
@@ -451,23 +404,12 @@ def read_bag_data(bag_dir: Path) -> dict:
     """
     1つのrosbagから軌跡描画に必要なデータだけを抽出する。
 
-    対象:
-        - /fixの緯度・経度
-        - /wit/imuのorientationから求めたyaw
-        - RTK状態候補トピック
-        - wheel / VIO / EKF local / EKF globalのx, y, yaw
+    rosbag2_pyは使用せず、mcap_ros2.reader.read_ros2_messages()で
+    分割MCAPを直接読み取る。
 
-    全トピックをデシリアライズすると画像や点群で負荷が増えるため、
-    needed_topicsに含まれるトピックだけを処理する。
-
-    Args:
-        bag_dir:
-            読み込むrosbagディレクトリ。
-
-    Returns:
-        抽出データをまとめた辞書。
+    MCAP内に埋め込まれたROS 2メッセージ定義を使って、
+    CDRデータをPythonオブジェクトへデコードする。
     """
-    # この集合にないトピックはreaderから読み取っても即座に無視する。
     needed_topics = {
         TOPIC_FIX,
         TOPIC_WIT_IMU,
@@ -480,29 +422,13 @@ def read_bag_data(bag_dir: Path) -> dict:
         TOPIC_EKF_GLOBAL,
     }
 
-    reader, topic_type_map = get_topic_type_map(bag_dir)
-
-    # bag内に実際に存在する対象トピックだけ、
-    # デシリアライズに必要なメッセージクラスを準備する。
-    message_class_map = {}
-
-    for topic_name in needed_topics:
-        if topic_name in topic_type_map:
-            message_class_map[topic_name] = get_message_class(
-                topic_type_map,
-                topic_name,
-            )
-
-    # GNSS位置とIMU yaw。
     fixes = []
     imu_yaws = []
 
-    # RTK状態候補は、後から優先順位に従って1系統を選択する。
     navrelposned_states = []
     navpvt_states = []
     navstatus_states = []
 
-    # 各オドメトリのデータを同じ形式で格納する。
     odom_data = {
         "wheel": [],
         "vio": [],
@@ -510,7 +436,6 @@ def read_bag_data(bag_dir: Path) -> dict:
         "ekf_global": [],
     }
 
-    # ROSトピック名を内部識別キーへ変換する対応表。
     topic_to_key = {
         TOPIC_WHEEL: "wheel",
         TOPIC_VIO: "vio",
@@ -518,103 +443,110 @@ def read_bag_data(bag_dir: Path) -> dict:
         TOPIC_EKF_GLOBAL: "ekf_global",
     }
 
-    while reader.has_next():
-        # bag_timestampはrosbag2が記録した時刻で、単位はナノ秒。
-        topic_name, serialized_data, bag_timestamp = reader.read_next()
+    mcap_files = find_mcap_files(bag_dir)
 
-        # 画像・点群・ログなど、軌跡解析に不要なトピックはデシリアライズしない。
-        if topic_name not in needed_topics:
-            continue
-
-        msg_cls = message_class_map.get(topic_name)
-
-        # 型情報を解決できないトピックは安全のため処理しない。
-        if msg_cls is None:
-            continue
-
-        msg = deserialize_message(
-            serialized_data,
-            msg_cls,
+    if not mcap_files:
+        raise FileNotFoundError(
+            f"No MCAP files found in: {bag_dir}"
         )
 
-        if topic_name == TOPIC_FIX:
-            # NavSatFixを想定するが、属性がない型でも例外にしないようgetattrを使う。
-            lat = getattr(msg, "latitude", None)
-            lon = getattr(msg, "longitude", None)
+    for mcap_path in mcap_files:
+        print(f"      Reading: {mcap_path.name}")
 
-            # NaNやinfのGNSS値は後段の座標変換へ渡さない。
-            if finite_number(lat) and finite_number(lon):
-                fixes.append(
+        # topicsを指定することで、画像・点群など不要なメッセージを
+        # デコード対象から除外する。
+        for decoded in read_ros2_messages(
+            mcap_path,
+            topics=needed_topics,
+            log_time_order=True,
+        ):
+            topic_name = decoded.channel.topic
+            bag_timestamp = int(decoded.log_time_ns)
+            msg = decoded.ros_msg
+
+            if topic_name == TOPIC_FIX:
+                lat = getattr(msg, "latitude", None)
+                lon = getattr(msg, "longitude", None)
+
+                if finite_number(lat) and finite_number(lon):
+                    fixes.append(
+                        {
+                            "t": bag_timestamp,
+                            "lat": float(lat),
+                            "lon": float(lon),
+                        }
+                    )
+
+            elif topic_name == TOPIC_WIT_IMU:
+                orientation = msg.orientation
+
+                yaw = quaternion_to_yaw(
+                    orientation.x,
+                    orientation.y,
+                    orientation.z,
+                    orientation.w,
+                )
+
+                imu_yaws.append(
                     {
-                        "t": int(bag_timestamp),
-                        "lat": float(lat),
-                        "lon": float(lon),
+                        "t": bag_timestamp,
+                        "yaw": float(yaw),
                     }
                 )
 
-        elif topic_name == TOPIC_WIT_IMU:
-            # IMU orientationから平面上の方位yawだけを抽出する。
-            orientation = msg.orientation
+            elif topic_name == TOPIC_NAVRELPOSNED:
+                navrelposned_states.append(
+                    {
+                        "t": bag_timestamp,
+                        "state": infer_rtk_state_from_msg(msg),
+                    }
+                )
 
-            yaw = quaternion_to_yaw(
-                orientation.x,
-                orientation.y,
-                orientation.z,
-                orientation.w,
-            )
+            elif topic_name == TOPIC_NAVPVT:
+                navpvt_states.append(
+                    {
+                        "t": bag_timestamp,
+                        "state": infer_rtk_state_from_msg(msg),
+                    }
+                )
 
-            imu_yaws.append(
-                {
-                    "t": int(bag_timestamp),
-                    "yaw": float(yaw),
-                }
-            )
+            elif topic_name == TOPIC_NAVSTATUS:
+                navstatus_states.append(
+                    {
+                        "t": bag_timestamp,
+                        "state": infer_rtk_state_from_msg(msg),
+                    }
+                )
 
-        elif topic_name == TOPIC_NAVRELPOSNED:
-            navrelposned_states.append(
-                {
-                    "t": int(bag_timestamp),
-                    "state": infer_rtk_state_from_msg(msg),
-                }
-            )
+            elif topic_name in topic_to_key:
+                position = msg.pose.pose.position
+                orientation = msg.pose.pose.orientation
 
-        elif topic_name == TOPIC_NAVPVT:
-            navpvt_states.append(
-                {
-                    "t": int(bag_timestamp),
-                    "state": infer_rtk_state_from_msg(msg),
-                }
-            )
+                yaw = quaternion_to_yaw(
+                    orientation.x,
+                    orientation.y,
+                    orientation.z,
+                    orientation.w,
+                )
 
-        elif topic_name == TOPIC_NAVSTATUS:
-            navstatus_states.append(
-                {
-                    "t": int(bag_timestamp),
-                    "state": infer_rtk_state_from_msg(msg),
-                }
-            )
+                odom_data[topic_to_key[topic_name]].append(
+                    {
+                        "t": bag_timestamp,
+                        "x": float(position.x),
+                        "y": float(position.y),
+                        "yaw": float(yaw),
+                    }
+                )
 
-        elif topic_name in topic_to_key:
-            # nav_msgs/msg/Odometryを想定し、
-            # pose.poseから位置とorientationを取得する。
-            position = msg.pose.pose.position
-            orientation = msg.pose.pose.orientation
+    # 分割MCAPごとに読むため、念のため全系列を時刻順へ並べ直す。
+    fixes.sort(key=lambda item: item["t"])
+    imu_yaws.sort(key=lambda item: item["t"])
+    navrelposned_states.sort(key=lambda item: item["t"])
+    navpvt_states.sort(key=lambda item: item["t"])
+    navstatus_states.sort(key=lambda item: item["t"])
 
-            yaw = quaternion_to_yaw(
-                orientation.x,
-                orientation.y,
-                orientation.z,
-                orientation.w,
-            )
-
-            odom_data[topic_to_key[topic_name]].append(
-                {
-                    "t": int(bag_timestamp),
-                    "x": float(position.x),
-                    "y": float(position.y),
-                    "yaw": float(yaw),
-                }
-            )
+    for series in odom_data.values():
+        series.sort(key=lambda item: item["t"])
 
     return {
         "fixes": fixes,
