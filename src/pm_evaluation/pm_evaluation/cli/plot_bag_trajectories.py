@@ -328,73 +328,117 @@ def find_mcap_files(bag_dir: Path):
 
 def infer_rtk_state_from_msg(msg) -> str:
     """
-    u-blox系メッセージからRTK・GNSS状態を推定する。
+    u-bloxメッセージの整数ビットフィールドから測位状態を判定する。
 
-    ドライバやメッセージ型によってcarr_solnの格納位置が異なる可能性があるため、
-    次の順に確認する。
-
-        1. msg.carr_soln
-        2. msg.flags.carr_soln
-        3. msg.fix_type
-
-    carr_solnの一般的な解釈:
-        0:
-            搬送波解なし。通常GNSS測位として扱う。
-
-        1:
-            RTK FLOAT。
-
-        2:
-            RTK FIX。
-
-    fix_typeしか取得できない場合は、RTK FIX/FLOATまでは判別できないため、
-    有効な測位を一括してGNSSとして扱う。
-
-    Args:
-        msg:
-            /navrelposned、/navpvt、/navstatus等から復元したROSメッセージ。
+    対応対象:
+        - NAV-RELPOSNED
+        - NAV-PVT
+        - NAV-STATUS
 
     Returns:
-        次のいずれか:
-            "RTK_FIX"
-            "RTK_FLOAT"
-            "GNSS"
-            "NO_FIX"
-            "UNKNOWN"
+        "RTK_FIX"
+        "RTK_FLOAT"
+        "GNSS"
+        "NO_FIX"
+        "UNKNOWN"
     """
-    # carr_solnがメッセージ直下にある型への対応。
-    if hasattr(msg, "carr_soln"):
-        value = getattr(msg, "carr_soln")
 
-        if value == 2:
+    # --------------------------------------------------------------
+    # NAV-RELPOSNED
+    #
+    # このメッセージは、次のような固有フィールドを持つ。
+    #   rel_pos_n
+    #   rel_pos_e
+    #   rel_pos_d
+    #   rel_pos_heading
+    #
+    # flagsのビット3～4がcarrSoln。
+    # --------------------------------------------------------------
+    if (
+        hasattr(msg, "rel_pos_n")
+        and hasattr(msg, "rel_pos_e")
+        and hasattr(msg, "flags")
+    ):
+        flags = int(msg.flags)
+
+        gnss_fix_ok = bool(flags & 0x01)
+        carr_soln = (flags & 0x18) >> 3
+
+        if not gnss_fix_ok:
+            return "NO_FIX"
+
+        if carr_soln == 2:
             return "RTK_FIX"
-        if value == 1:
+
+        if carr_soln == 1:
             return "RTK_FLOAT"
-        if value == 0:
+
+        return "GNSS"
+
+    # --------------------------------------------------------------
+    # NAV-PVT
+    #
+    # NAV-PVTはfix_type、num_sv、lon、latなどを持つ。
+    # flagsのビット6～7がcarrSoln。
+    # --------------------------------------------------------------
+    if (
+        hasattr(msg, "fix_type")
+        and hasattr(msg, "num_sv")
+        and hasattr(msg, "flags")
+    ):
+        flags = int(msg.flags)
+        fix_type = int(msg.fix_type)
+
+        gnss_fix_ok = bool(flags & 0x01)
+        carr_soln = (flags & 0xC0) >> 6
+
+        if not gnss_fix_ok or fix_type == 0:
+            return "NO_FIX"
+
+        if carr_soln == 2:
+            return "RTK_FIX"
+
+        if carr_soln == 1:
+            return "RTK_FLOAT"
+
+        return "GNSS"
+
+    # --------------------------------------------------------------
+    # NAV-STATUS
+    #
+    # NAV-STATUSにはRTK FIX/FLOATを直接判定できる
+    # carrSolnがないため、有効な通常GNSS解かどうかだけを判定する。
+    # --------------------------------------------------------------
+    if (
+        hasattr(msg, "gps_fix")
+        and hasattr(msg, "flags")
+    ):
+        flags = int(msg.flags)
+        gps_fix = int(msg.gps_fix)
+
+        gnss_fix_ok = bool(flags & 0x01)
+
+        if not gnss_fix_ok or gps_fix == 0:
+            return "NO_FIX"
+
+        if gps_fix in (2, 3, 4):
             return "GNSS"
 
-    # carr_solnがflagsという入れ子オブジェクト内にある型への対応。
-    if hasattr(msg, "flags"):
-        flags = getattr(msg, "flags")
+        return "UNKNOWN"
 
-        if hasattr(flags, "carr_soln"):
-            value = getattr(flags, "carr_soln")
+    # --------------------------------------------------------------
+    # 他ドライバでcarr_solnが独立フィールドになっている場合
+    # --------------------------------------------------------------
+    if hasattr(msg, "carr_soln"):
+        carr_soln = int(msg.carr_soln)
 
-            if value == 2:
-                return "RTK_FIX"
-            if value == 1:
-                return "RTK_FLOAT"
-            if value == 0:
-                return "GNSS"
+        if carr_soln == 2:
+            return "RTK_FIX"
 
-    # carr_solnを取得できない場合のフォールバック。
-    # fix_typeは通常、0が測位不能、2以上が何らかの有効測位を表す。
-    if hasattr(msg, "fix_type"):
-        fix_type = getattr(msg, "fix_type")
+        if carr_soln == 1:
+            return "RTK_FLOAT"
 
-        if fix_type == 0:
-            return "NO_FIX"
-        if fix_type >= 2:
+        if carr_soln == 0:
             return "GNSS"
 
     return "UNKNOWN"
