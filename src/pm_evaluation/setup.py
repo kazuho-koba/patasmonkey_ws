@@ -35,6 +35,7 @@ setup(
         "console_scripts": [
             "analyze_bag_frequencies = pm_evaluation.cli.analyze_bag_frequencies:main",
             "plot_bag_trajectories = pm_evaluation.cli.plot_bag_trajectories:main",
+            "plot_bag_trajectories_old = pm_evaluation.cli.plot_bag_trajectories_old:main",
             "inspect_bag_wheel_imu_heading = pm_evaluation.cli.inspect_bag_wheel_imu_heading:main",
         ],
     },
