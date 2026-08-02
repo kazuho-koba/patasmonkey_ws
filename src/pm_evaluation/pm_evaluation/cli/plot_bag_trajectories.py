@@ -109,13 +109,13 @@ GNSS_STATE_STYLE = {
         "label": "RTK FIX",
     },
     "RTK_FLOAT": {
-        "color": "orange",
-        "marker": "^",
+        "color": "dodgerblue",
+        "marker": "s",
         "label": "RTK FLOAT",
     },
     "GNSS": {
-        "color": "dodgerblue",
-        "marker": "s",
+        "color": "orange",
+        "marker": "^",
         "label": "GNSS",
     },
     "NO_FIX": {
