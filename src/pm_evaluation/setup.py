@@ -39,6 +39,7 @@ setup(
             "inspect_bag_wheel_imu_heading = pm_evaluation.cli.inspect_bag_wheel_imu_heading:main",
             "play_bag_depth = pm_evaluation.cli.play_bag_depth:main",
             "play_bag_depth_mode_switch = pm_evaluation.cli.play_bag_depth_mode_switch:main",
+            "play_bag_depth_seek = pm_evaluation.cli.play_bag_depth_seek:main",
         ],
     },
 )
