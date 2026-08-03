@@ -89,6 +89,8 @@ ROSの一般的なDepth画像規約:
       FPSはbag時刻から中央値で推定するか、--output-fpsで明示する。
     - シーク後に動画保存を継続した場合、保存動画には実際に表示した順番で
       フレームが記録される。後戻りや重複もそのまま含まれる。
+    - readerキャッシュにはmcap_ros2.decoder.DecoderFactoryを登録し、
+      CDR形式のROS 2 Imageメッセージを正しく復号する。
 """
 
 import argparse
@@ -103,6 +105,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 from mcap.reader import make_reader
+from mcap_ros2.decoder import DecoderFactory
 from mcap_ros2.reader import read_ros2_messages
 
 
@@ -170,8 +173,17 @@ class DepthFrameReaderCache:
         self.close()
 
         self._stream = resolved.open("rb")
+        # 汎用McapReaderだけでは、channel.message_encoding="cdr"の
+        # ROS 2メッセージをデコードできない。
+        #
+        # DecoderFactory()を登録することで、
+        # sensor_msgs/msg/Imageなどros2msg schemaを持つCDRデータを
+        # iter_decoded_messages/read_ros2_messages経由で復号できる。
         self._reader = make_reader(
-            self._stream
+            self._stream,
+            decoder_factories=[
+                DecoderFactory(),
+            ],
         )
         self._current_path = resolved
 
