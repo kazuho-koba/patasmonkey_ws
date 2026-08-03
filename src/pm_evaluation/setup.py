@@ -38,6 +38,7 @@ setup(
             "plot_bag_trajectories_old = pm_evaluation.cli.plot_bag_trajectories_old:main",
             "inspect_bag_wheel_imu_heading = pm_evaluation.cli.inspect_bag_wheel_imu_heading:main",
             "play_bag_depth = pm_evaluation.cli.play_bag_depth:main",
+            "play_bag_depth_mode_switch = pm_evaluation.cli.play_bag_depth_mode_switch:main",
         ],
     },
 )
