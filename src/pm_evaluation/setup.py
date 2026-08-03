@@ -40,6 +40,7 @@ setup(
             "play_bag_depth = pm_evaluation.cli.play_bag_depth:main",
             "play_bag_depth_mode_switch = pm_evaluation.cli.play_bag_depth_mode_switch:main",
             "play_bag_depth_seek = pm_evaluation.cli.play_bag_depth_seek:main",
+            "analyze_motor_state_tracking = pm_evaluation.cli.analyze_motor_state_tracking:main",
         ],
     },
 )
