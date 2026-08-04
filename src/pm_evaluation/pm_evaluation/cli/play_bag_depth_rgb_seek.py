@@ -24,7 +24,7 @@ rosbag2（MCAP形式）に保存されたDepth画像とRGB画像を、同期し�
     12. d/lキーはDepth表示だけを変更し、RGB画像には影響しない
 
 対応する主な画像エンコーディング:
-    - 16UC1
+    - 16UC1oak/
     - mono16
     - 32FC1
 
@@ -115,7 +115,7 @@ from mcap_ros2.reader import read_ros2_messages
 
 
 DEFAULT_TOPIC = "/oak/depth/image_raw"
-DEFAULT_RGB_TOPIC = "/oak/rgb/image_raw"
+DEFAULT_RGB_TOPIC = "/oak/color/image_raw"
 DEFAULT_NEAR_MM = 300.0
 DEFAULT_FAR_MM = 10000.0
 
