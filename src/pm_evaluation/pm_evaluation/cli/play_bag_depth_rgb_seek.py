@@ -14,17 +14,17 @@ rosbag2（MCAP形式）に保存されたDepth画像とRGB画像を、同期し�
        距離の逆数（inverse depth）を0～255へ正規化する
     4. OpenCVのCOLORMAP_JETを適用し、
        近距離を赤、遠距離を青、無効値を黒で表示する
-    5. bag記録時刻に基づき、元の時間間隔に近い速度で再生する
+    5. メッセージのheader.stampに基づき、元の時間間隔に近い速度で再生する
     6. 必要な場合だけ、色付き動画またはPNG連番を保存する
     7. GUIを表示せず、動画・画像保存だけを行うこともできる
-    8. Depth画像本体は保持せず、timestampとMCAPファイルだけを索引化する
+    8. Depth画像本体は保持せず、header時刻・MCAP log_time・ファイルだけを索引化する
     9. OpenCVのシークバーから任意のDepthフレームへ移動できる
     10. DepthとRGBを別ウインドウへ表示し、再生状態・キー操作を共有する
     11. どちらのシークバーを操作しても両ウインドウが同じ時刻へ移動する
     12. d/lキーはDepth表示だけを変更し、RGB画像には影響しない
 
 対応する主な画像エンコーディング:
-    - 16UC1oak/
+    - 16UC1
     - mono16
     - 32FC1
 
@@ -91,9 +91,12 @@ ROSの一般的なDepth画像規約:
       Depth画像からinverse depthを計算して見た目を近づけている。
       カラーマップは同等でも、実機disparity表示と値が完全一致するとは限らない。
     - 動画保存は固定FPSであるため、不規則な記録間隔は完全には再現できない。
-      FPSはbag時刻から中央値で推定するか、--output-fpsで明示する。
+      FPSはメッセージのheader.stamp差の中央値で推定するか、--output-fpsで明示する。
     - シーク後に動画保存を継続した場合、保存動画には実際に表示した順番で
       フレームが記録される。後戻りや重複もそのまま含まれる。
+    - MCAPのlog_timeは、索引化したメッセージをファイルから再読込するための
+      検索キーとしてだけ使用する。同期、FPS、再生間隔、時間範囲、表示時刻は
+      sensor_msgs/msg/Image.header.stampを使用する。
     - readerキャッシュにはmcap_ros2.decoder.DecoderFactoryを登録し、
       CDR形式のROS 2 Imageメッセージを正しく復号する。
 """
@@ -102,10 +105,9 @@ import argparse
 import bisect
 import math
 import sys
-import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
@@ -116,7 +118,7 @@ from mcap_ros2.reader import read_ros2_messages
 
 DEFAULT_TOPIC = "/oak/depth/image_raw"
 DEFAULT_RGB_TOPIC = "/oak/color/image_raw"
-DEFAULT_NEAR_MM = 300.0
+DEFAULT_NEAR_MM = 400.0
 DEFAULT_FAR_MM = 10000.0
 
 DEPTH_WINDOW_NAME = "OAK-D Depth / Stereo visualization"
@@ -128,21 +130,28 @@ DEFAULT_RGB_SYNC_TOLERANCE_MS = 100.0
 @dataclass(frozen=True)
 class ImageFrameIndex:
     """
-    1枚のDepth画像へ再アクセスするための軽量な索引。
+    1枚の画像へ再アクセスするための軽量な索引。
 
-    Depth画像本体は保持せず、次の2情報だけを保持する。
+    画像本体は保持せず、次の3情報だけを保持する。
 
-        timestamp_ns:
-            MCAPのlog_time。シーク位置と時刻表示に使う。
+        log_time_ns:
+            MCAPのlog_time。対象メッセージをMCAPから再読込するための
+            検索キーとしてだけ使用する。
+
+        header_time_ns:
+            sensor_msgs/msg/Image.header.stamp。
+            フレーム順序、同期判定、FPS、再生間隔、時間範囲、表示時刻など、
+            読み込み以外の評価・判定に使用する。
 
         mcap_path:
-            このDepthメッセージを格納している分割MCAPファイル。
+            この画像メッセージを格納している分割MCAPファイル。
 
-    画像本体をRAMへ展開しないため、長時間bagでもメモリ消費を
+    画像本体をRAMへ保持しないため、長時間bagでもメモリ消費を
     フレーム数にほぼ比例する小さな索引だけに抑えられる。
     """
 
-    timestamp_ns: int
+    log_time_ns: int
+    header_time_ns: int
     mcap_path: Path
 
 
@@ -365,7 +374,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "FPS used for saved video. "
-            "Default: estimate from bag timestamps and apply --speed."
+            "Default: estimate from message header timestamps and apply --speed."
         ),
     )
 
@@ -557,25 +566,51 @@ def validate_args(args: argparse.Namespace) -> None:
                 )
 
 
+def message_header_stamp_ns(msg) -> int:
+    """
+    ROSメッセージのheader.stampを整数ナノ秒へ変換する。
+
+    headerまたはstampを持たないメッセージは、MCAP log_timeへ暗黙に
+    フォールバックせず例外にする。これにより、同期評価に異なる時刻基準が
+    混在することを防ぐ。
+    """
+    try:
+        stamp = msg.header.stamp
+        sec = int(stamp.sec)
+        nanosec = int(stamp.nanosec)
+    except (AttributeError, TypeError, ValueError) as error:
+        raise ValueError(
+            "Image message does not contain a usable header.stamp."
+        ) from error
+
+    if nanosec < 0 or nanosec >= 1_000_000_000:
+        raise ValueError(
+            f"Invalid header.stamp.nanosec: {nanosec}"
+        )
+
+    return sec * 1_000_000_000 + nanosec
+
+
 def build_image_frame_index(
     mcap_files: Sequence[Path],
     topic: str,
 ) -> List[ImageFrameIndex]:
     """
-    対象画像トピックの軽量timestamp indexを作成する。
+    対象画像トピックの時刻索引を作成する。
 
-    低レベルMCAP readerでメッセージヘッダだけを走査し、
-    ROS ImageメッセージのデコードやNumPy画像化は行わない。
+    索引作成時にROS Imageメッセージを逐次デコードしてheader.stampを取得する。
+    画像データは索引へ保持せず、その場で破棄する。
 
-    各フレームについて保持するのは、
-        - MCAP log_time
+    各フレームについて保持する情報:
+        - MCAP log_time: 後で同じメッセージを再読込するための検索キー
+        - Image.header.stamp: 読み込み以外の評価・判定に使う時刻
         - 格納先MCAPファイル
-    のみである。
 
-    分割MCAPをすべて走査した後、log_timeで昇順に並べる。
+    分割MCAPをすべて走査した後、header.stampで昇順に並べる。
+    同一header時刻ではMCAP log_timeを第2キーにする。
 
     Returns:
-        ImageFrameIndexの時系列リスト。
+        ImageFrameIndexのheader時刻順リスト。
     """
     frame_index: List[ImageFrameIndex] = []
 
@@ -583,45 +618,59 @@ def build_image_frame_index(
         print(f"[INDEX] topic={topic} file={mcap_path}")
 
         with mcap_path.open("rb") as stream:
-            reader = make_reader(stream)
+            reader = make_reader(
+                stream,
+                decoder_factories=[
+                    DecoderFactory(),
+                ],
+            )
 
-            for _, channel, message in reader.iter_messages(
-                topics=[topic],
+            for decoded in read_ros2_messages(
+                reader,
+                topics={topic},
                 log_time_order=True,
             ):
-                if channel.topic != topic:
+                if decoded.channel.topic != topic:
                     continue
 
                 frame_index.append(
                     ImageFrameIndex(
-                        timestamp_ns=int(message.log_time),
+                        log_time_ns=int(decoded.log_time_ns),
+                        header_time_ns=message_header_stamp_ns(
+                            decoded.ros_msg
+                        ),
                         mcap_path=mcap_path,
                     )
                 )
 
     frame_index.sort(
-        key=lambda item: item.timestamp_ns
+        key=lambda item: (
+            item.header_time_ns,
+            item.log_time_ns,
+        )
     )
 
     return frame_index
 
 
-def frame_index_timestamps(
+def frame_index_header_timestamps(
     frame_index: Sequence[ImageFrameIndex],
 ) -> List[int]:
     """
-    ImageFrameIndexからtimestampだけの配列を作る。
+    ImageFrameIndexからheader.stampだけの配列を作る。
 
-    bisectによる開始位置・終了位置検索とFPS推定に使用する。
+    RGB最近傍探索、開始・終了範囲検索、FPS推定に使用する。
+    MCAP log_timeはここでは使用しない。
     """
     return [
-        item.timestamp_ns
+        item.header_time_ns
         for item in frame_index
     ]
 
+
 def estimate_fps(timestamps: Sequence[int]) -> Optional[float]:
     """
-    連続フレームの時刻差中央値から記録FPSを推定する。
+    連続フレームのheader.stamp差中央値から記録FPSを推定する。
 
     平均値ではなく中央値を使うことで、
     一時的なドロップや長い停止区間の影響を減らす。
@@ -1474,68 +1523,70 @@ def read_image_message_at(
     frame_entry: ImageFrameIndex,
     topic: str,
     reader_cache: ImageFrameReaderCache,
-) -> Tuple[int, object]:
+) -> Tuple[int, int, object]:
     """
-    timestamp indexで指定された画像メッセージをMCAPから1枚だけ読み込む。
+    索引で指定された画像メッセージをMCAPから1枚だけ読み込む。
 
-    read_ros2_messages()へstart_timeとend_timeを指定し、
-    対象timestamp周辺だけを検索する。
+    この関数だけはMCAP log_timeを検索条件として使用する。
+    read_ros2_messages()へstart_timeとend_timeを指定し、索引に記録した
+    [log_time, log_time+1ns)の範囲から厳密に同じメッセージを取得する。
 
-    まず[target, target+1ns)相当の狭い時間範囲で厳密一致を試す。
-    読めなかった場合は、同一MCAP内でtarget以降の最初の対象メッセージを
-    フォールバックとして取得する。
+    取得後はメッセージ自身のheader.stampを抽出し、索引作成時の値と
+    一致することを確認する。別メッセージへの暗黙のフォールバックは行わない。
 
     Returns:
-        (実際に読めたlog_time[ns], ROS Imageメッセージ)
+        (実際のMCAP log_time[ns], header.stamp[ns], ROS Imageメッセージ)
 
     Raises:
         RuntimeError:
-            索引に対応する画像メッセージを取得できなかった場合。
+            索引に対応する画像メッセージを取得できない、または
+            header.stampが索引と一致しない場合。
     """
-    target_ns = int(
-        frame_entry.timestamp_ns
+    target_log_time_ns = int(
+        frame_entry.log_time_ns
     )
 
     reader = reader_cache.get_reader(
         frame_entry.mcap_path
     )
 
-    # 通常経路。timestamp indexと完全一致する1ns幅だけを読む。
     for decoded in read_ros2_messages(
         reader,
         topics={topic},
-        start_time=target_ns,
-        end_time=target_ns + 1,
+        start_time=target_log_time_ns,
+        end_time=target_log_time_ns + 1,
         log_time_order=True,
     ):
         if (
-            decoded.channel.topic == topic
-            and int(decoded.log_time_ns) == target_ns
+            decoded.channel.topic != topic
+            or int(decoded.log_time_ns) != target_log_time_ns
         ):
-            return (
-                int(decoded.log_time_ns),
-                decoded.ros_msg,
-            )
-
-    # MCAPライブラリや記録境界の条件で狭い範囲検索が返らなかった場合、
-    # target以降の最初のメッセージを取得する。
-    for decoded in read_ros2_messages(
-        reader,
-        topics={topic},
-        start_time=target_ns,
-        log_time_order=True,
-    ):
-        if decoded.channel.topic != topic:
             continue
+
+        msg = decoded.ros_msg
+        header_time_ns = message_header_stamp_ns(
+            msg
+        )
+
+        if header_time_ns != int(frame_entry.header_time_ns):
+            raise RuntimeError(
+                "Indexed header timestamp does not match the reloaded "
+                "message: "
+                f"indexed={frame_entry.header_time_ns}, "
+                f"actual={header_time_ns}, "
+                f"log_time={target_log_time_ns}, "
+                f"file={frame_entry.mcap_path}"
+            )
 
         return (
             int(decoded.log_time_ns),
-            decoded.ros_msg,
+            header_time_ns,
+            msg,
         )
 
     raise RuntimeError(
-        "Could not load indexed image frame: "
-        f"timestamp={target_ns}, file={frame_entry.mcap_path}"
+        "Could not load indexed image frame by MCAP log_time: "
+        f"log_time={target_log_time_ns}, file={frame_entry.mcap_path}"
     )
 
 
@@ -1548,7 +1599,7 @@ def select_frame_range(
     """
     --start-sec、--duration-sec、--max-framesから処理対象範囲を切り出す。
 
-    timestamp配列に対してbisectを使うため、フレーム数が多くても
+    header.stamp配列に対してbisectを使うため、フレーム数が多くても
     開始位置・終了位置を線形走査せずに求められる。
 
     Returns:
@@ -1557,14 +1608,14 @@ def select_frame_range(
     if not frame_index:
         return []
 
-    timestamps = frame_index_timestamps(
+    timestamps = frame_index_header_timestamps(
         frame_index
     )
 
-    bag_start_ns = timestamps[0]
+    timeline_start_ns = timestamps[0]
 
     selected_start_ns = (
-        bag_start_ns
+        timeline_start_ns
         + int(round(start_sec * 1.0e9))
     )
 
@@ -1604,7 +1655,7 @@ def calculate_wait_milliseconds(
     speed: float,
 ) -> int:
     """
-    直前フレームとのbag時刻差からOpenCV待機時間[ms]を計算する。
+    直前フレームとのheader.stamp差からOpenCV待機時間[ms]を計算する。
 
     極端に長い停止区間でGUIが操作不能になることを避けるため、
     1回のwaitKeyは最大1000msに制限する。
@@ -1671,7 +1722,7 @@ def wait_for_playback_key(
     """
     while True:
         # 一時停止中は短い周期でキー入力を確認し続ける。
-        # 再生中はbag時刻差に対応する時間だけ待機する。
+        # 再生中はheader.stamp差に対応する時間だけ待機する。
         wait_ms = 30 if paused else delay_ms
 
         key = cv2.waitKey(
@@ -1761,7 +1812,7 @@ def run_playback(
     Depthを基準時系列として、Depth画像とRGB画像を同期再生する。
 
     同期方法:
-        現在のDepth timestampに最も近いRGB timestampを二分探索で選ぶ。
+        現在のDepth header.stampに最も近いRGB header.stampを二分探索で選ぶ。
         RGB画像側のフレームレートがDepthと異なっていても、
         各Depthフレームに最も近いカラー画像を表示できる。
 
@@ -1796,7 +1847,7 @@ def run_playback(
             "--start-sec/--duration-sec/--max-frames."
         )
 
-    rgb_timestamps = frame_index_timestamps(
+    rgb_header_timestamps = frame_index_header_timestamps(
         rgb_frame_index
     )
 
@@ -1811,11 +1862,11 @@ def run_playback(
     else:
         video_fps = 20.0 * args.speed
 
-    full_bag_start_ns = int(
-        depth_frame_index[0].timestamp_ns
+    full_timeline_start_ns = int(
+        depth_frame_index[0].header_time_ns
     )
 
-    previous_displayed_timestamp_ns: Optional[int] = None
+    previous_displayed_header_time_ns: Optional[int] = None
     current_position = 0
     processed_count = 0
     paused = False
@@ -1925,7 +1976,11 @@ def run_playback(
                 current_position
             ]
 
-            depth_timestamp_ns, depth_msg = read_image_message_at(
+            (
+                _depth_log_time_ns,
+                depth_header_time_ns,
+                depth_msg,
+            ) = read_image_message_at(
                 frame_entry=depth_entry,
                 topic=args.topic,
                 reader_cache=depth_reader_cache,
@@ -1935,23 +1990,28 @@ def run_playback(
                 depth_msg
             )
 
-            rgb_timestamp_ns: Optional[int] = None
+            _rgb_log_time_ns: Optional[int] = None
+            rgb_header_time_ns: Optional[int] = None
             rgb_msg = None
             rgb_bgr: Optional[np.ndarray] = None
             rgb_sync_offset_ms = math.nan
 
             if not args.no_display:
-                rgb_position, rgb_delta_ns = find_nearest_frame_position(
+                rgb_position, _rgb_delta_ns = find_nearest_frame_position(
                     frame_index=rgb_frame_index,
-                    timestamps=rgb_timestamps,
-                    target_timestamp_ns=depth_timestamp_ns,
+                    timestamps=rgb_header_timestamps,
+                    target_timestamp_ns=depth_header_time_ns,
                 )
 
                 rgb_entry = rgb_frame_index[
                     rgb_position
                 ]
 
-                rgb_timestamp_ns, rgb_msg = read_image_message_at(
+                (
+                    _rgb_log_time_ns,
+                    rgb_header_time_ns,
+                    rgb_msg,
+                ) = read_image_message_at(
                     frame_entry=rgb_entry,
                     topic=args.rgb_topic,
                     reader_cache=rgb_reader_cache,
@@ -1961,10 +2021,10 @@ def run_playback(
                     rgb_msg
                 )
 
-                # 実際にreaderから得たtimestampで同期誤差を計算する。
+                # 同期誤差は両メッセージ自身のheader.stampで計算する。
                 rgb_sync_offset_ms = (
-                    rgb_timestamp_ns
-                    - depth_timestamp_ns
+                    rgb_header_time_ns
+                    - depth_header_time_ns
                 ) * 1.0e-6
 
                 maximum_rgb_offset_ms = max(
@@ -1997,8 +2057,8 @@ def run_playback(
                 ) / float(valid_mask.size)
 
                 relative_time_sec = (
-                    depth_timestamp_ns
-                    - full_bag_start_ns
+                    depth_header_time_ns
+                    - full_timeline_start_ns
                 ) * 1.0e-9
 
                 depth_display_frame = depth_color_bgr
@@ -2033,7 +2093,7 @@ def run_playback(
                 if (
                     rgb_bgr is None
                     or rgb_msg is None
-                    or rgb_timestamp_ns is None
+                    or rgb_header_time_ns is None
                 ):
                     raise RuntimeError(
                         "RGB frame was not loaded."
@@ -2063,8 +2123,8 @@ def run_playback(
                 )
 
                 delay_ms = calculate_wait_milliseconds(
-                    previous_timestamp_ns=previous_displayed_timestamp_ns,
-                    current_timestamp_ns=depth_timestamp_ns,
+                    previous_timestamp_ns=previous_displayed_header_time_ns,
+                    current_timestamp_ns=depth_header_time_ns,
                     speed=args.speed,
                 )
 
@@ -2094,7 +2154,7 @@ def run_playback(
                             ),
                         )
 
-                        previous_displayed_timestamp_ns = None
+                        previous_displayed_header_time_ns = None
                         seek_happened = True
                         frame_finished = True
 
@@ -2103,7 +2163,7 @@ def run_playback(
                             f"frame={current_position + 1}/"
                             f"{len(selected_depth_frames)}, "
                             f"time="
-                            f"{(selected_depth_frames[current_position].timestamp_ns - full_bag_start_ns) * 1.0e-9:.3f} s"
+                            f"{(selected_depth_frames[current_position].header_time_ns - full_timeline_start_ns) * 1.0e-9:.3f} s"
                         )
 
                     break
@@ -2127,7 +2187,7 @@ def run_playback(
                         frame_bgr=depth_display_frame,
                         snapshot_dir=snapshot_dir,
                         frame_index=current_position,
-                        timestamp_ns=depth_timestamp_ns,
+                        timestamp_ns=depth_header_time_ns,
                         prefix="depth",
                     )
 
@@ -2135,7 +2195,7 @@ def run_playback(
                         frame_bgr=rgb_display_frame,
                         snapshot_dir=snapshot_dir,
                         frame_index=current_position,
-                        timestamp_ns=rgb_timestamp_ns,
+                        timestamp_ns=rgb_header_time_ns,
                         prefix="rgb",
                     )
 
@@ -2204,7 +2264,7 @@ def run_playback(
                 frame_path = frame_dir / (
                     f"depth_{processed_count:06d}_"
                     f"source_{current_position:06d}_"
-                    f"{depth_timestamp_ns}.png"
+                    f"{depth_header_time_ns}.png"
                 )
 
                 if not cv2.imwrite(
@@ -2215,8 +2275,8 @@ def run_playback(
                         f"Failed to write PNG: {frame_path}"
                     )
 
-            previous_displayed_timestamp_ns = (
-                depth_timestamp_ns
+            previous_displayed_header_time_ns = (
+                depth_header_time_ns
             )
             processed_count += 1
             current_position += 1
@@ -2270,7 +2330,7 @@ def main() -> int:
     処理順:
         1. 引数を検証する
         2. MCAPファイル一覧を取得する
-        3. DepthとRGBそれぞれのtimestamp indexを作る
+        3. DepthとRGBそれぞれのlog_time/header.stamp索引を作る
         4. Depthを基準時系列としてFPSと時間範囲を確認する
         5. 2ウインドウを共通操作で再生・シークする
     """
@@ -2290,6 +2350,10 @@ def main() -> int:
         )
         print(
             f"[RGB TOPIC] {args.rgb_topic}"
+        )
+        print(
+            "[TIMESTAMP BASIS] MCAP log_time=read locator only; "
+            "Image.header.stamp=sync/FPS/playback/range/display"
         )
 
         depth_frame_index = build_image_frame_index(
@@ -2311,59 +2375,59 @@ def main() -> int:
                 f"No messages found on RGB topic: {args.rgb_topic}"
             )
 
-        depth_timestamps = frame_index_timestamps(
+        depth_header_timestamps = frame_index_header_timestamps(
             depth_frame_index
         )
-        rgb_timestamps = frame_index_timestamps(
+        rgb_header_timestamps = frame_index_header_timestamps(
             rgb_frame_index
         )
 
         estimated_fps = estimate_fps(
-            depth_timestamps
+            depth_header_timestamps
         )
         rgb_estimated_fps = estimate_fps(
-            rgb_timestamps
+            rgb_header_timestamps
         )
 
         depth_duration_sec = (
-            depth_timestamps[-1]
-            - depth_timestamps[0]
+            depth_header_timestamps[-1]
+            - depth_header_timestamps[0]
         ) * 1.0e-9
 
         rgb_duration_sec = (
-            rgb_timestamps[-1]
-            - rgb_timestamps[0]
+            rgb_header_timestamps[-1]
+            - rgb_header_timestamps[0]
         ) * 1.0e-9
 
         print(
-            f"[DEPTH MESSAGES] {len(depth_timestamps)}"
+            f"[DEPTH MESSAGES] {len(depth_header_timestamps)}"
         )
         print(
-            f"[RGB MESSAGES] {len(rgb_timestamps)}"
+            f"[RGB MESSAGES] {len(rgb_header_timestamps)}"
         )
         print(
-            f"[DEPTH DURATION] {depth_duration_sec:.3f} s"
+            f"[DEPTH HEADER DURATION] {depth_duration_sec:.3f} s"
         )
         print(
-            f"[RGB DURATION] {rgb_duration_sec:.3f} s"
+            f"[RGB HEADER DURATION] {rgb_duration_sec:.3f} s"
         )
 
         if estimated_fps is not None:
             print(
-                f"[DEPTH ESTIMATED FPS] {estimated_fps:.3f}"
+                f"[DEPTH HEADER ESTIMATED FPS] {estimated_fps:.3f}"
             )
         else:
             print(
-                "[DEPTH ESTIMATED FPS] unavailable"
+                "[DEPTH HEADER ESTIMATED FPS] unavailable"
             )
 
         if rgb_estimated_fps is not None:
             print(
-                f"[RGB ESTIMATED FPS] {rgb_estimated_fps:.3f}"
+                f"[RGB HEADER ESTIMATED FPS] {rgb_estimated_fps:.3f}"
             )
         else:
             print(
-                "[RGB ESTIMATED FPS] unavailable"
+                "[RGB HEADER ESTIMATED FPS] unavailable"
             )
 
         print(

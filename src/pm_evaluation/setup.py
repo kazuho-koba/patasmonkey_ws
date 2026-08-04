@@ -42,6 +42,7 @@ setup(
             "play_bag_depth_seek = pm_evaluation.cli.play_bag_depth_seek:main",
             "play_bag_depth_rgb_seek = pm_evaluation.cli.play_bag_depth_rgb_seek:main",
             "analyze_motor_state_tracking = pm_evaluation.cli.analyze_motor_state_tracking:main",
+            "check_motor_encoder_integrity = pm_evaluation.cli.check_motor_encoder_integrity:main",
         ],
     },
 )
