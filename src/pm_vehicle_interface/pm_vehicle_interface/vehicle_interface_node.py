@@ -3,6 +3,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from pm_msgs.msg import MotorState
+from rclpy.time import Time
 from .odrive_controller import MotorController
 import math
 import sys
@@ -493,19 +494,38 @@ class VehicleInterfaceNode(Node):
 
         try:
             msg = MotorState()
-            msg.stamp = self.get_clock().now().to_msg()
+
+            # オドメトリに使う位置情報を最優先で連続取得する
+            position_read_start = self.get_clock().now()
+
+            left_pos_turns = float(
+                self.left_motor_sign
+                * self.left_motor.get_position()
+            )
+            right_pos_turns = float(
+                self.right_motor_sign
+                * self.right_motor.get_position()
+            )
+
+            position_read_end = self.get_clock().now()
+
+            # 左右位置取得区間の中点を代表時刻とする
+            midpoint_ns = (
+                position_read_start.nanoseconds
+                + position_read_end.nanoseconds
+            ) // 2
+
+            msg.stamp = Time(
+                nanoseconds=midpoint_ns,
+                clock_type=position_read_start.clock_type,
+            ).to_msg()
+
+            msg.left_pos_turns = left_pos_turns
+            msg.right_pos_turns = right_pos_turns
 
             # 速度指令値
             msg.left_cmd_rps = float(self.left_cmd_rps)
             msg.right_cmd_rps = float(self.right_cmd_rps)
-
-            # エンコーダ値（1回転で1増えるturns単位）
-            msg.left_pos_turns = float(
-                self.left_motor_sign * self.left_motor.get_position()
-            )
-            msg.right_pos_turns = float(
-                self.right_motor_sign * self.right_motor.get_position()
-            )
 
             # モータ回転速度（実績）
             msg.left_vel_rps = float(
