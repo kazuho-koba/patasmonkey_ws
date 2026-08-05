@@ -2,7 +2,7 @@
 
 """
 rosbag2（MCAP形式）に記録されたGNSS・各種オドメトリ・EKF出力を読み込み、
-走行軌跡を地図背景付きで可視化するスクリプト。
+走行軌跡を地図背景付きで可視化する、旧bagデータ専用スクリプト。
 
 主な処理:
     1. 指定されたbagsルート以下のmetadata.yamlを再帰的に探索する。
@@ -15,7 +15,7 @@ rosbag2（MCAP形式）に記録されたGNSS・各種オドメトリ・EKF出�
        - EKF local
        - EKF global
     3. GNSSを局所的な東・北方向のメートル座標へ変換する。
-    4. ローカル座標系の軌跡を、開始時のIMU yawとGNSS位置に基づいて整列する。
+    4. 北向き0・反時計回りの旧IMU yawをENUへ+90度変換し、ローカル軌跡を整列する。
     5. GNSS基準の共通表示範囲で6枚、全軌跡を含む表示範囲で1枚を保存する。
     6. 解析完了マーカーを保存し、次回以降は解析済みbagをスキップする。
 
@@ -23,6 +23,8 @@ rosbag2（MCAP形式）に記録されたGNSS・各種オドメトリ・EKF出�
     - GNSS座標変換にはWeb Mercator（EPSG:3857）を使用する。
     - OpenStreetMap背景はcontextilyが利用可能で、かつネットワーク接続が
       ある場合のみ描画される。
+    - この版は、旧bag内の/wit/imuが「北向き=0、反時計回り正」である前提。
+    - ENU変換は yaw_ENU = yaw_old + pi/2 とする。
     - ローカル軌跡の整列は初期位置・初期yawを合わせる処理であり、
       途中のドリフトやスケール誤差そのものは補正しない。
 """
@@ -174,7 +176,7 @@ LINE_STYLE = {
 ANALYSIS_COMPLETE_FILENAME = "trajectory_analysis_complete.json"
 
 # 解析ロジックや出力仕様を変更した際に識別できるようにするバージョン。
-ANALYSIS_VERSION = 2
+ANALYSIS_VERSION = 3
 
 
 def analysis_complete_marker_path(bag_dir: Path) -> Path:
@@ -300,12 +302,13 @@ def finite_number(x) -> bool:
     """
     return x is not None and math.isfinite(float(x))
 
+
 def natural_mcap_sort_key(path: Path):
     """
-    分割MCAPファイルを末尾番号の数値順に並べる。
+    分割MCAPファイルを末尾番号の数値順に並べるためのキーを返す。
 
-    文字列順では_10が_2より前に来るため、
-    末尾の数字を整数として解釈する。
+    文字列順では_10が_2より前に来ることがあるため、
+    ファイル名末尾の「_数字」を整数として解釈する。
     """
     stem = path.stem
     prefix, separator, suffix = stem.rpartition("_")
@@ -316,71 +319,58 @@ def natural_mcap_sort_key(path: Path):
     return stem, -1
 
 
-def find_mcap_files(bag_dir: Path):
+def find_mcap_files(bag_dir: Path) -> list:
     """
-    rosbagディレクトリ直下の全MCAPファイルを取得する。
+    rosbagディレクトリ直下のMCAPファイルを分割番号順に返す。
+
+    Raises:
+        FileNotFoundError:
+            MCAPファイルが1つも存在しない場合。
     """
-    return sorted(
+    mcap_files = sorted(
         bag_dir.glob("*.mcap"),
         key=natural_mcap_sort_key,
     )
 
+    if not mcap_files:
+        raise FileNotFoundError(
+            f"No MCAP files found in: {bag_dir}"
+        )
+
+    return mcap_files
+
 
 def infer_rtk_state_from_msg(msg) -> str:
     """
-    u-bloxメッセージの整数ビットフィールドから測位状態を判定する。
+    u-bloxメッセージの整数flagsビットフィールドから測位状態を推定する。
 
     対応対象:
-        - NAV-RELPOSNED
-        - NAV-PVT
-        - NAV-STATUS
+        - NAV-RELPOSNED: flagsのビット3-4がcarrSoln
+        - NAV-PVT: flagsのビット6-7がcarrSoln
+        - NAV-STATUS: RTK FIX/FLOATは分からないため有効GNSSかだけを判定
 
     Returns:
-        "RTK_FIX"
-        "RTK_FLOAT"
-        "GNSS"
-        "NO_FIX"
-        "UNKNOWN"
+        "RTK_FIX", "RTK_FLOAT", "GNSS", "NO_FIX", "UNKNOWN"
     """
-
-    # --------------------------------------------------------------
-    # NAV-RELPOSNED
-    #
-    # このメッセージは、次のような固有フィールドを持つ。
-    #   rel_pos_n
-    #   rel_pos_e
-    #   rel_pos_d
-    #   rel_pos_heading
-    #
-    # flagsのビット3～4がcarrSoln。
-    # --------------------------------------------------------------
+    # NAV-RELPOSNED固有フィールドでメッセージ型を識別する。
     if (
         hasattr(msg, "rel_pos_n")
         and hasattr(msg, "rel_pos_e")
         and hasattr(msg, "flags")
     ):
         flags = int(msg.flags)
-
         gnss_fix_ok = bool(flags & 0x01)
         carr_soln = (flags & 0x18) >> 3
 
         if not gnss_fix_ok:
             return "NO_FIX"
-
         if carr_soln == 2:
             return "RTK_FIX"
-
         if carr_soln == 1:
             return "RTK_FLOAT"
-
         return "GNSS"
 
-    # --------------------------------------------------------------
-    # NAV-PVT
-    #
-    # NAV-PVTはfix_type、num_sv、lon、latなどを持つ。
-    # flagsのビット6～7がcarrSoln。
-    # --------------------------------------------------------------
+    # NAV-PVTはfix_type、num_sv、緯度経度等を持つ。
     if (
         hasattr(msg, "fix_type")
         and hasattr(msg, "num_sv")
@@ -388,56 +378,37 @@ def infer_rtk_state_from_msg(msg) -> str:
     ):
         flags = int(msg.flags)
         fix_type = int(msg.fix_type)
-
         gnss_fix_ok = bool(flags & 0x01)
         carr_soln = (flags & 0xC0) >> 6
 
         if not gnss_fix_ok or fix_type == 0:
             return "NO_FIX"
-
         if carr_soln == 2:
             return "RTK_FIX"
-
         if carr_soln == 1:
             return "RTK_FLOAT"
-
         return "GNSS"
 
-    # --------------------------------------------------------------
-    # NAV-STATUS
-    #
-    # NAV-STATUSにはRTK FIX/FLOATを直接判定できる
-    # carrSolnがないため、有効な通常GNSS解かどうかだけを判定する。
-    # --------------------------------------------------------------
-    if (
-        hasattr(msg, "gps_fix")
-        and hasattr(msg, "flags")
-    ):
+    # NAV-STATUSにはcarrSolnがないため、通常GNSSの有効性だけを判定する。
+    if hasattr(msg, "gps_fix") and hasattr(msg, "flags"):
         flags = int(msg.flags)
         gps_fix = int(msg.gps_fix)
-
         gnss_fix_ok = bool(flags & 0x01)
 
         if not gnss_fix_ok or gps_fix == 0:
             return "NO_FIX"
-
         if gps_fix in (2, 3, 4):
             return "GNSS"
-
         return "UNKNOWN"
 
-    # --------------------------------------------------------------
-    # 他ドライバでcarr_solnが独立フィールドになっている場合
-    # --------------------------------------------------------------
+    # 別ドライバでcarr_solnが独立フィールドの場合の互換処理。
     if hasattr(msg, "carr_soln"):
         carr_soln = int(msg.carr_soln)
 
         if carr_soln == 2:
             return "RTK_FIX"
-
         if carr_soln == 1:
             return "RTK_FLOAT"
-
         if carr_soln == 0:
             return "GNSS"
 
@@ -446,13 +417,10 @@ def infer_rtk_state_from_msg(msg) -> str:
 
 def read_bag_data(bag_dir: Path) -> dict:
     """
-    1つのrosbagから軌跡描画に必要なデータだけを抽出する。
+    1つのMCAP rosbagから軌跡描画に必要なデータだけを抽出する。
 
     rosbag2_pyは使用せず、mcap_ros2.reader.read_ros2_messages()で
-    分割MCAPを直接読み取る。
-
-    MCAP内に埋め込まれたROS 2メッセージ定義を使って、
-    CDRデータをPythonオブジェクトへデコードする。
+    分割MCAPファイルを直接読み取る。
     """
     needed_topics = {
         TOPIC_FIX,
@@ -468,7 +436,6 @@ def read_bag_data(bag_dir: Path) -> dict:
 
     fixes = []
     imu_yaws = []
-
     navrelposned_states = []
     navpvt_states = []
     navstatus_states = []
@@ -487,18 +454,10 @@ def read_bag_data(bag_dir: Path) -> dict:
         TOPIC_EKF_GLOBAL: "ekf_global",
     }
 
-    mcap_files = find_mcap_files(bag_dir)
-
-    if not mcap_files:
-        raise FileNotFoundError(
-            f"No MCAP files found in: {bag_dir}"
-        )
-
-    for mcap_path in mcap_files:
+    for mcap_path in find_mcap_files(bag_dir):
         print(f"      Reading: {mcap_path.name}")
 
-        # topicsを指定することで、画像・点群など不要なメッセージを
-        # デコード対象から除外する。
+        # topicsを限定し、画像や点群などの重いデータをデコードしない。
         for decoded in read_ros2_messages(
             mcap_path,
             topics=needed_topics,
@@ -523,7 +482,6 @@ def read_bag_data(bag_dir: Path) -> dict:
 
             elif topic_name == TOPIC_WIT_IMU:
                 orientation = msg.orientation
-
                 yaw = quaternion_to_yaw(
                     orientation.x,
                     orientation.y,
@@ -565,7 +523,6 @@ def read_bag_data(bag_dir: Path) -> dict:
             elif topic_name in topic_to_key:
                 position = msg.pose.pose.position
                 orientation = msg.pose.pose.orientation
-
                 yaw = quaternion_to_yaw(
                     orientation.x,
                     orientation.y,
@@ -582,7 +539,7 @@ def read_bag_data(bag_dir: Path) -> dict:
                     }
                 )
 
-    # 分割MCAPごとに読むため、念のため全系列を時刻順へ並べ直す。
+    # 分割MCAPを個別に読んだ後、すべての系列をbag時刻順へ並べ直す。
     fixes.sort(key=lambda item: item["t"])
     imu_yaws.sort(key=lambda item: item["t"])
     navrelposned_states.sort(key=lambda item: item["t"])
@@ -600,7 +557,6 @@ def read_bag_data(bag_dir: Path) -> dict:
         "navstatus_states": navstatus_states,
         "odom_data": odom_data,
     }
-
 
 def choose_rtk_status_stream(data: dict) -> list:
     """
@@ -827,7 +783,7 @@ def align_local_trajectory_to_north(
     gnss_points: list,
 ) -> list:
     """
-    ローカル座標系のオドメトリ軌跡をGNSS・北基準へ初期整列する。
+    旧bagのローカル軌跡を、IMU方位をENUへ変換してGNSS座標へ初期整列する。
 
     対象:
         - ホイールオドメトリ
@@ -838,9 +794,10 @@ def align_local_trajectory_to_north(
     処理:
         1. 軌跡の最初の位置(x0, y0)をローカル原点として差し引く。
         2. 軌跡開始時のorientation yaw0を取得する。
-        3. 軌跡開始時刻に最も近いIMU yawを取得する。
-        4. theta = IMU yaw - 軌跡初期yaw だけ全軌跡を回転する。
-        5. 軌跡開始時刻に最も近いGNSS位置へ平行移動する。
+        3. 軌跡開始時刻に最も近い旧IMU yawを取得する。
+        4. 旧IMU yawを yaw_ENU = yaw_old + pi/2 でENUへ変換する。
+        5. theta = yaw_ENU - 軌跡初期yaw だけ全軌跡を回転する。
+        6. 軌跡開始時刻に最も近いGNSS位置へ平行移動する。
 
     この処理により:
         - 図の上方向を北として扱いやすくなる。
@@ -909,8 +866,12 @@ def align_local_trajectory_to_north(
         anchor_x = gnss_at_start["x"]
         anchor_y = gnss_at_start["y"]
 
-    # 軌跡初期yawをIMU方位へ一致させるための回転角。
-    theta = imu_yaw - yaw0
+    # 旧bagのIMU方位は「北=0、反時計回り正」。
+    # ENUでは「東=0、反時計回り正」なので、固定で+90度する。
+    imu_yaw_enu = imu_yaw + (math.pi / 2.0)
+
+    # 軌跡初期yawを、ENUへ変換したIMU方位へ一致させる回転角。
+    theta = imu_yaw_enu - yaw0
 
     # 全点で同じ三角関数を使うため、ループ外で一度だけ計算する。
     cos_t = math.cos(theta)
@@ -1850,13 +1811,16 @@ def process_one_bag(
         ),
     )
 
+    # 元スクリプトのログ出力を維持している。
+    print("      Saved 7 plots")
+
     # 全画像の保存完了後にだけ完了マーカーを作る。
     marker_path = analysis_complete_marker_path(
         bag_dir
     )
 
     marker_data = {
-        "analysis": "trajectory_plots",
+        "analysis": "trajectory_plots_bag_north_zero_ccw_to_enu",
         "analysis_version": ANALYSIS_VERSION,
 
         # UTCのISO 8601形式で解析完了時刻を記録する。
@@ -1874,6 +1838,9 @@ def process_one_bag(
 
         # 全体表示版のファイル名。
         "full_extent_output": OUTPUT_FILES["overlay_full"],
+
+        # 旧bagに適用した方位規約変換。
+        "imu_yaw_conversion": "yaw_enu = yaw_north_zero_ccw + pi/2",
     }
 
     # JSONもPNG解析と同様、一時ファイルへ完全に書いてから置換する。

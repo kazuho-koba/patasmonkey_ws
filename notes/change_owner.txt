@@ -1,0 +1,1 @@
+sudo chown -R kazuho:kazuho /path/to/directory

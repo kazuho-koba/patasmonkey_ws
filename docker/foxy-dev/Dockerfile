@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     zstd \
+    tree \
     python3-pip \
     python3-usb \
     python3-colcon-common-extensions \

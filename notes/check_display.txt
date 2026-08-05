@@ -1,0 +1,135 @@
+root@mujin-ELSA-VELUGA:/workspaces/patasmonkey_ws# echo "$DISPLAY"
+:0
+root@mujin-ELSA-VELUGA:/workspaces/patasmonkey_ws# ls -la /tmp/.X11-unix
+total 8
+drwxrwxrwt 2 root root 4096 Aug  3 13:07 .
+drwxrwxrwt 1 root root 4096 Aug  3 13:23 ..
+srwxrwxrwx 1 1000 1000    0 Aug  3 13:07 X1
+srwxrwxrwx 1 1000 1000    0 Aug  3 13:07 X1001
+
+
+
+原因はほぼ確定です。
+
+コンテナ内は、
+
+DISPLAY=:0
+
+ですが、実際に存在するX11ソケットは、
+
+/tmp/.X11-unix/X1
+/tmp/.X11-unix/X1001
+
+です。
+
+X0が存在しないため、:0へ接続しようとして失敗しています。
+
+まずホスト側で確認
+
+Dockerの外で実行してください。
+
+echo "$DISPLAY"
+
+おそらく次のどちらかです。
+
+:1
+
+または、
+
+:1001
+一時的にコンテナ内で修正
+
+ホスト側が:1なら、コンテナ内で次を実行します。
+
+export DISPLAY=:1
+
+その後、再実行します。
+
+ros2 run pm_evaluation \
+  play_bag_depth_mode_switch \
+  /workspaces/patasmonkey_ws/bags/rosbag2_2026_07_26-09_17_38/
+
+ホスト側が:1001なら、
+
+export DISPLAY=:1001
+
+です。
+
+どちらか分からない場合の確認
+
+コンテナ内で順番に試せます。
+
+export DISPLAY=:1
+
+簡単なX11テスト：
+
+xeyes
+
+xeyesがなければ、
+
+apt update
+apt install -y x11-apps
+
+それでも表示されなければ、
+
+export DISPLAY=:1001
+xeyes
+
+を試します。
+
+Docker起動スクリプトの修正
+
+根本的には、コンテナ内で固定の、
+
+DISPLAY=:0
+
+を設定せず、ホスト側の値をそのまま渡すべきです。
+
+docker runを次のようにします。
+
+docker run \
+  -e DISPLAY="$DISPLAY" \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  ...
+
+重要なのは、run.shを実行する**ホスト側シェルのDISPLAY**を使うことです。
+
+例えばホスト側で、
+
+echo "$DISPLAY"
+
+が、
+
+:1
+
+なら、コンテナ内も自動的に、
+
+DISPLAY=:1
+
+になります。
+
+現在の状態の整理
+
+今は次の不一致です。
+
+コンテナの接続先:
+DISPLAY=:0
+       ↓
+必要なソケット:
+/tmp/.X11-unix/X0
+
+実際に存在するソケット:
+X1
+X1001
+
+したがってQtは、
+
+could not connect to display :0
+
+となっています。
+
+まずホスト側の、
+
+echo "$DISPLAY"
+
+と同じ値をコンテナ内へ設定すればよいです。
