@@ -56,10 +56,16 @@ from mcap_ros2.reader import read_ros2_messages
 try:
     import contextily as ctx
 
+    # OpenStreetMapのTile Usage Policyに従い、
+    # 固定かつ識別可能なUser-Agentを使用する。
+    ctx.tile.USER_AGENT = (
+        "PatasmonkeyTrajectoryAnalyzer/1.0"
+    )
+
     HAS_CONTEXTILY = True
+
 except Exception:
     HAS_CONTEXTILY = False
-
 
 # ---------------------------------------------------------------------------
 # 解析対象トピック

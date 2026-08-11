@@ -535,6 +535,7 @@ class VehicleInterfaceNode(Node):
                 self.right_motor_sign * self.right_motor.get_velocity()
             )
 
+            '''
             # q軸電流 [A]　実績
             # （符号も車体座標系に合わせるなら motor_sign を掛けるべき？）
             msg.left_iq_measured_a = float(self.left_motor.get_iq_measured())
@@ -548,6 +549,13 @@ class VehicleInterfaceNode(Node):
             msg.right_iq_setpoint_a = float(
                 self.right_motor_sign * self.right_motor.get_iq_setpoint()
             )
+            '''
+            # USBの速度がたりない？ので一度計測対象外にする
+            msg.left_iq_measured_a = 0
+            msg.right_iq_measured_a = 0
+            msg.left_iq_setpoint_a = 0
+            msg.right_iq_setpoint_a = 0
+
 
             # 電源電圧
             msg.vbus_voltage = float(self.left_motor.get_vbus_voltage())
