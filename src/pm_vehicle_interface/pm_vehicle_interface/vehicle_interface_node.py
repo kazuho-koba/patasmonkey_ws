@@ -551,10 +551,10 @@ class VehicleInterfaceNode(Node):
             )
             '''
             # USBの速度がたりない？ので一度計測対象外にする
-            msg.left_iq_measured_a = 0
-            msg.right_iq_measured_a = 0
-            msg.left_iq_setpoint_a = 0
-            msg.right_iq_setpoint_a = 0
+            msg.left_iq_measured_a = 0.0
+            msg.right_iq_measured_a = 0.0
+            msg.left_iq_setpoint_a = 0.0
+            msg.right_iq_setpoint_a = 0.0
 
 
             # 電源電圧
