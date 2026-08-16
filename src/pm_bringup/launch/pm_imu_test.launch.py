@@ -70,15 +70,15 @@ def generate_launch_description():
         # -------------------------------------------------------------
         # OAK-D：OpenVINS再計算用
         # -------------------------------------------------------------
-        "/oak/stereo/left/image_raw",
-        "/oak/stereo/right/image_raw",
+        #"/oak/stereo/left/image_raw",
+        #"/oak/stereo/right/image_raw",
         "/oak/imu/data",
 
         # -------------------------------------------------------------
         # OAK-D：RGB-D認識、オフロード走行解析用
         # -------------------------------------------------------------
-        "/oak/color/image_raw",
-        "/oak/depth/image_raw",
+        #"/oak/color/image_raw",
+        #"/oak/depth/image_raw",
 
         # -------------------------------------------------------------
         # 外部IMU・磁気センサ
@@ -352,7 +352,7 @@ def generate_launch_description():
         ),
 
         # 実際のコマンド実行・ノード起動など
-        # rosbag_record_process,
+        rosbag_record_process,
 
         teleop_launch,
         robot_state_publisher_node,
