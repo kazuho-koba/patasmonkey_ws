@@ -352,7 +352,7 @@ def generate_launch_description():
         ),
 
         # 実際のコマンド実行・ノード起動など
-        rosbag_record_process,
+        # rosbag_record_process,
 
         teleop_launch,
         robot_state_publisher_node,
