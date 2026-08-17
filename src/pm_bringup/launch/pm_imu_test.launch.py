@@ -70,96 +70,96 @@ def generate_launch_description():
         # -------------------------------------------------------------
         # OAK-D：OpenVINS再計算用
         # -------------------------------------------------------------
-        #"/oak/stereo/left/image_raw",
-        #"/oak/stereo/right/image_raw",
-        #"/oak/imu/data",
+        "/oak/stereo/left/image_raw",
+        "/oak/stereo/right/image_raw",
+        "/oak/imu/data",
 
         # -------------------------------------------------------------
         # OAK-D：RGB-D認識、オフロード走行解析用
         # -------------------------------------------------------------
-        #"/oak/color/image_raw",
-        #"/oak/depth/image_raw",
+        "/oak/color/image_raw",
+        "/oak/depth/image_raw",
 
         # -------------------------------------------------------------
         # 外部IMU・磁気センサ
         # -------------------------------------------------------------
-        #"/wit/imu",
-        #"/wit/mag",
-        #"/imu",
+        "/wit/imu",
+        "/wit/mag",
+        "/imu",
 
         # -------------------------------------------------------------
         # 車両状態・wheel odometry
         # -------------------------------------------------------------
-        #"/motor_state",
-        #"/wheel/odometry",
+        "/motor_state",
+        "/wheel/odometry",
 
         # -------------------------------------------------------------
         # OpenVINS・VIOオンライン出力
         # -------------------------------------------------------------
-        #"/ov_msckf/odomimu",
-        #"/ov_msckf/poseimu",
-        #"/ov_msckf/pathimu",
-        #"/vio/odometry",
+        "/ov_msckf/odomimu",
+        "/ov_msckf/poseimu",
+        "/ov_msckf/pathimu",
+        "/vio/odometry",
         # VOの作動状況を一応記録する場合は/trackhistを記録
         # "/ov_msckf/trackhist",
 
         # -------------------------------------------------------------
         # robot_localization出力
         # -------------------------------------------------------------
-        #"/odometry/local",
-        #"/odometry/global",
-        #"/odometry/gps",
-        #"/gps/filtered",
+        "/odometry/local",
+        "/odometry/global",
+        "/odometry/gps",
+        "/gps/filtered",
 
         # -------------------------------------------------------------
         # GNSS測位結果
         # -------------------------------------------------------------
         "/fix",
-        #"/fix_velocity",
-        #"/navpvt",
-        #"/navrelposned",
-        #"/navheading",
-        #"/navstatus",
-        #"/navstate",
-        #"/navclock",
-        #"/navsvin",
+        "/fix_velocity",
+        "/navpvt",
+        "/navrelposned",
+        "/navheading",
+        "/navstatus",
+        "/navstate",
+        "/navclock",
+        "/navsvin",
 
         # GNSS受信機・ハードウェア診断
-        #"/monhw",
+        "/monhw",
 
         # -------------------------------------------------------------
         # RTK補正情報
         # -------------------------------------------------------------
         # NTRIP clientが受信し、F9Pへ渡すRTCM
-        #"/rtcm",
+        "/rtcm",
 
         # F9Pが実際に受信・解析したRTCM情報
-        #"/rxmrtcm",
+        "/rxmrtcm",
 
         # -------------------------------------------------------------
         # 車両への指令・操作履歴
         # -------------------------------------------------------------
-        #"/pm/joy",
-        #"/cmd_vel_joy",
-        #"/cmd_vel",
-        #"/sim_cmd_vel",
-        #"/emergency_stop",
+        "/pm/joy",
+        "/cmd_vel_joy",
+        "/cmd_vel",
+        "/sim_cmd_vel",
+        "/emergency_stop",
 
         # -------------------------------------------------------------
         # TF・RobotModel・RViz再現用
         # -------------------------------------------------------------
-        #"/tf",
-        #"/tf_static",
-        #"/robot_description",
-        #"/joint_states",
+        "/tf",
+        "/tf_static",
+        "/robot_description",
+        "/joint_states",
 
         # -------------------------------------------------------------
         # 診断・実験状態
         # -------------------------------------------------------------
-        #"/diagnostics",
-        #"/rosout",
-        #"/parameter_events",
-        #"/set_pose",
+        "/diagnostics",
+        "/rosout",
+        "/parameter_events",
+        "/set_pose",
     ]
 
     with open(urdf_file, "r") as f:
@@ -365,7 +365,7 @@ def generate_launch_description():
         TimerAction(
             period=3.0,
             actions=[
-                # imu_node,
+                imu_node,
                 wheel_odometry_node,
                 ekf_local_node,
                 ntrip_client_node,
