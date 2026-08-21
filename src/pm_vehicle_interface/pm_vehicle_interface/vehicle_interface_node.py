@@ -185,12 +185,12 @@ class VehicleInterfaceNode(Node):
 
         # タイマーを定義
         # - 速度指令のODrive反映: 25 Hz
-        # - MotorStateのpublish: 50 Hz
+        # - MotorStateのpublish: 30 Hz
         self._timer = self.create_timer(0.04, self.command_selector)
-        self._motor_state_timer = self.create_timer(0.02, self.publish_motor_state)
+        self._motor_state_timer = self.create_timer(1.0 / 30.0, self.publish_motor_state)
 
         # vbus_voltageは変化が遅いため、ODriveからは1 Hzでのみ再取得する。
-        # MotorState自体は50 Hzでpublishし、直近のキャッシュ値を載せる。
+        # MotorState自体は30 Hzでpublishし、直近のキャッシュ値を載せる。
         self._vbus_voltage = 0.0
         self._last_vbus_update_time = None
         self._vbus_update_period_sec = 1.0
