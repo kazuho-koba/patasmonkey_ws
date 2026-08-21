@@ -183,9 +183,17 @@ class VehicleInterfaceNode(Node):
         # self.accumerated_ver_err_left = 0.0
         # self.accumerated_ver_err_right = 0.0
 
-        # タイマーを定義、設定時間（sec）ごとに関数を呼び出す（遠隔操縦指令の受領関数と、モータ制御情報の発信関数）
-        self._timer = self.create_timer(0.05, self.command_selector)
-        self._motor_state_timer = self.create_timer(0.0333, self.publish_motor_state)
+        # タイマーを定義
+        # - 速度指令のODrive反映: 25 Hz
+        # - MotorStateのpublish: 50 Hz
+        self._timer = self.create_timer(0.04, self.command_selector)
+        self._motor_state_timer = self.create_timer(0.02, self.publish_motor_state)
+
+        # vbus_voltageは変化が遅いため、ODriveからは1 Hzでのみ再取得する。
+        # MotorState自体は50 Hzでpublishし、直近のキャッシュ値を載せる。
+        self._vbus_voltage = 0.0
+        self._last_vbus_update_time = None
+        self._vbus_update_period_sec = 1.0
 
         # publihser config
         self.motor_state_pub = self.create_publisher(
@@ -219,6 +227,9 @@ class VehicleInterfaceNode(Node):
             self.right_cmd_rps = 0.0  # モータ指令値をpublishするために値を保存しておく変数（右）
             self.odrive_connected = True
             self.reconnect_in_progress = False
+
+            # 再接続後の最初のMotorState publishでvbusを即時再取得する
+            self._last_vbus_update_time = None
 
             self.get_logger().info("ODrive connected and initialized!")
 
@@ -535,7 +546,7 @@ class VehicleInterfaceNode(Node):
                 self.right_motor_sign * self.right_motor.get_velocity()
             )
 
-            '''
+            
             # q軸電流 [A]　実績
             # （符号も車体座標系に合わせるなら motor_sign を掛けるべき？）
             msg.left_iq_measured_a = float(self.left_motor.get_iq_measured())
@@ -550,15 +561,25 @@ class VehicleInterfaceNode(Node):
                 self.right_motor_sign * self.right_motor.get_iq_setpoint()
             )
             '''
-            # USBの速度がたりない？ので一度計測対象外にする
+            # USBの速度がたりないので一度計測対象外にする
             msg.left_iq_measured_a = 0.0
             msg.right_iq_measured_a = 0.0
             msg.left_iq_setpoint_a = 0.0
             msg.right_iq_setpoint_a = 0.0
-
+            '''
 
             # 電源電圧
-            msg.vbus_voltage = float(self.left_motor.get_vbus_voltage())
+            # ODriveからの実読出しは1 Hzに抑え、それ以外の周期では直近値を再利用する。
+            now = self.get_clock().now()
+            if (
+                self._last_vbus_update_time is None
+                or (now - self._last_vbus_update_time).nanoseconds
+                >= self._vbus_update_period_sec * 1e9
+            ):
+                self._vbus_voltage = float(self.left_motor.get_vbus_voltage())
+                self._last_vbus_update_time = now
+
+            msg.vbus_voltage = self._vbus_voltage
 
             # publish
             self.motor_state_pub.publish(msg)
@@ -642,6 +663,7 @@ class VehicleInterfaceNode(Node):
         self.right_motor = None
         self.left_cmd_rps = 0.0
         self.right_cmd_rps = 0.0
+        self._last_vbus_update_time = None
 
 
 def main(args=None):
