@@ -209,11 +209,12 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "bags_root",
+        "bags_roots",
         type=Path,
+        nargs="+",
         help=(
-            "Root directory containing rosbag2 directories, "
-            "for example /workspaces/patasmonkey_ws/bags"
+            "One or more rosbag2 directories or root directories. "
+            "Shell wildcards such as rosbag2_2026_08_21* are supported."
         ),
     )
 
@@ -831,19 +832,28 @@ def main() -> int:
     args = parse_arguments()
 
     # "~"を展開し、絶対パスへ正規化する
-    bags_root = args.bags_root.expanduser().resolve()
+    bags_roots = [
+        path.expanduser().resolve()
+        for path in args.bags_roots
+    ]
 
-    if not bags_root.is_dir():
-        print(
-            f"Bags root does not exist or is not a directory: "
-            f"{bags_root}",
-            file=sys.stderr,
+    metadata_files = []
+
+    for bags_root in bags_roots:
+        if not bags_root.is_dir():
+            print(
+                f"Bags root does not exist or is not a directory: "
+                f"{bags_root}",
+                file=sys.stderr,
+            )
+            return 2
+
+        metadata_files.extend(
+            find_metadata_files(bags_root)
         )
-        return 2
 
-    # oldディレクトリ以下も含め、
-    # すべてのmetadata.yamlを収集する
-    metadata_files = find_metadata_files(bags_root)
+    # 同じbagが複数rootから見つかった場合に重複処理しない。
+    metadata_files = sorted(set(metadata_files))
 
     if not metadata_files:
         print(
@@ -853,7 +863,9 @@ def main() -> int:
         )
         return 1
 
-    print(f"Bags root: {bags_root}")
+    print("Input roots:")
+    for bags_root in bags_roots:
+        print(f"  {bags_root}")
     print(
         f"Found {len(metadata_files)} bag directories"
     )

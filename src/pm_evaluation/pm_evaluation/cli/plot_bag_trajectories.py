@@ -2,11 +2,18 @@
 
 """
 rosbag2（MCAP形式）に記録されたGNSS・各種オドメトリ・EKF出力を読み込み、
-走行軌跡を地図背景付きで可視化する、旧bagデータ専用スクリプト。
+走行軌跡を地図背景付きで可視化するスクリプト。
+
+この「_oldなし」の現行版は、補正前版（plot_bag_trajectories_old.py）で
+「実際には南下している走行が西向きに描画される」90度の方位ずれがあったため、
+軌跡整列時にIMU yawへ +pi/2 rad（反時計回り90度）の補正を追加した版である。
 
 主な処理:
-    1. 指定されたbagsルート以下のmetadata.yamlを再帰的に探索する。
-    2. 各bagについて、次の情報を読み取る。
+    1. コマンドラインで1個以上の入力ディレクトリを受け取る。
+       ワイルドカードをシェルで展開して複数bagディレクトリを直接渡すことも、
+       上位ディレクトリを渡して配下のbagを再帰探索することもできる。
+    2. 各入力ディレクトリ以下のmetadata.yamlを再帰的に探索する。
+    3. 各bagについて、次の情報を読み取る。
        - GNSS緯度・経度
        - RTK FIX / FLOATなどの測位状態
        - IMU orientationから求めたyaw
@@ -14,17 +21,17 @@ rosbag2（MCAP形式）に記録されたGNSS・各種オドメトリ・EKF出�
        - ビジュアルオドメトリ
        - EKF local
        - EKF global
-    3. GNSSを局所的な東・北方向のメートル座標へ変換する。
-    4. 北向き0・反時計回りの旧IMU yawをENUへ+90度変換し、ローカル軌跡を整列する。
-    5. GNSS基準の共通表示範囲で6枚、全軌跡を含む表示範囲で1枚を保存する。
-    6. 解析完了マーカーを保存し、次回以降は解析済みbagをスキップする。
+    4. GNSSを局所的な東・北方向のメートル座標へ変換する。
+    5. IMU yawへ+90度の描画補正を加え、ローカル軌跡をGNSS座標へ初期整列する。
+    6. GNSS基準の共通表示範囲で6枚、全軌跡を含む表示範囲で1枚を保存する。
+    7. 解析完了マーカーを保存し、次回以降は解析済みbagをスキップする。
 
 注意:
     - GNSS座標変換にはWeb Mercator（EPSG:3857）を使用する。
     - OpenStreetMap背景はcontextilyが利用可能で、かつネットワーク接続が
       ある場合のみ描画される。
-    - この版は、旧bag内の/wit/imuが「北向き=0、反時計回り正」である前提。
-    - ENU変換は yaw_ENU = yaw_old + pi/2 とする。
+    - +pi/2 radの補正は、補正前版で確認された90度の描画方位ずれに対する処理。
+      plot_bag_trajectories_old.pyはこの+pi/2補正を行わない比較用の旧版である。
     - ローカル軌跡の整列は初期位置・初期yawを合わせる処理であり、
       途中のドリフトやスケール誤差そのものは補正しない。
 """
@@ -235,8 +242,9 @@ def parse_args() -> argparse.Namespace:
     コマンドライン引数を定義し、解析済みNamespaceを返す。
 
     位置引数:
-        bags_root:
-            複数のrosbagディレクトリを含むルートディレクトリ。
+        bags_roots:
+            1個以上のrosbagディレクトリ、またはそれらを含む上位ディレクトリ。
+            シェルのワイルドカード展開により複数bagを直接渡すこともできる。
 
     オプション:
         --overwrite:
@@ -250,9 +258,13 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "bags_root",
+        "bags_roots",
         type=Path,
-        help="Root directory containing rosbag2 bag directories.",
+        nargs="+",
+        help=(
+            "One or more rosbag2 bag directories or root directories. "
+            "Shell wildcards such as rosbag2_2026_08_21* are supported."
+        ),
     )
 
     parser.add_argument(
@@ -789,7 +801,8 @@ def align_local_trajectory_to_north(
     gnss_points: list,
 ) -> list:
     """
-    旧bagのローカル軌跡を、IMU方位をENUへ変換してGNSS座標へ初期整列する。
+    ローカル軌跡を、+90度の方位補正を加えたIMU yawに基づいて
+    GNSS座標へ初期整列する。
 
     対象:
         - ホイールオドメトリ
@@ -800,9 +813,10 @@ def align_local_trajectory_to_north(
     処理:
         1. 軌跡の最初の位置(x0, y0)をローカル原点として差し引く。
         2. 軌跡開始時のorientation yaw0を取得する。
-        3. 軌跡開始時刻に最も近い旧IMU yawを取得する。
-        4. 旧IMU yawを yaw_ENU = yaw_old + pi/2 でENUへ変換する。
-        5. theta = yaw_ENU - 軌跡初期yaw だけ全軌跡を回転する。
+        3. 軌跡開始時刻に最も近いIMU yawを取得する。
+        4. 補正前版で確認された90度の描画方位ずれを補うため、
+           IMU yawへ +pi/2 radを加える。
+        5. theta = (IMU yaw + pi/2) - 軌跡初期yaw だけ全軌跡を回転する。
         6. 軌跡開始時刻に最も近いGNSS位置へ平行移動する。
 
     この処理により:
@@ -872,12 +886,13 @@ def align_local_trajectory_to_north(
         anchor_x = gnss_at_start["x"]
         anchor_y = gnss_at_start["y"]
 
-    # 旧bagのIMU方位は「北=0、反時計回り正」。
-    # ENUでは「東=0、反時計回り正」なので、固定で+90度する。
-    imu_yaw_enu = imu_yaw + (math.pi / 2.0)
+    # 補正前版では、実際には南下している走行が西向きに描画される
+    # 90度の方位ずれが確認された。
+    # 現行版では描画時の初期整列に +pi/2 rad（反時計回り90度）を加える。
+    corrected_imu_yaw = imu_yaw + (math.pi / 2.0)
 
-    # 軌跡初期yawを、ENUへ変換したIMU方位へ一致させる回転角。
-    theta = imu_yaw_enu - yaw0
+    # 軌跡初期yawを、90度補正後のIMU方位へ一致させる回転角。
+    theta = corrected_imu_yaw - yaw0
 
     # 全点で同じ三角関数を使うため、ループ外で一度だけ計算する。
     cos_t = math.cos(theta)
@@ -1845,8 +1860,8 @@ def process_one_bag(
         # 全体表示版のファイル名。
         "full_extent_output": OUTPUT_FILES["overlay_full"],
 
-        # 旧bagに適用した方位規約変換。
-        "imu_yaw_conversion": "yaw_enu = yaw_north_zero_ccw + pi/2",
+        # 補正前版で確認された90度の描画方位ずれに対する現行版の補正。
+        "imu_yaw_conversion": "corrected_imu_yaw = imu_yaw + pi/2",
     }
 
     # JSONもPNG解析と同様、一時ファイルへ完全に書いてから置換する。
@@ -1883,14 +1898,14 @@ def find_bag_directories(
     bags_root: Path,
 ) -> list:
     """
-    指定ルート以下のすべてのrosbagディレクトリを再帰的に探索する。
+    指定ディレクトリ以下のすべてのrosbagディレクトリを再帰的に探索する。
 
     metadata.yamlを持つディレクトリをrosbagディレクトリとみなす。
     そのため、bags/old以下も自動的に対象となる。
 
     Args:
         bags_root:
-            rosbag群のルートディレクトリ。
+            rosbagディレクトリ自身、またはrosbag群を含む上位ディレクトリ。
 
     Returns:
         metadata.yamlを含むディレクトリのソート済みリスト。
@@ -1908,8 +1923,9 @@ def main() -> int:
 
     処理:
         1. 引数を解析する。
-        2. bagsルートの存在を確認する。
-        3. rosbagディレクトリを再帰探索する。
+        2. 1個以上の入力ディレクトリの存在を確認する。
+        3. 各入力ディレクトリ以下のrosbagディレクトリを再帰探索し、
+           重複を除去する。
         4. 各bagを順番に処理する。
         5. processed / skipped / failed件数を表示する。
         6. 失敗が1件でもあれば終了コード1を返す。
@@ -1926,28 +1942,44 @@ def main() -> int:
     """
     args = parse_args()
 
-    # "~"を展開し、絶対パスへ正規化する。
-    bags_root = args.bags_root.expanduser().resolve()
+    # 1個以上の入力パスについて"~"を展開し、絶対パスへ正規化する。
+    bags_roots = [
+        path.expanduser().resolve()
+        for path in args.bags_roots
+    ]
 
-    if not bags_root.is_dir():
-        print(
-            f"Not a directory: {bags_root}",
-            file=sys.stderr,
+    # 各入力パス以下からrosbagディレクトリを再帰探索する。
+    # ワイルドカードで複数bagを直接渡した場合も、
+    # 上位ディレクトリを1つ渡した場合も同じ処理で扱える。
+    bag_dirs = []
+
+    for bags_root in bags_roots:
+        if not bags_root.is_dir():
+            print(
+                f"Not a directory: {bags_root}",
+                file=sys.stderr,
+            )
+            return 2
+
+        bag_dirs.extend(
+            find_bag_directories(bags_root)
         )
-        return 2
 
-    bag_dirs = find_bag_directories(
-        bags_root
-    )
+    # 入力パス同士が重複して同じbagを含む場合でも、
+    # 同じbagを二重解析しないようPath単位で重複を除去する。
+    bag_dirs = sorted(set(bag_dirs))
 
     if not bag_dirs:
         print(
-            f"No bag directories found below: {bags_root}",
+            "No bag directories found below the specified input paths.",
             file=sys.stderr,
         )
         return 1
 
-    print(f"Bags root: {bags_root}")
+    print("Input roots:")
+    for bags_root in bags_roots:
+        print(f"  {bags_root}")
+
     print(
         f"Found {len(bag_dirs)} bag directories"
     )
