@@ -95,21 +95,32 @@ RUN python3 -m pip install --no-cache-dir \
 # フォーマッタ
 RUN python3 -m pip install --no-cache-dir black==24.4.2
 
-# rosdep 初期化はホストや既存状態によって失敗することがあるので、失敗しても継続
+# rosdep
+# /etc/ros/rosdep/sources.list.d を作る rosdep init は root で実行する。
+# 実際の開発作業は host と同じ UID/GID=1000 で行うため、
+# そのユーザー用 HOME と rosdep cache も image 内に用意する。
 RUN rosdep init || true
-RUN rosdep update || true
+
+RUN groupadd --gid 1000 developer 2>/dev/null || true && \
+    useradd --uid 1000 --gid 1000 \
+    --create-home \
+    --shell /bin/bash \
+    developer 2>/dev/null || true && \
+    mkdir -p /home/developer/.ros && \
+    chown -R 1000:1000 /home/developer
+
+RUN su -s /bin/bash developer -c \
+    'HOME=/home/developer rosdep update --rosdistro=foxy'
 
 # ワークスペース
 RUN mkdir -p /workspaces/patasmonkey_ws/src
 RUN mkdir -p /workspaces/ros2_ws/src
 WORKDIR /workspaces/patasmonkey_ws
 
-# bash 起動時に ROS / Foxy用 install を source
-RUN echo "source /opt/ros/foxy/setup.bash" >> /root/.bashrc
-RUN echo "if [ -f /workspaces/ros2_ws/install_foxy/setup.bash ]; then source /workspaces/ros2_ws/install_foxy/setup.bash; fi" >> /root/.bashrc
-RUN echo "if [ -f /workspaces/ros2_ws/install/setup.bash ]; then source /workspaces/ros2_ws/install/setup.bash; fi" >> /root/.bashrc
-RUN echo "if [ -f /workspaces/patasmonkey_ws/install_foxy/setup.bash ]; then source /workspaces/patasmonkey_ws/install_foxy/setup.bash; fi" >> /root/.bashrc
-RUN echo "if [ -f /workspaces/patasmonkey_ws/install/setup.bash ]; then source /workspaces/patasmonkey_ws/install/setup.bash; fi" >> /root/.bashrc
+# Interactive shellではROS 2 Foxy本体だけ自動sourceする。
+# ros2_ws / patasmonkey_ws は用途に応じて明示的にsourceする。
+RUN echo 'source /opt/ros/foxy/setup.bash' >> /root/.bashrc && \
+    echo 'source /opt/ros/foxy/setup.bash' >> /home/developer/.bashrc
 
 # Foxy用ビルドalias
 # RUN echo "alias build_ros2_foxy='cd /workspaces/ros2_ws && colcon --log-base log_foxy build --symlink-install --build-base build_foxy --install-base install_foxy --packages-select hwt905_rs485_driver'" >> /root/.bashrc

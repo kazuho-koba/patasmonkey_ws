@@ -64,7 +64,10 @@ Before building:
 
 Run builds as UID/GID 1000:1000 when practical to avoid creating root-owned files.
 
-Example:
+Use /home/developer as HOME when that directory exists in the container.
+For the currently running legacy container, HOME=/tmp may be used temporarily.
+
+Example for the current legacy container:
 
 docker exec \
   --user 1000:1000 \
@@ -78,6 +81,15 @@ docker exec \
     cd /workspaces/patasmonkey_ws
     colcon build --packages-select <package>
   '
+
+After the Docker image has been rebuilt and /home/developer exists:
+
+docker exec \
+  --user 1000:1000 \
+  --env HOME=/home/developer \
+  patasmonkey_foxy_dev \
+  bash -lc '<command>'
+
 
 Prefer package-specific builds where possible.
 
