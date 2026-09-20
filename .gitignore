@@ -31,7 +31,11 @@ build_foxy/
 install_foxy/
 log_foxy/
 bags/
-src/pm_evaluation/results/
+# Evaluation outputs may contain raw GNSS/location data. Keep them private by
+# default, but retain distilled, manually reviewed findings in version control.
+src/pm_evaluation/results/**
+!src/pm_evaluation/results/**/
+!src/pm_evaluation/results/**/FINDINGS.md
 
 # credentials / local configs
 src/pm_config/config/*secret*.yaml
