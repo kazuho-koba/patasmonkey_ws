@@ -31,6 +31,7 @@ build_foxy/
 install_foxy/
 log_foxy/
 bags/
+src/pm_evaluation/results/
 
 # credentials / local configs
 src/pm_config/config/*secret*.yaml

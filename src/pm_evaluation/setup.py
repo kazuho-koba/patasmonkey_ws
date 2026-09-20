@@ -1,4 +1,5 @@
 from setuptools import find_packages, setup
+from glob import glob
 
 
 package_name = "pm_evaluation"
@@ -9,6 +10,7 @@ setup(
     version="0.0.1",
     packages=find_packages(exclude=["test"]),
     data_files=[
+        ("share/" + package_name + "/config", glob("config/*.yaml")),
         (
             "share/ament_index/resource_index/packages",
             ["resource/" + package_name],
@@ -33,6 +35,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
+            "compare_odometry_sources = pm_evaluation.cli.compare_odometry_sources:main",
             "analyze_bag_frequencies = pm_evaluation.cli.analyze_bag_frequencies:main",
             "plot_bag_trajectories = pm_evaluation.cli.plot_bag_trajectories:main",
             "plot_bag_trajectories_old = pm_evaluation.cli.plot_bag_trajectories_old:main",

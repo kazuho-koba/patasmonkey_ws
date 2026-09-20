@@ -189,7 +189,7 @@ LINE_STYLE = {
 ANALYSIS_COMPLETE_FILENAME = "trajectory_analysis_complete.json"
 
 # 解析ロジックや出力仕様を変更した際に識別できるようにするバージョン。
-ANALYSIS_VERSION = 3
+ANALYSIS_VERSION = 4
 
 
 def analysis_complete_marker_path(bag_dir: Path) -> Path:
@@ -271,6 +271,16 @@ def parse_args() -> argparse.Namespace:
         "--overwrite",
         action="store_true",
         help="Overwrite existing plot files.",
+    )
+
+    parser.add_argument(
+        "--heading-offset-deg",
+        type=float,
+        default=90.0,
+        help=(
+            "Angle added to /wit/imu yaw when aligning trajectories to the "
+            "map [deg]. Default: 90.0"
+        ),
     )
 
     return parser.parse_args()
@@ -799,6 +809,7 @@ def align_local_trajectory_to_north(
     samples: list,
     imu_yaws: list,
     gnss_points: list,
+    heading_offset_rad: float = math.pi / 2.0,
 ) -> list:
     """
     ローカル軌跡を、+90度の方位補正を加えたIMU yawに基づいて
@@ -889,7 +900,7 @@ def align_local_trajectory_to_north(
     # 補正前版では、実際には南下している走行が西向きに描画される
     # 90度の方位ずれが確認された。
     # 現行版では描画時の初期整列に +pi/2 rad（反時計回り90度）を加える。
-    corrected_imu_yaw = imu_yaw + (math.pi / 2.0)
+    corrected_imu_yaw = imu_yaw + heading_offset_rad
 
     # 軌跡初期yawを、90度補正後のIMU方位へ一致させる回転角。
     theta = corrected_imu_yaw - yaw0
@@ -1633,6 +1644,7 @@ def all_output_files_exist(
 def process_one_bag(
     bag_dir: Path,
     overwrite: bool,
+    heading_offset_deg: float,
 ) -> str:
     """
     1つのrosbagについて、データ抽出・座標整列・7枚の画像保存を行う。
@@ -1684,24 +1696,28 @@ def process_one_bag(
         data["odom_data"]["wheel"],
         data["imu_yaws"],
         gnss_points,
+        math.radians(heading_offset_deg),
     )
 
     vio_aligned = align_local_trajectory_to_north(
         data["odom_data"]["vio"],
         data["imu_yaws"],
         gnss_points,
+        math.radians(heading_offset_deg),
     )
 
     ekf_local_aligned = align_local_trajectory_to_north(
         data["odom_data"]["ekf_local"],
         data["imu_yaws"],
         gnss_points,
+        math.radians(heading_offset_deg),
     )
 
     ekf_global_aligned = align_local_trajectory_to_north(
         data["odom_data"]["ekf_global"],
         data["imu_yaws"],
         gnss_points,
+        math.radians(heading_offset_deg),
     )
 
     # ------------------------------------------------------------------
@@ -1861,7 +1877,10 @@ def process_one_bag(
         "full_extent_output": OUTPUT_FILES["overlay_full"],
 
         # 補正前版で確認された90度の描画方位ずれに対する現行版の補正。
-        "imu_yaw_conversion": "corrected_imu_yaw = imu_yaw + pi/2",
+        "imu_yaw_conversion": (
+            f"corrected_imu_yaw = imu_yaw + radians({heading_offset_deg})"
+        ),
+        "heading_offset_deg": heading_offset_deg,
     }
 
     # JSONもPNG解析と同様、一時ファイルへ完全に書いてから置換する。
@@ -1995,6 +2014,7 @@ def main() -> int:
             result = process_one_bag(
                 bag_dir,
                 args.overwrite,
+                args.heading_offset_deg,
             )
 
             result_counts[result] += 1

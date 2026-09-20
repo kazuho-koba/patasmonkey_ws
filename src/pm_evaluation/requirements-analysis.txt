@@ -1,0 +1,3 @@
+# Additional Python dependencies used by MCAP extraction and map plotting.
+mcap-ros2-support
+contextily
