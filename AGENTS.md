@@ -1,117 +1,93 @@
 # Patasmonkey UGV repository
 
-This repository contains the main Patasmonkey ROS 2 stack.
+Main Patasmonkey ROS 2 stack.
 
-## Target runtime
+## Environment
 
-- Platform: Jetson AGX Xavier
-- OS / ROS: Ubuntu 20.04 / ROS 2 Foxy
-- Development container: `patasmonkey_foxy_dev`
-- Development image: `patasmonkey:foxy-dev`
+- Target: Jetson AGX Xavier, Ubuntu 20.04, ROS 2 Foxy.
+- Dev container: `patasmonkey_foxy_dev` (`patasmonkey:foxy-dev`).
+- Main repo: host `~/Projects/patasmonkey_ws`, container `/workspaces/patasmonkey_ws`.
+- External/general ROS workspace: host `~/ros2_ws`, container `/workspaces/ros2_ws`.
 
-## Workspace layout
+Treat both workspaces as one development area when diagnosing cross-package issues.
 
-| Workspace | Host | Container |
-|---|---|---|
-| Primary Patasmonkey repository | `~/Projects/patasmonkey_ws` | `/workspaces/patasmonkey_ws` |
-| General ROS / external drivers | `~/ros2_ws` | `/workspaces/ros2_ws` |
+## Build rules
 
-Treat both workspaces together when diagnosing cross-package problems. Do not
-assume a Patasmonkey issue must be fixed in this repository. Localization and
-visual-odometry issues may involve `pm_localization`, `pm_bringup`, `pm_config`,
-`open_vins`, `depthai_driver`, camera/IMU drivers, or system-installed ROS
-dependencies. Investigate the full dependency chain before choosing where to
-modify code.
+Do not run Foxy builds directly on the Ubuntu 22.04 host. Build inside
+`patasmonkey_foxy_dev`, preferably package-by-package, as UID/GID `1000:1000`.
 
-## Build procedure
+Expected overlay order:
 
-Do not build this workspace directly on the Ubuntu 22.04 host. Build inside the
-Docker container, preferably package-by-package and as UID/GID 1000:1000 to
-avoid root-owned files.
+1. `/opt/ros/foxy`
+2. `/workspaces/ros2_ws`
+3. `/workspaces/patasmonkey_ws`
 
-Before building:
+For building `ros2_ws`, source only `/opt/ros/foxy/setup.bash`.
 
-1. Source `/opt/ros/foxy/setup.bash`.
-2. Source `/workspaces/ros2_ws/install/setup.bash` if it exists.
-3. Do **not** source `/workspaces/patasmonkey_ws/install/setup.bash`.
-4. Change to `/workspaces/patasmonkey_ws`.
+For building `patasmonkey_ws`:
+- source `/opt/ros/foxy/setup.bash`
+- source `/workspaces/ros2_ws/install/setup.bash` if present
+- do not source `/workspaces/patasmonkey_ws/install/setup.bash` before build
 
-Use `/home/developer` as `HOME` when it exists in the container; the current
-legacy container may temporarily use `HOME=/tmp`.
+Use `HOME=/home/developer` when available; otherwise the current legacy container
+may use `HOME=/tmp`.
 
-Current legacy-container example:
+For runtime, source the three layers above in order.
 
-```bash
-docker exec --user 1000:1000 --env HOME=/tmp patasmonkey_foxy_dev bash -lc '
-  source /opt/ros/foxy/setup.bash
-  if [ -f /workspaces/ros2_ws/install/setup.bash ]; then
-    source /workspaces/ros2_ws/install/setup.bash
-  fi
-  cd /workspaces/patasmonkey_ws
-  colcon build --packages-select <package>
-'
-```
+## Dependency policy
 
-After rebuilding the image with `/home/developer`:
+Packages under `~/ros2_ws/src` may be modified when they are the correct source
+of a problem. Before editing, inspect their git status, branch, and remote, and
+preserve unrelated changes.
 
-```bash
-docker exec --user 1000:1000 --env HOME=/home/developer \
-  patasmonkey_foxy_dev bash -lc '<command>'
-```
+Do not permanently edit `/opt/ros/foxy`. If a system-installed ROS package must
+be changed, use its upstream source under `~/ros2_ws/src` and build it as an
+overlay.
 
-## Running ROS nodes
+## ROS compatibility
 
-After a successful build, source—in order—`/opt/ros/foxy/setup.bash`, the
-general ROS workspace install if present, and the Patasmonkey workspace install
-if present. Then run the required ROS 2 commands, launch files, or diagnostics.
+Preserve ROS 2 Foxy compatibility.
 
-## External ROS dependencies
+Unless required by the task, do not change public ROS interfaces such as topic
+names, frame names, message types, QoS, parameter names, or launch interfaces.
 
-When a required change belongs to a package under `~/ros2_ws/src`, modify that
-source repository instead of forcing the change into Patasmonkey. First inspect
-its git status, current branch, and remote; preserve unrelated local changes;
-and explain why it is the correct modification target.
+## Change discipline
 
-For packages available only under `/opt/ros/foxy`:
+- Inspect git status before editing.
+- Keep changes minimal and task-focused.
+- Never discard unrelated user changes.
+- After editing, inspect git diff and run relevant builds/tests when practical.
+- Report modified files and test/build results.
 
-- Never edit `/opt/ros/foxy` permanently.
-- Identify the upstream source and check for it under `~/ros2_ws/src`.
-- If needed, bring it into `~/ros2_ws/src` on a dedicated development branch or fork.
-- Build it as an overlay and rebuild downstream packages when compatibility may be affected.
+## Hardware safety
 
-## ROS interface policy
+Do not execute commands that may cause vehicle motion without explicit user
+approval. This includes non-zero velocity commands, motor actuation, ODrive
+calibration, autonomous motion, or any calibration that can move the vehicle.
 
-Unless the task requires it, do not change topic names, frame names, message
-types, QoS settings, parameter names, launch interfaces, or public package
-interfaces. Preserve ROS 2 Foxy compatibility.
+Read-only diagnostics, logs, builds, static inspection, and non-actuating ROS
+inspection are allowed.
 
-## Change policy
+## Jetson access
 
-- Before editing: inspect git status.
-- While editing: keep changes minimal and task-focused, avoid unrelated
-  refactoring, and never discard unrelated user changes.
-- After editing: inspect git diff, report modified files, run relevant
-  builds/tests when practical, and report their results.
+The Jetson may be accessed from the development host with:
 
-## Codex session records
+    ssh pmjet1
 
-For every completed user request, save one UTF-8 text record under
-`notes/codex_sessions/`. Create the directory when needed. Use a sortable,
-descriptive filename in JST:
+Use it for Jetson-specific inspection, builds, runtime checks, and diagnostics
+when required. Do not request, print, store, or modify SSH passwords or private
+keys.
 
-```text
-YYYYMMDD_HHMMSS_<brief-request-description>.txt
-```
+## Session records
 
-The file must contain, in chronological order:
+For completed user requests, save one UTF-8 record under
+`notes/codex_sessions/` named:
 
-1. The user's prompt, verbatim. If several user messages jointly define the
-   completed request, include each relevant prompt.
-2. The exact final response delivered by Codex after completing the work. Do
-   not replace it with an additional summary.
+    YYYYMMDD_HHMMSS_<brief-description>.txt
 
-Use clear `User prompt` and `Codex final response` headings. Do not include
-internal reasoning or raw tool output. Prepare the record immediately before
-sending the final response so that the recorded response and delivered
-response are identical. Do not create a completed-task record for an aborted
-request that received no final response.
+Include only:
+- `User prompt`: the relevant user prompt(s), verbatim
+- `Codex final response`: the exact final response
+
+Do not include internal reasoning or raw tool output. Do not create a record for
+an aborted request with no final response.
