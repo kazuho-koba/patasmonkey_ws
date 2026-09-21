@@ -168,3 +168,414 @@ Explored
                                                                                                                                                                                                                    
   depthai_driverのFoxyビルド、py_compile、flake8、git diff --checkはいずれも成功しています。
 
+
+現状確認のみ実施し、Jetson上のファイル・設定・デバイス状態は変更していません。ビルド、デバイスopen、ストリーミング、ROSノード起動、モーター通信も行っていません。                                         
+                                                                                                                                                                                                            
+  ## 1. Jetson基本環境                                                                                                                                                                                      
+                                                                                                                                                                                                            
+  - Hostname: pmjet1                                                                                                                                                                                        
+  - User: nvidia
+  - UID/GID: 1000:1000
+  - Working directory: /home/nvidia
+  - Hardware: Jetson AGX Xavier
+  - SoC: Tegra194
+  - Ubuntu: 20.04.6 LTS
+  - Kernel: 5.10.216-tegra
+  - L4T: R35.6.5
+  - ROS:
+      - ROS_DISTRO=foxy
+      - ROS_VERSION=2
+
+  - Python: 3.8.10
+  - CMake: 3.16.3
+  - colcon-core: 0.21.0
+  - Power mode: MAXN
+  - nvidia-smi: 未インストール
+  - tegrastats: 正常に取得可能
+      - GPU温度：約49.5℃
+      - CPU温度：約49.5℃
+    - GR3D負荷：確認時0%
+
+  - RAM:
+      - 合計：約14 GiB
+      - 使用：約2.2 GiB
+      - available：約12 GiB
+      - Swap使用：0
+
+  - Disk:
+      - /: 916 GiB
+      - 使用：250 GiB
+      - 空き：629 GiB
+      - 使用率：29%
+
+  環境リソースには十分な余裕があります。
+
+  ## 2. patasmonkey_ws の状態
+
+  場所:
+
+  /home/nvidia/patasmonkey_ws
+
+  ROSパッケージ:
+
+  - pm_bringup
+  - pm_config
+  - pm_description
+  - pm_evaluation
+  - pm_localization
+  - pm_msgs
+  - pm_teleop
+  - pm_vehicle_interface
+
+  以下はすべて存在します。
+
+  - build/
+  - install/
+  - log/
+  - install/setup.bash
+  - install/local_setup.bash
+
+  ただし、ソースとinstallが同期していません。
+
+
+ソース pm_bag_global_localization.launch.py:
+  2026-09-21、18045 bytes
+
+  install側:
+  2026-07-20、13213 bytes
+
+  install側には、今回追加した /oak/diagnostics/* の記録設定が入っていません。現在ros2 launchで利用されるのは基本的にinstall側なので、新機能はまだJetson上の実行環境へ反映されていません。
+
+  ## 3. ros2_ws の状態
+
+  場所:
+
+  /home/nvidia/ros2_ws
+
+  主なパッケージ:
+
+  - depthai_driver
+  - hwt905_rs485_driver
+  - ntrip_client
+  - open_vins
+      - ov_core
+      - ov_data
+      - ov_eval
+      - ov_init
+      - ov_msckf
+
+  - ublox
+      - ublox
+      - ublox_gps
+      - ublox_msgs
+      - ublox_serialization
+
+  build/、install/、log/、両setupファイルは存在します。
+
+  こちらもソースとinstallが同期していません。
+
+  depthai_driverソース:
+  2026-09-21、21941 bytes
+
+  install側:
+  2026-06-13、10812 bytes
+
+ install側のdepthai_driverには、今回実装した診断トピックが存在しません。                                                                                                                                   
+                                                                                                                                                                                                            
+  ## 4. Git repositoryごとのbranch/status                                                                                                                                                                   
+                                                                                                                                                                                                            
+   Repository             Branch                 状態                                                                                                                                                       
+  ━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                                                                                                              
+   patasmonkey_ws         foxy                   scripts/start_pm.sh が未追跡                                                                                                                               
+  ─────────────────────  ─────────────────────  ──────────────────────────────────────────────                                                                                                              
+   depthai_driver         main                   clean                                                                                                                                                      
+  ─────────────────────  ─────────────────────  ──────────────────────────────────────────────                                                                                                              
+   hwt905_rs485_driver    foxy                   未追跡の試験スクリプト・CSV多数                                                                                                                            
+  ─────────────────────  ─────────────────────  ──────────────────────────────────────────────                                                                                                              
+   ntrip_client           main                   clean                                                                                                                                                      
+  ─────────────────────  ─────────────────────  ──────────────────────────────────────────────                                                                                                              
+   open_vins              oakd_s2_dev            ov_msckf/launch/display_ros2.rviz が変更済み                                                                                                               
+  ─────────────────────  ─────────────────────  ──────────────────────────────────────────────                                                                                                              
+   ublox                  add-rtcm-subscriber    clean                                                                                                                                                      
+                                                                                                                                                                                                            
+  すべてkazuho-koba配下のGitHubリポジトリをoriginにしています。                                                                                                                                             
+                                                                                                                                                                                                            
+  既存の未コミット・未追跡ファイルには一切触れていません。                                                                                                                                                  
+                                                                                                                                                                                                            
+  ## 5. ROS 2 overlay/source状態                                                                                                                                                                            
+                                                                                                                                                                                                            
+  .bashrcは次の順序です。                                                                                                                                                                                   
+                                                                                                                                                                                                            
+  /opt/ros/foxy/setup.bash                                                                                                                                                                                  
+      ↓                                                                                                                                                                                                     
+  ~/ros2_ws/install/setup.bash                                                                                                                                                                              
+      ↓                                                                                                                                                                                                     
+  ~/patasmonkey_ws/install/setup.bash                                                                                                                                                                       
+                                                                                                                                                                                                            
+  これは想定どおりです。                                                                                                                                                                                    
+                                                                                                                                                                                                            
+  実際の環境変数でも、                                                                                                                                                                                      
+                                                                                                                                                                                                            
+  COLCON_PREFIX_PATH=                                                                                                                                                                                       
+  /home/nvidia/patasmonkey_ws/install:                                                                                                                                                                      
+  /home/nvidia/ros2_ws/install                                                                                                                                                                              
+                                                                                                                                                                                                            
+  となっており、Patasmonkey側が最上位overlayです。                                                                                                                                                          
+                                                                                                                                                                                                            
+  ただし前述のとおり、installが古いため、2026-09-21に更新されたソースコードが現在のoverlayへ反映されていません。                                                                                            
+                                                                                                                                                                                                            
+  ## 6. GNSSの認識状況                                                                                                                                                                                      
+
+  認識されています。
+
+  USB VID:PID: 1546:01a9
+  Device:      /dev/ttyACM0
+  Driver:      cdc_acm
+
+  永続パス:
+
+  /dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00
+  /dev/serial/by-path/platform-3610000.xhci-usb-0:1.2:1.0
+
+  権限:
+
+  crw-rw---- root:dialout /dev/ttyACM0
+
+  nvidiaはdialoutグループ所属で、read/writeとも可能です。
+
+  pm_config/config/ublox_f9p.yamlも、実在するby-idパスを指定しているため整合しています。
+
+  ## 7. IMUの認識状況
+
+  WitMotion本体はRS485の先にあるため、通信せずにモデル固有の識別まではできませんでした。ただしUSB-RS485アダプタは認識されています。
+
+  USB VID:PID: 1a86:7523
+  Device:      /dev/ttyUSB0
+  Chip/driver: CH340 / ch341
+
+  永続パス:
+
+  /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0
+  /dev/serial/by-path/platform-3610000.xhci-usb-0:1.4:1.0-port0
+
+  権限:
+
+  crw-rw---- root:dialout /dev/ttyUSB0
+
+  nvidiaからread/write可能です。
+
+  設定値:
+
+  port: /dev/ttyUSB0
+  baud: 230400
+  poll_hz: 100.0
+  frame_id: wit_imu_link
+  slave_id: 80
+
+  OS認識と設定は一致しています。
+
+  ## 8. OAK-D S2の認識状況
+
+  OSから認識されています。
+
+  VID:PID: 03e7:2485
+  Device: Intel Movidius MyriadX
+  USB node: /dev/bus/usb/001/009
+  Permission: root:root 0666
+
+  したがってnvidiaユーザーからアクセス可能です。
+
+  ただし重要な問題があります。接続先がUSB 2.0側です。
+
+  Bus 001
+  USB speed: 480M
+
+  OAK-D S2は現在SuperSpeed接続になっていません。USB 3側にはVIA Labs USB 3.0 Hubが見えていますが、OAKはUSB 2側へ列挙されています。
+
+  考えられる原因は次のいずれかです。
+
+  - USB 2.0ケーブルまたは充電専用ケーブル
+  - USB 3信号線が不安定
+  - USB 2側のポートに接続
+  - ハブや延長ケーブルによるフォールバック
+  - コネクタ接触不良
+
+  OAKのデバイスopenやMXID取得は、今回の制約に従い実施していません。ただしE122用校正ファイルはJetson上に存在します。
+
+  kalibr_imucam_chain_oakds2_19443010E122001300.yaml
+
+  ## 9. ODriveのOS認識状況
+
+  ODriveらしいUSBデバイスは現在lsusbに存在しません。
+
+  想定VIDはudev rule上で1209ですが、1209:*のデバイスは接続されていません。
+
+  したがって現在は、
+
+  - ODriveが未接続
+  - ODriveの電源が入っていない
+  - USBケーブルが接続されていない
+  - USB列挙に失敗している
+
+  のいずれかと考えられます。
+
+  ODriveへの通信やfind_any()は実施していません。
+
+  ## 10. serial/USB device permissions
+
+   デバイス              権限                 nvidiaからのアクセス
+  ━━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━
+   GNSS /dev/ttyACM0     root:dialout 0660    read/write可
+  ────────────────────  ───────────────────  ──────────────────────
+   RS485 /dev/ttyUSB0    root:dialout 0660    read/write可
+  ────────────────────  ───────────────────  ──────────────────────
+   OAK USB node          root:root 0666       read/write可
+  ────────────────────  ───────────────────  ──────────────────────
+   ODrive                未接続               確認不可
+
+  nvidiaの主なグループ:
+
+  dialout
+  video
+  plugdev
+  docker
+  i2c
+  gpio
+
+  ## 11. udev symlink/ruleの状態
+
+  シリアルには標準的なby-idとby-pathがありますが、/dev/gnssや/dev/wit_imuのようなPatasmonkey専用symlinkはありません。
+
+  OAK用ルール:
+
+  SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="2485"
+  SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666"
+
+  1行目のMODE="2485"は明らかに不正なmode値で、VID/PIDの2485を誤って記載した可能性があります。2行目が最終的に0666を設定しているため、現在のアクセス権は正常ですが、後で1行目を削除するのが妥当です。
+
+  ODrive用ルール:
+
+  SUBSYSTEM=="usb", ATTR{idVendor}=="1209", ATTR{idProduct}=="0d[0-9][0-9]", MODE="0666"
+
+  ODrive接続時にはアクセス権を付与する設定になっています。
+
+  既存ruleは変更していません。
+
+  ## 12. ROS package/configから見た想定path
+
+  ### GNSS
+
+  /dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00
+
+  実デバイスと一致しています。
+
+  ### WitMotion IMU
+
+  /dev/ttyUSB0
+  230400 baud
+  Modbus slave ID 80
+
+  実デバイスと一致しています。ただし番号依存なので、別のUSBシリアルを追加すると変わる可能性があります。
+
+  ### OAK/OpenVINS
+
+  トピック設定:
+
+  /oak/stereo/left/image_raw
+  /oak/stereo/right/image_raw
+  /oak/imu/data
+
+  IMU設定:
+
+  update_rate: 125.0
+
+  pm_bag_global_localization.launch.pyは現在、次を選択しています。
+
+  estimator_config1.yaml
+
+  しかしestimator_config1.yamlのカメラ校正は、
+
+  kalibr_imucam_chain_oakds2_19443010C10EF91200.yaml
+
+  を参照しています。
+
+  今回接続されていると想定されるE122個体用ファイルはestimator_config2.yaml側です。
+
+  kalibr_imucam_chain_oakds2_19443010E122001300.yaml
+
+  つまり、現在のbringup設定はE122個体と校正ファイルが一致していない可能性が高いです。
+
+  さらにestimator_config1.yamlでは以下のオンライン校正がすべて有効です。
+
+  calib_cam_extrinsics: true
+  calib_cam_intrinsics: true
+  calib_cam_timeoffset: true
+  calib_imu_intrinsics: true
+  calib_imu_g_sensitivity: true
+
+  これは以前調査したVIO不安定化との関連を再確認すべき設定です。
+
+  ### ODrive
+
+  設定ファイル上の想定path:
+
+  /dev/serial/by-id/usb-ODrive_Robotics_ODrive_3.6_CDC_Interface_205139964D4D-if00
+
+現在このsymlinkは存在しません。
+
+  また、odrv_usb_portとodrv_baud_rateはパラメータとして読み込まれていますが、実際の接続処理は次です。
+
+  odrive.find_any(timeout=1)
+
+  したがって設定されたby-idパスは実接続に使用されていません。これは設定と実装の不整合です。
+
+  ## 13. 問題点・不整合
+
+  優先度順では次のとおりです。
+
+  1. OAK-D S2がUSB 2.0の480 Mbpsで接続されている
+      - 画像・Depth・IMU同時転送時の帯域不足や遅延、dropの有力原因になります。
+
+  2. 最新ソースがinstallへ反映されていない
+      - depthai_driverの新診断トピックが実行環境に存在しません。
+      - pm_bringupの新しいbag記録設定も実行環境に存在しません。
+
+  3. bringupが接続個体と異なる可能性が高い校正を選んでいる
+      - launch: estimator_config1.yaml
+      - 参照校正: 19443010C10EF91200
+      - 接続予定個体: 19443010E122001300
+
+  4. OpenVINSのオンライン校正が広範囲に有効
+      - extrinsics、intrinsics、time offset、IMU intrinsics、g-sensitivityがすべてオンライン推定対象です。
+
+  5. OAK udev ruleに不正なMODE="2485"行がある
+      - 現在は次行の0666により実害は出ていません。
+
+  6. ODriveがOSから認識されていない
+  7. ODriveのdevice pathパラメータが実接続に使われていない
+  8. WitMotionが/dev/ttyUSB0という番号依存
+      - 現時点では一致していますが、USBシリアル追加時に変化し得ます。
+
+  9. Gitに未コミット・未追跡ファイルがある
+      - 特にOpenVINSのRViz変更とHWT905の試験結果類です。
+
+  10. NTRIP認証情報を含むYAMLが複数存在
+      - pm_config/config/ntrip_private.yamlは0600かつGit未追跡で、こちらは適切です。
+      - 一方、ntrip_client/config以下にも実運用情報に見える値があるため、Git履歴を含めた秘密情報監査と、必要なら認証情報のローテーションを推奨します。値そのものは本報告には記載しません。
+
+  ## 14. 次に行うべき確認・修正候補
+
+  まだ実施していません。推奨順は以下です。
+
+  1. OAKをUSB 3ポートへ直結し、lsusb -tで5000M以上になることを確認
+  2. OAKのMXIDを安全に取得し、E122個体であることを確定
+  3. pm_bag_global_localization.launch.pyがE122用校正を選ぶよう整理
+  4. Jetson上でros2_wsを先に、patasmonkey_wsを後にビルド
+  5. install側に診断トピックとbag記録設定が反映されたことを静的確認
+  6. ODriveの電源・USB接続を確認後、まずlsusbだけで認識確認
+  7. WitMotionに専用udev symlinkを追加し、/dev/ttyUSB0依存を解消
+  8. OAK udev ruleの不正な1行目を削除
+  9. ODrive pathパラメータとfind_any()実装の方針を統一
+  10. NTRIP設定ファイルの秘密情報監査
+
+  今回、ROS 2 daemon以外のROSノードは実行されていませんでした。そのためros2 node listとros2 topic listは実行していません。

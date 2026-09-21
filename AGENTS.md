@@ -92,3 +92,26 @@ interfaces. Preserve ROS 2 Foxy compatibility.
   refactoring, and never discard unrelated user changes.
 - After editing: inspect git diff, report modified files, run relevant
   builds/tests when practical, and report their results.
+
+## Codex session records
+
+For every completed user request, save one UTF-8 text record under
+`notes/codex_sessions/`. Create the directory when needed. Use a sortable,
+descriptive filename in JST:
+
+```text
+YYYYMMDD_HHMMSS_<brief-request-description>.txt
+```
+
+The file must contain, in chronological order:
+
+1. The user's prompt, verbatim. If several user messages jointly define the
+   completed request, include each relevant prompt.
+2. The exact final response delivered by Codex after completing the work. Do
+   not replace it with an additional summary.
+
+Use clear `User prompt` and `Codex final response` headings. Do not include
+internal reasoning or raw tool output. Prepare the record immediately before
+sending the final response so that the recorded response and delivered
+response are identical. Do not create a completed-task record for an aborted
+request that received no final response.
