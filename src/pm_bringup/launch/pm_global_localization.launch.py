@@ -175,7 +175,9 @@ def generate_launch_description():
         output="screen",
         parameters=[str(navsat_config_file)],
         remappings=[
-            ("imu/data", "/wit/imu"),
+            # Foxy robot_localization navsat_transform_node subscribes to
+            # "imu" (not "imu/data").
+            ("imu", "/wit/imu"),
             ("gps/fix", "/fix"),
             ("odometry/filtered", "/odometry/local"),
             ("odometry/gps", "/odometry/gps"),

@@ -354,7 +354,11 @@ def generate_launch_description():
         output="screen",
         parameters=[str(navsat_config_file)],
         remappings=[
-            ("imu/data", "/wit/imu"),
+            # robot_localization 3.1.x (ROS 2 Foxy) subscribes to the
+            # relative name "imu", not "imu/data".  Remapping the latter
+            # leaves navsat_transform without heading data and prevents
+            # /odometry/gps from ever being published.
+            ("imu", "/wit/imu"),
             ("gps/fix", "/fix"),
             ("odometry/filtered", "/odometry/local"),
             ("odometry/gps", "/odometry/gps"),
