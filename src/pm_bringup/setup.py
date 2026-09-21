@@ -11,7 +11,10 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
-        ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name, [
+            'package.xml',
+            'README_vio_recording.md',
+        ]),
         # launch ファイルをインストール
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
     ],
@@ -28,6 +31,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'capture_vio_trial_metadata = '
+            'pm_bringup.capture_vio_trial_metadata:main',
         ],
     },
 )

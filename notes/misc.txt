@@ -1,23 +1,170 @@
-› patasmonkeyのオドメトリ推定の誤差が大きく、困っています。まずは原因究明から進めたいです。
-  使ったスクリプトはpm_bringupパッケージにあるpm_bag_global_localization.launch.pyです。
-  bagファイルは/bagディレクトリにあるrosbag2_2026_07_26-09_17_38を使って調査するものとします。
- 
-  ホイールエンコーダ、IMU、VIOの3⃣つをFusionしてlocal ekfによってオドメトリを推定しているので、まずはekfに入力する前にどのようなオドメトリ推定がそれぞれのソースから為されたのか確認したいです。
- 
-  １．ホイールオドメトリのみによるオドメトリ推定
-  ２．ホイールオドメトリによるx方向並進、IMUによるz方向旋回　のみによる推定
-  ３．VIOによるオドメトリ推定
- 
-  の３パターンを比較したいです。
-  これらについて解析スクリプトと、実際にオドメトリ推定結果をプロットして可視化してください。
-  要領は後述しますが、もっと適している、開発現場で一般的に主流なやり方があるのであれば、その旨を述べて許可を私に求めてください。
- 
-  （作業要領）
-  関係スクリプトはpm_evaluationパッケージの中で作成するのがいいのではないかと思っていますが、もっと適切なやり方があれば教えてください。
-  解析結果はbagディレクトリにも結構入っていますが、今回はbagファイルをそのまま可視化するというよりは改善方向性を探るための作業になるので、解析結果もpm_evaluationディレクトリ内のどこかがいいのではないかと思って
-  います。
-  pm_bag_global_localization.launch.pyを参考にして、local_ekfのconfigファイルを参照し、１〜３のオドメトリ推定をするためのconfigファイルを別途作成してください。実際にオドメトリ推定をするためのスクリプトやlaunch
-  ファイルも適宜作成してください。
-  プロットする際はGNSS情報を基に走っていたエリアのopen street map等の地図画像にオーバーレイしてほしいので、pm_evaluation/pm_evaluation/cli/plot_bag_trajectories.pyを参考にしてオーバーレイも実装してください。
- 
-  作成したスクリプトのビルド、実行まで行って、解析結果ファイルを可視化してもらうか、閲覧可能な格納先ディレクトリを示してください。
+• 実装しました。既存の画像・IMUトピックやtimestamp、QoSは変更せず、DepthAI内部情報を診断トピックとして追加しています。                                                                                             
+                                                                                                                                                                                                                   
+  変更内容                                                                                                                                                                                                         
+                                                                                                                                                                                                                   
+  /home/kazuho/ros2_ws/src/depthai_driver/depthai_driver/oakd_vio_rgbd_node.py:47 から以下をpublishします。                                                                                                        
+                                                                                                                                                                                                                   
+  - /oak/diagnostics/left_frame                                                                                                                                                                                    
+  - /oak/diagnostics/right_frame                                                                                                                                                                                   
+  - /oak/diagnostics/color_frame                                                                                                                                                                                   
+  - /oak/diagnostics/depth_frame                                                                                                                                                                                   
+  - /oak/diagnostics/imu_packet                                                                                                                                                                                    
+  - /oak/diagnostics/device_info                                                                                                                                                                                   
+                                                                                                                                                                                                                   
+  メッセージ型は標準の diagnostic_msgs/msg/DiagnosticArray です。各メッセージには schema_version=1 を付け、解析用keyを固定しています。                                                                             
+                                                                                                                                                                                                                   
+  画像metadata：                                                                                                                                                                                                   
+                                                                                                                                                                                                                   
+  - 左右それぞれのDepthAI device timestamp                                                                                                                                                                         
+  - DepthAI host同期済みtimestamp                                                                                                                                                                                  
+  - ROS host受信時刻                                                                                                                                                                                               
+  - sequence number                                                                                                                                                                                                
+  - 直前からのsequence欠落数                                                                                                                                                                                       
+  - 累積欠落数                                                                                                                                                                                                     
+  - 露光時間                                                                                                                                                                                                       
+  - ISO感度                                                                                                                                                                                                        
+  - 色温度・レンズ位置                                                                                                                                                                                             
+  - 画像サイズ                                                                                                                                                                                                     
+                                                                                                                                                                                                                   
+  IMU metadata：                                                                                                                                                                                                   
+                                                                                                                                                                                                                   
+  - accel/gyroそれぞれのdevice timestamp                                                                                                                                                                           
+  - accel/gyroそれぞれのhost同期済みtimestamp                                                                                                                                                                      
+  - accel–gyro時刻差                                                                                                                                                                                               
+  - accel/gyroそれぞれのsequence numberと欠落数                                                                                                                                                                    
+  - IMU batchサイズとbatch内packet位置                                                                                                                                                                             
+  - ROS host受信時刻     
+  
+  device情報：                                                                                                                                                                                                     
+                                                                                                                                                                                                                   
+  - MX ID                                                                                                                                                                                                          
+  - 実際に接続されているIMU型                                                                                                                                                                                      
+  - IMU firmware                                                                                                                                                                                                   
+  - embedded firmware                                                                                                                                                                                              
+  - USB速度                                                                                                                                                                                                        
+  - DepthAIバージョン                                                                                                                                                                                              
+                                                                                                                                                                                                                   
+  OAK-D S2は製造時期によってBNO086またはBMI270を搭載するため、機種名から推定せず実機値を5秒周期で記録します。LuxonisのOAK-D S2仕様 (https://docs.luxonis.com/hardware/products/OAK-D%20S2)                         
+                                                                                                                                                                                                                   
+  DepthAIの画像APIではdevice timestamp、sequence、露光時間、ISO感度が取得できます。Luxonis ImgFrame API (https://docs.luxonis.com/software-v3/depthai/depthai-components/messages/img_frame)                       
+  独立したアナログgain値はDepthAI 2.30の ImgFrame では取得できないため、利用可能な露光ゲイン指標として sensitivity_iso を保存します。                                                                              
+                                                                                                                                                                                                                   
+  DepthAIのdevice clockとhost同期clockは別物なので、両方を記録しています。Luxonis Device clock synchronization (https://docs.luxonis.com/software-v3/depthai/depthai-components/device)                            
+                                                                                                                                                                                                                   
+  bag記録                                                                                                                                                                                                          
+                                                                                                                                                                                                                   
+  src/pm_bringup/launch/pm_bag_global_localization.launch.py:115 に6トピックを追加済みです。次回から通常どおり起動すれば自動的にbagへ入ります。                                                                    
+                                                                                                                                                                                                                   
+  ros2 launch pm_bringup pm_bag_global_localization.launch.py                                                                                                                                                      
+                                                                                                                                                                                                                   
+  診断仕様は以下にまとめました。                                                                                                                                                                                   
+                                                                                                                                                                                                                   
+  - DepthAI診断仕様 (/home/kazuho/ros2_ws/src/depthai_driver/README_diagnostics.md:1)                                                                                                                              
+  - 検証走行の記録仕様 (src/pm_bringup/README_vio_recording.md:35)                                                                                                                                                 
+                                                                                                                                                                                                                   
+  検証結果                                                                                                                                                                                                         
+                                                                                                                                                                                                                   
+  - depthai_driver：Foxyコンテナ内ビルド成功                                                                                                                                                                       
+  - pm_bringup：Foxyコンテナ内ビルド成功                                                                                                                                                                           
+  - sequence欠落・wrap、累積数、nanosecond変換の単体確認成功                                                                                                                                                       
+  - flake8、構文検査、git diff --check 成功                                                                                                                                                                        
+  - 既存ROSインターフェースの変更なし                                                                                                                                                                              
+                                                                                                                                                                                                                   
+  開発コンテナからOAK実機が認識されなかったため、実データのライブpublish確認だけは未実施です。また、パッケージ全体のテストは既存の test_depth_visualize.py がpytest収集時に実機接続するため、実機なし環境では      
+  collection errorになります。                                                                                                                                                                                     
+                                                                                                                                                                                                                   
+  なお、sequence_gap > 0 は「そのsequenceがdriverからpublishされなかった」ことを示しますが、それだけではセンサ内部drop、USB転送、DepthAI host queue上書き、ホストスケジューリングのどれかは断定できません。device  
+  timestamp間隔、host受信間隔、左右sequence、IMU batch情報を組み合わせて切り分ける設計です。    
+
+
+  • AGENTS.md を整理しました。
+
+  - 158行から94行へ削減
+  - 指示内容、ビルド手順、Dockerコマンド例は維持
+  - workspace対応は表へ集約
+  - 重複した説明や箇条書きを短い文章へ統合
+  - git diff --check 問題なし
+
+  文書のみの変更なので、ビルド・テストは実施していません。
+
+
+Explored                                                                                                                                                                                                         
+  └ Read oakd_vio_rgbd_node.py, validate_oak_diagnostics.py, README_diagnostics.md                                                                                                                                 
+                                                                                                                                                                                                                   
+• 実機テストは成功しました。Dockerコンテナから、接続された OAK-D S2 を次の情報で認識できています。                                                                                                                 
+                                                                                                                                                                                                                   
+  - MXID: 19443010E122001300                                                                                                                                                                                       
+  - USB: SuperSpeed                                                                                                                                                                                                
+  - IMU: BNO086                                                                                                                                                                                                    
+  - DepthAI: 2.30.0.0                                                                                                                                                                                              
+  - IMU firmware: 3.9.7                                                                                                                                                                                            
+  - Embedded firmware: 3.9.9                                                                                                                                                                                       
+                                                                                                                                                                                                                   
+  校正YAMLは、今回はOpenVINSを起動しないドライバ単体試験だったため使用していません。                                                                                                                               
+                                                                                                                                                                                                                   
+  ### 実測結果
+
+  10秒間の検証結果は以下のとおりです。
+
+   データ         実測周期    結果
+  ━━━━━━━━━━━━━  ━━━━━━━━━━  ━━━━━━━━━━━━━━━━
+   左画像          約20 Hz    連番、欠落なし
+  ─────────────  ──────────  ────────────────
+   右画像          約20 Hz    連番、欠落なし
+  ─────────────  ──────────  ────────────────
+   RGB画像         約10 Hz    連番、欠落なし
+  ─────────────  ──────────  ────────────────
+   Depth画像       約10 Hz    正常
+  ─────────────  ──────────  ────────────────
+   IMU            約127 Hz    accel欠落なし
+  ─────────────  ──────────  ────────────────
+   Device info     5秒周期    正常
+
+  左右画像のデバイス時刻差は11～18 µs、中央値約14～15 µsでした。左右のsequence番号も一致しており、ステレオ同期は良好です。
+
+  元の画像・IMUトピックと診断トピックのROS header timestampも一致しています。計測開始・終了境界の数件を除いて1対1対応を確認しました。                                                                              
+                                                                                                                                                                                                                   
+  ### 実機試験で見つけて修正した点                                                                                                                                                                                 
+                                                                                                                                                                                                                   
+  Depthのsequence番号は、20 Hzで生成されたDepthをRGBの10 Hzに合わせて公開するため、通常2ずつ進みます。                                                                                                             
+                                                                                                                                                                                                                   
+  またBNO086ではaccelerometerとgyroscopeの実内部周期が異なり、accelerometer基準の結合IMUではgyro sequenceが1～3ずつ進みます。これはドロップではありません。                                                        
+                                                                                                                                                                                                                   
+  これらを一律WARNにしていたため、次のように修正しました。                                                                                                                                                         
+                                                                                                                                                                                                                   
+  - Depthの意図的な間引きは記録するがWARNにしない                                                                                                                                                                  
+  - gyroのレート変換によるsequence skipは記録するがWARNにしない                                                                                                                                                    
+  - 左右画像、RGB、accelerometerの予期しない欠落は引き続きWARN                                                                                                                                                     
+  - 検証スクリプトに周期、sequence進行、試験区間内gap、診断レベルの集計を追加                                                                                                                                      
+                                                                                                                                                                                                                   
+  実装は /home/kazuho/ros2_ws/src/depthai_driver/depthai_driver/oakd_vio_rgbd_node.py:50、検証ツールは /home/kazuho/ros2_ws/src/depthai_driver/tools/validate_oak_diagnostics.py:1、解説は /home/kazuho/ros2_ws/   
+  src/depthai_driver/README_diagnostics.md:1 にあります。                                                                                                                                                          
+                                                                                                                                                                                                                   
+  ### rosbag記録試験                                                                                                                                                                                               
+                                                                                                                                                                                                                   
+  6つの診断トピックを実際に3.75秒間rosbagへ記録し、正常に読み戻せました。                                                                                                                                          
+                                                                                                                                                                                                                   
+  - 合計: 709メッセージ                                                                                                                                                                                            
+  - IMU診断: 481                                                                                                                                                                                                   
+  - 左右画像診断: 76 / 75                                                                                                                                                                                          
+  - RGB / Depth診断: 38 / 38                                                                                                                                                                                       
+  - Device info: 1                                                                                                                                                                                                 
+                                                                                                                                                                                                                   
+  試験bagはコンテナ内の /tmp/oak_diag_smoke_20260921 にあります。テスト用ドライバノードは停止済みです。                                                                                                            
+                                                                                                                                                                                                                   
+  ### 残っているUSB権限問題                                                                                                                                                                                        
+                                                                                                                                                                                                                   
+  rootでは正常に認識・動作しますが、UID/GID 1000:1000 では現在認識できません。                                                                                                                                     
+                                                                                                                                                                                                                   
+  Insufficient permissions to communicate with X_LINK_UNBOOTED device                                                                                                                                              
+                                                                                                                                                                                                                   
+  USBデバイスノードが以下の権限になっているためです。                                                                                                                                                              
+                                                                                                                                                                                                                   
+  crw-rw-r-- 664 root:root                                                                                                                                                                                         
+                                                                                                                                                                                                                   
+  したがって、通常ユーザーで検証launchを起動する前に、ホスト側へLuxonis用udevルールを設定する必要があります。                                                                                                      
+                                                                                                                                                                                                                   
+  SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666"                                                                                                                                                           
+                                                                                                                                                                                                                   
+  depthai_driverのFoxyビルド、py_compile、flake8、git diff --checkはいずれも成功しています。
+

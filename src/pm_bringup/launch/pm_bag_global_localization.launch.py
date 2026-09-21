@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from datetime import datetime
 from pathlib import Path
 
 from launch import LaunchDescription
@@ -7,11 +8,12 @@ from launch.actions import (
     IncludeLaunchDescription,
     DeclareLaunchArgument,
     ExecuteProcess,
+    OpaqueFunction,
     TimerAction,
 )
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
@@ -25,40 +27,73 @@ def generate_launch_description():
     use_openvins = LaunchConfiguration("use_openvins")
     # rosbagを記録するかどうか
     record_bag = LaunchConfiguration("record_bag")
-    
+    bag_name = LaunchConfiguration("bag_name")
+
     # 各種パッケージのパス
     pm_teleop_share = Path(get_package_share_directory("pm_teleop"))
     pm_vehicle_share = Path(
         get_package_share_directory("pm_vehicle_interface"))
     pm_description_share = Path(get_package_share_directory("pm_description"))
     pm_config_share = Path(get_package_share_directory("pm_config"))
-    depthai_driver_share = Path(get_package_share_directory("depthai_driver"))
     ov_msckf_share = Path(get_package_share_directory("ov_msckf"))
 
     # 既存launchファイル
-    teleop_launch_file = pm_teleop_share/"launch"/"joy_teleop.launch.py"
-    vehicle_launch_file = pm_vehicle_share/"launch"/"vehicle_interface.launch.py"
-    openvins_launch_file = ov_msckf_share/"launch"/"subscribe.launch.py"
+    teleop_launch_file = pm_teleop_share / "launch" / "joy_teleop.launch.py"
+    vehicle_launch_file = (
+        pm_vehicle_share / "launch" / "vehicle_interface.launch.py"
+    )
+    openvins_launch_file = ov_msckf_share / "launch" / "subscribe.launch.py"
 
     # configファイル等
-    urdf_file = pm_description_share/"urdf"/"pm.urdf"
-    imu_config_file = pm_config_share/"config"/"hwt905_imu.yaml"
+    urdf_file = pm_description_share / "urdf" / "pm.urdf"
+    imu_config_file = pm_config_share / "config" / "hwt905_imu.yaml"
     wheel_odom_config_file = pm_config_share / "config" / "wheel_odometry.yaml"
     vehicle_geometry_file = pm_config_share / "config" / "vehicle_geometry.yaml"
     vehicle_control_file = pm_config_share / "config" / "vehicle_control.yaml"
 
-    ekf_local_config_file = pm_config_share/"config"/"ekf_local_whl_imu_cam.yaml"
-    ekf_global_config_file = pm_config_share/"config"/"ekf_global_3d.yaml"
+    ekf_local_config_file = (
+        pm_config_share / "config" / "ekf_local_whl_imu_cam.yaml"
+    )
+    ekf_global_config_file = pm_config_share / "config" / "ekf_global_3d.yaml"
     navsat_config_file = pm_config_share / "config" / "navsat_transform.yaml"
 
     ublox_config_file = pm_config_share / "config" / "ublox_f9p.yaml"
     ntrip_config_file = pm_config_share / "config" / "ntrip_private.yaml"
 
-    openvins_config_file = pm_config_share / "config" / "oak_d_s2" / "estimator_config1.yaml"
+    openvins_config_file = (
+        pm_config_share / "config" / "oak_d_s2" / "estimator_config1.yaml"
+    )
 
     # rosbag保存先
     bag_output_directory = Path.home() / "patasmonkey_ws" / "bags"
     bag_output_directory.mkdir(parents=True, exist_ok=True)
+    # bag名をlaunch側で決めることで、OpenVINS固有ログも同じ試行の
+    # rosbagディレクトリ直下へ確実に関連付けて保存する。
+    trial_directory = PathJoinSubstitution(
+        [str(bag_output_directory), bag_name]
+    )
+    openvins_output_directory = PathJoinSubstitution(
+        [trial_directory, "openvins"]
+    )
+
+    def validate_trial_directory(context, runtime_actions):
+        """Reject ambiguous or existing destinations before starting nodes."""
+        resolved_name = LaunchConfiguration("bag_name").perform(context)
+        if not resolved_name or Path(resolved_name).name != resolved_name:
+            raise RuntimeError(
+                "bag_name must be one non-empty directory name: {}".format(
+                    resolved_name
+                )
+            )
+        resolved_directory = bag_output_directory / resolved_name
+        if resolved_directory.exists():
+            raise RuntimeError(
+                "Refusing to overwrite existing trial directory: {}".format(
+                    resolved_directory
+                )
+            )
+        return runtime_actions
+
     # rosbagに記録するトピック
     #
     # 方針:
@@ -81,6 +116,18 @@ def generate_launch_description():
         "/oak/depth/image_raw",
 
         # -------------------------------------------------------------
+        # OAK-D：device時計・sequence・露光・IMU内部同期の診断
+        # -------------------------------------------------------------
+        # Image/Imu本体のheaderはOpenVINS互換のまま維持し、DepthAI固有の
+        # monotonic timestampと欠落情報を構造化metadata topicに分離する。
+        "/oak/diagnostics/left_frame",
+        "/oak/diagnostics/right_frame",
+        "/oak/diagnostics/color_frame",
+        "/oak/diagnostics/depth_frame",
+        "/oak/diagnostics/imu_packet",
+        "/oak/diagnostics/device_info",
+
+        # -------------------------------------------------------------
         # 外部IMU・磁気センサ
         # -------------------------------------------------------------
         "/wit/imu",
@@ -100,8 +147,13 @@ def generate_launch_description():
         "/ov_msckf/poseimu",
         "/ov_msckf/pathimu",
         "/vio/odometry",
-        # VOの作動状況を一応記録する場合は/trackhistを記録
-        # "/ov_msckf/trackhist",
+
+        # OpenVINSフロントエンド診断。
+        # これらはsubscriberが存在するときだけOpenVINSが生成するため、
+        # rosbag対象へ明示追加して特徴追跡・採択点を後から確認可能にする。
+        "/ov_msckf/trackhist",
+        "/ov_msckf/points_msckf",
+        "/ov_msckf/points_slam",
 
         # -------------------------------------------------------------
         # robot_localization出力
@@ -174,11 +226,25 @@ def generate_launch_description():
         launch_arguments={
             "config_path": str(openvins_config_file),
             "rviz_enable": "false",
-            "verbosity": "WARNING",
+            # DEBUGログには初期化判定など/rosoutへ出ない情報が含まれる。
+            "verbosity": "DEBUG",
+            "save_total_state": "true",
+            "filepath_est": PathJoinSubstitution(
+                [openvins_output_directory, "state_estimate.txt"]
+            ),
+            "filepath_std": PathJoinSubstitution(
+                [openvins_output_directory, "state_deviation.txt"]
+            ),
+            "record_timing_information": "true",
+            "record_timing_filepath": PathJoinSubstitution(
+                [openvins_output_directory, "timing.txt"]
+            ),
+            "console_log_path": PathJoinSubstitution(
+                [openvins_output_directory, "console.log"]
+            ),
         }.items(),
         condition=IfCondition(use_openvins),
     )
-        
 
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
@@ -238,7 +304,7 @@ def generate_launch_description():
             'zero_initial_pose': True,
 
             'align_output_orientation_to_initial_tf': True,
-            'invert_relative_rotation': True,   
+            'invert_relative_rotation': True,
 
             # 診断用パラメータ
             'enable_diagnostics': True,
@@ -313,6 +379,8 @@ def generate_launch_description():
             "ros2",
             "bag",
             "record",
+            "-o",
+            bag_name,
             "-s",
             "mcap",
             "--max-bag-size",
@@ -323,6 +391,77 @@ def generate_launch_description():
         output="screen",
         condition=IfCondition(record_bag),
     )
+
+    # 使用したestimator/IMU/camera校正とGit revisionを同じ試行へ保存する。
+    # rosbagが出力ディレクトリを作成した後、OpenVINS起動前に実行する。
+    capture_vio_metadata_process = ExecuteProcess(
+        cmd=[
+            "ros2", "run", "pm_bringup", "capture_vio_trial_metadata",
+            "--output-dir", openvins_output_directory,
+            "--openvins-config", str(openvins_config_file),
+            "--workspace", str(Path.home() / "patasmonkey_ws"),
+            "--openvins-source", str(
+                Path.home() / "ros2_ws" / "src" / "open_vins"
+            ),
+        ],
+        output="screen",
+    )
+
+    # OpenVINS起動時にYAMLから上書きされた値も含め、実効ROSパラメータを
+    # 保存する。OpenCV YAMLの全内容は上のconfig snapshotが担う。
+    dump_openvins_parameters_process = ExecuteProcess(
+        cmd=[
+            "ros2", "param", "dump", "/ov_msckf/run_subscribe_msckf",
+            "--output-dir", openvins_output_directory,
+        ],
+        output="screen",
+        condition=IfCondition(use_openvins),
+    )
+
+    runtime_actions = [
+        rosbag_record_process,
+        TimerAction(
+            period=2.0,
+            actions=[capture_vio_metadata_process],
+        ),
+        teleop_launch,
+        robot_state_publisher_node,
+        joint_state_publisher_node,
+        # GNSSを最優先で起動
+        ublox_gps_node,
+        # 3秒後: IMU/local odometry系とrtk信号送受信ノード立ち上げ
+        TimerAction(
+            period=3.0,
+            actions=[
+                imu_node,
+                wheel_odometry_node,
+                ekf_local_node,
+                ntrip_client_node,
+            ],
+        ),
+        # 6秒後: ODrive, 外界センサ系
+        TimerAction(
+            period=6.0,
+            actions=[
+                vehicle_launch,
+                oakd_vio_rgbd_node,
+                openvins_launch,
+                vio_odom_adapter_node,
+            ],
+        ),
+        # GNSS座標変換とglobal EKFだけ遅らせる
+        TimerAction(
+            period=15.0,
+            actions=[
+                navsat_transform_node,
+                ekf_global_node,
+            ],
+        ),
+        TimerAction(
+            period=12.0,
+            actions=[dump_openvins_parameters_process],
+        ),
+    ]
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -350,45 +489,21 @@ def generate_launch_description():
             default_value="true",
             description="Record all ROS 2 topics to an MCAP rosbag",
         ),
-
-        # 実際のコマンド実行・ノード起動など
-        rosbag_record_process,
-
-        teleop_launch,
-        robot_state_publisher_node,
-        joint_state_publisher_node,
-
-        # GNSSを最優先で起動
-        ublox_gps_node,
-
-        # 3秒後: IMU/local odometry系とrtk信号送受信ノード立ち上げ
-        TimerAction(
-            period=3.0,
-            actions=[
-                imu_node,
-                wheel_odometry_node,
-                ekf_local_node,
-                ntrip_client_node,
-            ],
+        DeclareLaunchArgument(
+            "bag_name",
+            default_value="rosbag2_" + datetime.now().strftime(
+                "%Y_%m_%d-%H_%M_%S"
+            ),
+            description=(
+                "Trial directory name under ~/patasmonkey_ws/bags; OpenVINS "
+                "native diagnostics are stored in its openvins subdirectory"
+            ),
         ),
 
-        # 6秒後: ODrive, 外界センサ系
-        TimerAction(
-            period=6.0,
-            actions=[
-                vehicle_launch,
-                oakd_vio_rgbd_node,
-                openvins_launch,
-                vio_odom_adapter_node,
-            ],
-        ),
-
-        # GNSS座標変換とglobal EKFだけ遅らせる
-        TimerAction(
-            period=15.0,
-            actions=[
-                navsat_transform_node,
-                ekf_global_node,
-            ],
+        # 検証成功後にだけ全runtime actionを返すため、既存bagがある場合は
+        # sensor/vehicle/OpenVINSのどのノードも起動しない。
+        OpaqueFunction(
+            function=validate_trial_directory,
+            args=[runtime_actions],
         ),
     ])
