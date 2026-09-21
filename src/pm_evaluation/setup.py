@@ -37,6 +37,7 @@ setup(
         "console_scripts": [
             "compare_odometry_sources = pm_evaluation.cli.compare_odometry_sources:main",
             "analyze_bag_frequencies = pm_evaluation.cli.analyze_bag_frequencies:main",
+            "analyze_oak_bag_diagnostics = pm_evaluation.cli.analyze_oak_bag_diagnostics:main",
             "plot_bag_trajectories = pm_evaluation.cli.plot_bag_trajectories:main",
             "plot_bag_trajectories_old = pm_evaluation.cli.plot_bag_trajectories_old:main",
             "inspect_bag_wheel_imu_heading = pm_evaluation.cli.inspect_bag_wheel_imu_heading:main",
@@ -46,6 +47,7 @@ setup(
             "play_bag_depth_rgb_seek = pm_evaluation.cli.play_bag_depth_rgb_seek:main",
             "analyze_motor_state_tracking = pm_evaluation.cli.analyze_motor_state_tracking:main",
             "check_motor_encoder_integrity = pm_evaluation.cli.check_motor_encoder_integrity:main",
+            "summarize_tegrastats = pm_evaluation.cli.summarize_tegrastats:main",
         ],
     },
 )
