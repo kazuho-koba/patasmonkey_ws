@@ -1,0 +1,27 @@
+# Earth-heading initialization for the separated_offroad profile.
+#
+# yaw_correction_radians is added to the ROS yaw reported by /wit/imu after
+# its coordinate convention has been verified. It must represent the combined
+# magnetic-declination and WIT-to-base_link mounting correction in the ROS
+# ENU convention (zero=east, counter-clockwise positive). Keep it 0.0 until a
+# stationary/repeatability calibration has produced a measured value.
+heading_initializer_node:
+  ros__parameters:
+    input_imu_topic: /wit/imu
+    output_imu_topic: /wit/imu/heading_calibrated
+    wheel_odom_topic: /wheel/odometry
+    # Seed the datum only from the same GNSS stream accepted by the global EKF.
+    gnss_fix_topic: /fix/gated
+    # robot_localization creates this service at the launch namespace, not
+    # beneath the EKF node name.
+    local_set_pose_service: /set_pose
+    # ROS 2 Foxy's navsat_transform_node exposes SetDatum as /datum.
+    navsat_set_datum_service: /datum
+
+    yaw_correction_radians: 0.0
+    stationary_speed_threshold_mps: 0.03
+    # At the Wit's nominal 100 Hz this is a one-second stationary average.
+    initial_sample_count: 100
+    max_initial_yaw_stddev_radians: 0.10
+    initialization_timeout_sec: 12.0
+    initial_yaw_variance: 0.05

@@ -1,0 +1,54 @@
+ekf_local_horizontal_node:
+  ros__parameters:
+    # This filter owns only horizontal motion. Keep 2D mode so VIO or terrain
+    # height cannot couple into x/y/yaw state.
+    frequency: 50.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: false
+    publish_acceleration: false
+    print_diagnostics: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    odom0: /wheel/odometry
+    odom0_config: [
+      false, false, false,
+      false, false, false,
+      true,  false, false,
+      false, false, false,
+      false, false, false
+    ]
+    odom0_queue_size: 20
+    odom0_differential: false
+    odom0_relative: false
+
+    # Do not fuse Wit orientation: yaw is propagated by gyro z only.
+    imu0: /wit/imu
+    imu0_config: [
+      false, false, false,
+      false, false, false,
+      false, false, false,
+      false, false, true,
+      false, false, false
+    ]
+    imu0_queue_size: 50
+    imu0_differential: false
+    imu0_relative: false
+
+    # VIO pose is deliberately excluded. The twist gate can quarantine a
+    # failed/restarted VIO, then re-admit stable relative vx/vy observations.
+    odom1: /vio/odometry/twist_gated
+    odom1_config: [
+      false, false, false,
+      false, false, false,
+      true,  true,  false,
+      false, false, false,
+      false, false, false
+    ]
+    odom1_queue_size: 20
+    odom1_differential: false
+    odom1_relative: false
+    odom1_twist_rejection_threshold: 5.0

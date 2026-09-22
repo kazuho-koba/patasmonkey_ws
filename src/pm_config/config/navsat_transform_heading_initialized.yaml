@@ -1,0 +1,20 @@
+# Used only by localization_mode:=separated_offroad.
+# Datum is intentionally withheld until heading_initializer_node has both
+# seeded local yaw while stationary and supplied one valid GNSS fix.
+navsat_transform_node:
+  ros__parameters:
+    frequency: 10.0
+    delay: 3.0
+
+    # /wit/imu/heading_calibrated already applies the verified mounting and
+    # magnetic-to-true-north correction. Do not correct it a second time.
+    magnetic_declination_radians: 0.0
+    yaw_offset: 0.0
+
+    zero_altitude: false
+    publish_filtered_gps: true
+    broadcast_utm_transform: true
+    broadcast_utm_transform_as_parent_frame: true
+
+    use_odometry_yaw: false
+    wait_for_datum: true

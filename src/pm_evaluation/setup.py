@@ -48,6 +48,10 @@ setup(
             "analyze_motor_state_tracking = pm_evaluation.cli.analyze_motor_state_tracking:main",
             "check_motor_encoder_integrity = pm_evaluation.cli.check_motor_encoder_integrity:main",
             "summarize_tegrastats = pm_evaluation.cli.summarize_tegrastats:main",
+            "replay_ekf_bag = pm_evaluation.cli.replay_ekf_bag:main",
+            "bag_clock_player = pm_evaluation.cli.bag_clock_player:main",
+            "replay_separated_localization = pm_evaluation.cli.replay_separated_localization:main",
+            "plot_initialized_odometry_overlay = pm_evaluation.cli.plot_initialized_odometry_overlay:main",
         ],
     },
 )

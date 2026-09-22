@@ -6,7 +6,7 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 from launch.actions import TimerAction
@@ -19,6 +19,10 @@ def generate_launch_description():
     # Visual Odometryを使うかどうかのパラメータ
     use_oakd = LaunchConfiguration("use_oakd")
     use_openvins = LaunchConfiguration("use_openvins")
+    # Keep the legacy local EKF as the default. Select localization_mode:=
+    # separated_offroad for the off-road-safe, split localizer.
+    local_ekf_config = LaunchConfiguration("local_ekf_config")
+    localization_mode = LaunchConfiguration("localization_mode")
     
     # 各種パッケージのパス
     pm_teleop_share = Path(get_package_share_directory("pm_teleop"))
@@ -41,9 +45,16 @@ def generate_launch_description():
     vehicle_geometry_file = pm_config_share / "config" / "vehicle_geometry.yaml"
     vehicle_control_file = pm_config_share / "config" / "vehicle_control.yaml"
 
-    ekf_local_config_file = pm_config_share/"config"/"ekf_local_whl_imu_cam.yaml"
+    ekf_local_config_file = PathJoinSubstitution([
+        str(pm_config_share), "config", local_ekf_config,
+    ])
     ekf_global_config_file = pm_config_share/"config"/"ekf_global_3d.yaml"
+    ekf_global_gnss_constrained_config_file = pm_config_share / "config" / "ekf_global_gnss_constrained.yaml"
+    ekf_horizontal_config_file = pm_config_share / "config" / "ekf_local_horizontal_vio_twist.yaml"
+    heading_initializer_config_file = pm_config_share / "config" / "heading_initializer.yaml"
+    gnss_fix_gate_config_file = pm_config_share / "config" / "gnss_fix_gate.yaml"
     navsat_config_file = pm_config_share / "config" / "navsat_transform.yaml"
+    navsat_heading_initialized_config_file = pm_config_share / "config" / "navsat_transform_heading_initialized.yaml"
 
     ublox_config_file = pm_config_share / "config" / "ublox_f9p.yaml"
     ntrip_config_file = pm_config_share / "config" / "ntrip_private.yaml"
@@ -137,15 +148,71 @@ def generate_launch_description():
             'publish_tf': False,
         }]
     )
+
+    # Used only by the separated_offroad profile. The legacy profile keeps
+    # subscribing to /vio/odometry directly and is intentionally unchanged.
+    vio_vertical_gate_node = Node(
+        package="pm_localization",
+        executable="vio_vertical_gate_node",
+        name="vio_vertical_gate_node",
+        output="screen",
+    )
+    vio_twist_gate_node = Node(
+        package="pm_localization", executable="vio_twist_gate_node",
+        name="vio_twist_gate_node", output="screen",
+    )
     ekf_local_node = Node(
         package="robot_localization",
         executable="ekf_node",
         name="ekf_local_node",
         output="screen",
         parameters=[str(ekf_local_config_file)],
+        condition=IfCondition(PythonExpression([
+            "'", localization_mode, "' == 'legacy'",
+        ])),
         remappings=[
             ("odometry/filtered", "/odometry/local"),
         ],
+    )
+    ekf_local_horizontal_node = Node(
+        package="robot_localization", executable="ekf_node",
+        name="ekf_local_horizontal_node", output="screen",
+        parameters=[str(ekf_horizontal_config_file)],
+        condition=IfCondition(PythonExpression([
+            "'", localization_mode, "' == 'separated_offroad'",
+        ])),
+        remappings=[("odometry/filtered", "/odometry/local_horizontal")],
+    )
+    attitude_height_observer_node = Node(
+        package="pm_localization", executable="attitude_height_observer_node",
+        name="attitude_height_observer_node", output="screen",
+        condition=IfCondition(PythonExpression([
+            "'", localization_mode, "' == 'separated_offroad'",
+        ])),
+    )
+    local_odometry_composer_node = Node(
+        package="pm_localization", executable="local_odometry_composer_node",
+        name="local_odometry_composer_node", output="screen",
+        condition=IfCondition(PythonExpression([
+            "'", localization_mode, "' == 'separated_offroad'",
+        ])),
+    )
+    heading_initializer_node = Node(
+        package="pm_localization", executable="heading_initializer_node",
+        name="heading_initializer_node", output="screen",
+        parameters=[str(heading_initializer_config_file)],
+        condition=IfCondition(PythonExpression([
+            "'", localization_mode, "' == 'separated_offroad'",
+        ])),
+    )
+    gnss_fix_gate_node = Node(
+        package="pm_localization", executable="gnss_fix_gate_node",
+        name="gnss_fix_gate_node", output="screen",
+        parameters=[str(gnss_fix_gate_config_file)],
+        condition=IfCondition(PythonExpression([
+            "'", use_gnss, "' == 'true' and '", localization_mode,
+            "' == 'separated_offroad'",
+        ])),
     )
 
     ublox_gps_node = Node(
@@ -168,7 +235,7 @@ def generate_launch_description():
         condition=IfCondition(use_ntrip),
     )
 
-    navsat_transform_node = Node(
+    navsat_transform_legacy_node = Node(
         package="robot_localization",
         executable="navsat_transform_node",
         name="navsat_transform_node",
@@ -182,10 +249,30 @@ def generate_launch_description():
             ("odometry/filtered", "/odometry/local"),
             ("odometry/gps", "/odometry/gps"),
         ],
-        condition=IfCondition(use_gnss),
+        condition=IfCondition(PythonExpression([
+            "'", use_gnss, "' == 'true' and '", localization_mode,
+            "' == 'legacy'",
+        ])),
+    )
+    navsat_transform_separated_node = Node(
+        package="robot_localization",
+        executable="navsat_transform_node",
+        name="navsat_transform_node",
+        output="screen",
+        parameters=[str(navsat_heading_initialized_config_file)],
+        remappings=[
+            ("imu", "/wit/imu/heading_calibrated"),
+            ("gps/fix", "/fix/gated"),
+            ("odometry/filtered", "/odometry/local"),
+            ("odometry/gps", "/odometry/gps"),
+        ],
+        condition=IfCondition(PythonExpression([
+            "'", use_gnss, "' == 'true' and '", localization_mode,
+            "' == 'separated_offroad'",
+        ])),
     )
 
-    ekf_global_node = Node(
+    ekf_global_legacy_node = Node(
         package="robot_localization",
         executable="ekf_node",
         name="ekf_global_node",
@@ -194,7 +281,22 @@ def generate_launch_description():
         remappings=[
             ("odometry/filtered", "/odometry/global"),
         ],
-        condition=IfCondition(use_gnss),
+        condition=IfCondition(PythonExpression([
+            "'", use_gnss, "' == 'true' and '", localization_mode,
+            "' == 'legacy'",
+        ])),
+    )
+    ekf_global_gnss_constrained_node = Node(
+        package="robot_localization",
+        executable="ekf_node",
+        name="ekf_global_gnss_constrained_node",
+        output="screen",
+        parameters=[str(ekf_global_gnss_constrained_config_file)],
+        remappings=[("odometry/filtered", "/odometry/global")],
+        condition=IfCondition(PythonExpression([
+            "'", use_gnss, "' == 'true' and '", localization_mode,
+            "' == 'separated_offroad'",
+        ])),
     )
 
     return LaunchDescription([
@@ -218,6 +320,23 @@ def generate_launch_description():
             default_value="true",
             description="Start OpenVINS",
         ),
+        DeclareLaunchArgument(
+            "local_ekf_config",
+            default_value="ekf_local_whl_imu_cam.yaml",
+            description=(
+                "Filename under pm_config/config for the legacy one-EKF mode. "
+                "For the off-road separated profile, select "
+                "localization_mode:=separated_offroad instead."
+            ),
+        ),
+        DeclareLaunchArgument(
+            "localization_mode",
+            default_value="legacy",
+            description=(
+                "legacy: one EKF; separated_offroad: horizontal EKF plus a "
+                "validated attitude/height observer, composed into /odometry/local"
+            ),
+        ),
 
         teleop_launch,
         robot_state_publisher_node,
@@ -225,6 +344,7 @@ def generate_launch_description():
 
         # GNSSを最優先で起動
         ublox_gps_node,
+        gnss_fix_gate_node,
 
         # 3秒後: IMU/local odometry系とrtk信号送受信ノード立ち上げ
         TimerAction(
@@ -233,6 +353,10 @@ def generate_launch_description():
                 imu_node,
                 wheel_odometry_node,
                 ekf_local_node,
+                ekf_local_horizontal_node,
+                attitude_height_observer_node,
+                local_odometry_composer_node,
+                heading_initializer_node,
                 ntrip_client_node,
             ],
         ),
@@ -245,6 +369,8 @@ def generate_launch_description():
                 oakd_vio_rgbd_node,
                 openvins_launch,
                 vio_odom_adapter_node,
+                vio_vertical_gate_node,
+                vio_twist_gate_node,
             ],
         ),
 
@@ -252,8 +378,10 @@ def generate_launch_description():
         TimerAction(
             period=30.0,
             actions=[
-                navsat_transform_node,
-                ekf_global_node,
+                navsat_transform_legacy_node,
+                navsat_transform_separated_node,
+                ekf_global_legacy_node,
+                ekf_global_gnss_constrained_node,
             ],
         ),
     ])
