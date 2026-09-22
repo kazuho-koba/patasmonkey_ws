@@ -6,8 +6,8 @@ depth_elevation_mapper:
     base_frame: base_link
     camera_frame_override: ""
 
-    map_size_x: 12.0
-    map_size_y: 12.0
+    map_size_x: 6.0
+    map_size_y: 6.0
     resolution: 0.05
     # Provisional physical mount geometry: 0.28 m from chassis-bottom
     # base_link to camera + 0.12 m vehicle ground clearance. Stage 1 keeps
@@ -15,7 +15,7 @@ depth_elevation_mapper:
     # layers and is not applied as an artificial TF or z offset.
     nominal_camera_height_above_ground: 0.40
     min_depth: 0.4
-    max_depth: 12.0
+    max_depth: 4.0
     pixel_stride: 4
     max_processing_rate: 12.0
 

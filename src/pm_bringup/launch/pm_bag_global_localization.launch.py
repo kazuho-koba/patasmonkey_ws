@@ -39,6 +39,7 @@ def generate_launch_description():
         get_package_share_directory("pm_vehicle_interface"))
     pm_description_share = Path(get_package_share_directory("pm_description"))
     pm_config_share = Path(get_package_share_directory("pm_config"))
+    pm_perception_share = Path(get_package_share_directory("pm_perception"))
     ov_msckf_share = Path(get_package_share_directory("ov_msckf"))
 
     # 既存launchファイル
@@ -79,6 +80,9 @@ def generate_launch_description():
 
     openvins_config_file = (
         pm_config_share / "config" / "oak_d_s2" / "estimator_config1.yaml"
+    )
+    terrain_mapper_config_file = (
+        pm_perception_share / "config" / "depth_elevation_mapper.yaml"
     )
 
     # rosbag保存先
@@ -132,6 +136,19 @@ def generate_launch_description():
         "/oak/color/image_raw",
         "/oak/depth/image_raw",
         "/oak/depth/camera_info",
+
+        # -------------------------------------------------------------
+        # Stage 2 local terrain mapping outputs.  The depth input, CameraInfo,
+        # current localization outputs, and TF above are sufficient to replay
+        # the mapper; these layers additionally preserve the online result for
+        # direct comparison without requiring a second reconstruction.
+        # -------------------------------------------------------------
+        "/depth_elevation_mapper/elevation_debug",
+        "/depth_elevation_mapper/relative_elevation_debug",
+        "/depth_elevation_mapper/elevation_variance_debug",
+        "/depth_elevation_mapper/observation_count_debug",
+        "/depth_elevation_mapper/observation_age_debug",
+        "/depth_elevation_mapper/obstacle_height_debug",
 
         # -------------------------------------------------------------
         # OAK-D：device時計・sequence・露光・IMU内部同期の診断
@@ -311,6 +328,14 @@ def generate_launch_description():
         executable="oakd_vio_rgbd_node",
         name="oakd_vio_rgbd_node",
         output="screen",
+        condition=IfCondition(use_oakd),
+    )
+    terrain_mapper_node = Node(
+        package="pm_perception",
+        executable="depth_elevation_mapper_node",
+        name="depth_elevation_mapper",
+        output="screen",
+        parameters=[str(terrain_mapper_config_file)],
         condition=IfCondition(use_oakd),
     )
     vio_odom_adapter_node = Node(
@@ -586,6 +611,7 @@ def generate_launch_description():
             actions=[
                 vehicle_launch,
                 oakd_vio_rgbd_node,
+                terrain_mapper_node,
                 openvins_launch,
                 vio_odom_adapter_node,
                 vio_vertical_gate_node,
