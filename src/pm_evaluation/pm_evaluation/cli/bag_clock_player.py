@@ -4,15 +4,15 @@
 ROS 2 Foxy's ``ros2 bag play`` does not provide a ``--clock`` option.  This
 small, intentionally typed player is used for deterministic EKF replays: the
 clock follows each MCAP record timestamp and the original message is published
-with its original header stamp.
+with its original header stamp. Records are streamed from MCAP instead of being
+accumulated in memory, so RGB-D playback remains practical on the Jetson.
 """
 
 import argparse
 import glob
-import os
 from pathlib import Path
 import time
-from typing import Dict, List, Tuple, Type
+from typing import Dict, Iterable, List, Tuple, Type
 
 from mcap.reader import make_reader
 from nav_msgs.msg import Odometry
@@ -20,7 +20,7 @@ import rclpy
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.serialization import deserialize_message
 from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import Image, Imu
 from tf2_msgs.msg import TFMessage
 
 
@@ -29,6 +29,8 @@ MESSAGE_TYPES: Dict[str, Type] = {
     "/vio/odometry": Odometry,
     "/wit/imu": Imu,
     "/tf_static": TFMessage,
+    "/oak/depth/image_raw": Image,
+    "/oak/color/image_raw": Image,
 }
 
 
@@ -40,14 +42,13 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def read_records(bag: Path, topics: List[str]) -> List[Tuple[int, str, bytes]]:
-    records: List[Tuple[int, str, bytes]] = []
+def iter_records(bag: Path, topics: List[str]) -> Iterable[Tuple[int, str, bytes]]:
+    """Yield selected records in MCAP file order without retaining image data."""
     for mcap_path in sorted(glob.glob(str(bag / "*.mcap"))):
         with open(mcap_path, "rb") as stream:
             for _, channel, record in make_reader(stream).iter_messages():
                 if channel.topic in topics:
-                    records.append((record.log_time, channel.topic, record.data))
-    return sorted(records, key=lambda item: item[0])
+                    yield record.log_time, channel.topic, record.data
 
 
 def main() -> None:
@@ -57,10 +58,6 @@ def main() -> None:
     unknown = sorted(set(args.topic) - set(MESSAGE_TYPES))
     if unknown:
         raise SystemExit("Unsupported typed replay topic(s): {}".format(unknown))
-    records = read_records(args.bag, args.topic)
-    if not records:
-        raise SystemExit("No selected messages found")
-
     rclpy.init()
     node = rclpy.create_node("bag_clock_player")
     regular_qos = QoSProfile(depth=50, reliability=ReliabilityPolicy.RELIABLE)
@@ -79,10 +76,13 @@ def main() -> None:
 
     # Let subscriptions and transient-local /tf_static discovery settle.
     time.sleep(1.0)
-    first_time = records[0][0]
-    wall_start = time.monotonic()
+    first_time = None
+    wall_start = None
     try:
-        for log_time, topic, data in records:
+        for log_time, topic, data in iter_records(args.bag, args.topic):
+            if first_time is None:
+                first_time = log_time
+                wall_start = time.monotonic()
             elapsed = (log_time - first_time) * 1e-9 / args.rate
             delay = wall_start + elapsed - time.monotonic()
             if delay > 0.0:
@@ -93,6 +93,8 @@ def main() -> None:
             clock.clock.nanosec = nanosec
             clock_pub.publish(clock)
             publishers[topic].publish(deserialize_message(data, MESSAGE_TYPES[topic]))
+        if first_time is None:
+            raise SystemExit("No selected messages found")
     finally:
         node.destroy_node()
         rclpy.shutdown()

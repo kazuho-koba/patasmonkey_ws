@@ -79,6 +79,7 @@ def generate_launch_description():
         # -------------------------------------------------------------
         "/oak/color/image_raw",
         "/oak/depth/image_raw",
+        "/oak/depth/camera_info",
 
         # -------------------------------------------------------------
         # 外部IMU・磁気センサ

@@ -131,6 +131,7 @@ def generate_launch_description():
         # -------------------------------------------------------------
         "/oak/color/image_raw",
         "/oak/depth/image_raw",
+        "/oak/depth/camera_info",
 
         # -------------------------------------------------------------
         # OAK-D：device時計・sequence・露光・IMU内部同期の診断

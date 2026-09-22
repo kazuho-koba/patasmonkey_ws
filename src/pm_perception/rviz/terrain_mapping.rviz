@@ -1,0 +1,160 @@
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /Elevation debug1
+        - /Elevation points debug1
+      Splitter Ratio: 0.5
+    Tree Height: 520
+  - Class: rviz_common/Selection
+    Name: Selection
+  - Class: rviz_common/Tool Properties
+    Expanded:
+      - /Interact1
+      - /Select1
+    Name: Tool Properties
+    Splitter Ratio: 0.588235
+  - Class: rviz_common/Views
+    Expanded:
+      - /Current View1
+    Name: Views
+    Splitter Ratio: 0.5
+  - Class: rviz_common/Time
+    Name: Time
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: Patasmonkey model (actual scale)
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: true
+      Name: Elevation debug
+      Topic: /depth_elevation_mapper/elevation_debug
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/PointCloud2
+      Color Transformer: AxisColor
+      Enabled: true
+      Name: Elevation points debug
+      Position Transformer: XYZ
+      Size (Pixels): 3
+      Style: Points
+      Topic: /depth_elevation_mapper/elevation_points_debug
+      Use Fixed Frame: true
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: OAK color
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /oak/color/image_raw
+      Value: true
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: false
+      Name: Relative elevation (Stage 2)
+      Topic: /depth_elevation_mapper/relative_elevation_debug
+      Value: false
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: false
+      Name: Elevation variance (Stage 2)
+      Topic: /depth_elevation_mapper/elevation_variance_debug
+      Value: false
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: false
+      Name: Observation count (Stage 2)
+      Topic: /depth_elevation_mapper/observation_count_debug
+      Value: false
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: false
+      Name: Observation age (Stage 2)
+      Topic: /depth_elevation_mapper/observation_age_debug
+      Value: false
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: false
+      Name: Obstacle height (Stage 2)
+      Topic: /depth_elevation_mapper/obstacle_height_debug
+      Value: false
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 10
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Name: Current View
+      Pitch: 0.785398
+      Target Frame: base_link
+      Yaw: 0.785398
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 768
+  Hide Left Dock: false
+  Hide Right Dock: false
+  QMainWindow State: 000000ff00000000fd000000010000000000000190000002d7fc0200000005fb000000100044006900730070006c0061007900730100000019000002d7000000c700fffffffb0000001200530065006c0065006300740069006f006e01000002f6000000b60000007000fffffffb0000001a0054006f006f006c002000500072006f007000650072007400690065007301000003b2000000b60000007000fffffffb0000000a00560069006500770073010000046e000000b60000007000fffffffb0000000800540069006d0065010000052a0000005e0000005e00ffffff00000001000001a0000002d7fc0200000001fb000000140052006f0062006f0074005600690065007700000000000002d7000000000000000000000000
+  Selection:
+    collapsed: false
+  Time:
+    collapsed: false
+  Tool Properties:
+    collapsed: false
+  Views:
+    collapsed: false
+  Width: 1280

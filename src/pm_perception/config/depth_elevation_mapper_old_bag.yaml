@@ -1,0 +1,8 @@
+depth_elevation_mapper:
+  ros__parameters:
+    # Historical bags use this frame in Image headers, while their URDF TF
+    # tree calls the same optical frame rgb_camera_optical_frame.
+    camera_frame_override: rgb_camera_optical_frame
+    allow_fallback_intrinsics: true
+    publish_debug_occupancy: true
+    publish_debug_pointcloud: true

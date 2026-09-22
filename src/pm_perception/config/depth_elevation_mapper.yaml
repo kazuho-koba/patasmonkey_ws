@@ -1,0 +1,62 @@
+depth_elevation_mapper:
+  ros__parameters:
+    depth_topic: /oak/depth/image_raw
+    camera_info_topic: /oak/depth/camera_info
+    map_frame: odom
+    base_frame: base_link
+    camera_frame_override: ""
+
+    map_size_x: 12.0
+    map_size_y: 12.0
+    resolution: 0.05
+    # Provisional physical mount geometry: 0.28 m from chassis-bottom
+    # base_link to camera + 0.12 m vehicle ground clearance. Stage 1 keeps
+    # odom-z unnormalized, so this is stored for Stage 2 ground-relative
+    # layers and is not applied as an artificial TF or z offset.
+    nominal_camera_height_above_ground: 0.40
+    min_depth: 0.4
+    max_depth: 12.0
+    pixel_stride: 4
+    max_processing_rate: 12.0
+
+    # Frames are retained briefly until TF for the exact image timestamp is
+    # available. Expired frames are dropped; latest TF is never substituted.
+    pending_queue_size: 5
+    tf_wait_timeout: 0.25
+
+    ground_merge_threshold: 0.20
+    obstacle_min_height: 0.20
+    # Conservative per-point depth uncertainty: variance =
+    # measurement_variance + depth_variance_per_meter_sq * range^2.
+    measurement_variance: 0.0025
+    depth_variance_per_meter_sq: 0.0004
+    # Existing evidence loses fusion weight after this time, while the raw
+    # observation count remains available for diagnostics.
+    observation_decay_time: 8.0
+    obstacle_confidence_min: 0.15
+
+    # Old bags do not contain CameraInfo. These values are the saved 640x400
+    # RGB EEPROM intrinsics for OAK-D S2 MX ID 19443010C10EF91200. Disable the
+    # fallback, or override all four values, when another camera is used.
+    allow_fallback_intrinsics: true
+    fallback_fx: 574.28826904
+    fallback_fy: 574.28826904
+    fallback_cx: 354.75085449
+    fallback_cy: 215.23262024
+    fallback_width: 640
+    fallback_height: 400
+
+    publish_debug_occupancy: true
+    publish_debug_pointcloud: false
+    debug_publish_rate: 2.0
+    debug_elevation_min: -0.5
+    debug_elevation_max: 0.5
+    # Stage 2 debug OccupancyGrids are visual encodings only, never Nav2 cost.
+    publish_stage2_debug_layers: true
+    debug_relative_elevation_min: -0.30
+    debug_relative_elevation_max: 0.30
+    debug_variance_max: 0.02
+    debug_count_saturation: 10
+    debug_age_max: 5.0
+    debug_obstacle_height_max: 0.50
+    performance_log_period: 5.0
