@@ -4,6 +4,16 @@
 The node deliberately never re-seeds heading while driving.  A runtime heading
 reset must reinitialize navsat_transform and global localization together, so
 it is an operator workflow rather than an automatic correction.
+
+With one GNSS antenna, datum position alone does not establish vehicle heading.
+The configurable yaw correction is therefore a measured mounting/magnetic
+constant, while the stationary sample average reduces short-term IMU noise.
+
+The node always republishes an orientation with the configured fixed yaw
+correction. During its startup window only, stationary wheel speed permits
+corrected yaw samples into a circular average. A sufficiently concentrated
+average causes one ``/set_pose`` call; a subsequently received gated fix causes
+one ``/datum`` call. No callback performs automatic reseeding after that.
 """
 
 import math
@@ -137,6 +147,8 @@ class HeadingInitializerNode(Node):
         output.orientation.y = qy
         output.orientation.z = qz
         output.orientation.w = qw
+        # Preserve every non-yaw IMU field and covariance. This stream is for
+        # navsat heading use; it must not silently change roll/pitch or rates.
         output.orientation_covariance = message.orientation_covariance
         output.angular_velocity = message.angular_velocity
         output.angular_velocity_covariance = message.angular_velocity_covariance
@@ -153,6 +165,8 @@ class HeadingInitializerNode(Node):
         if self.latest_speed is None:
             return
         if self.latest_speed > self.stationary_speed_threshold:
+            # Samples gathered before motion are not mixed with samples after
+            # motion; otherwise a turn during startup biases the seed yaw.
             self.reset_samples("wheel speed %.3f m/s is not stationary" % self.latest_speed)
             return
         self.sin_sum += math.sin(yaw)
@@ -186,6 +200,8 @@ class HeadingInitializerNode(Node):
 
     def seed_local_ekf(self):
         mean_yaw = math.atan2(self.sin_sum, self.cos_sum)
+        # Circular statistics remain correct across the -pi/+pi wrap point;
+        # an arithmetic mean would report a false heading near zero there.
         concentration = math.hypot(self.sin_sum, self.cos_sum) / self.sample_count
         # Circular standard deviation, robust for an angle near +/- pi.
         stddev = math.sqrt(max(0.0, -2.0 * math.log(max(concentration, 1e-12))))
@@ -234,6 +250,9 @@ class HeadingInitializerNode(Node):
         if (not self.initialization_complete or self.latest_fix is None
                 or self.datum_sent or not self.set_datum_client.service_is_ready()):
             return
+        # Datum position comes from the quality-gated fix. Its orientation is
+        # the same one-time local heading seed, so map conversion and local
+        # odometry start from one consistent yaw convention.
         request = SetDatum.Request()
         request.geo_pose.position.latitude = self.latest_fix.latitude
         request.geo_pose.position.longitude = self.latest_fix.longitude

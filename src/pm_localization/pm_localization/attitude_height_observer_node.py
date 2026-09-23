@@ -3,7 +3,13 @@
 
 This is deliberately not an inertial z integrator. A stopped or rejected VIO
 stream leaves z at its last valid value, avoiding the unconstrained vertical
-velocity drift observed with a standalone robot_localization 3D filter.
+velocity drift observed with a standalone robot_localization 3D filter. IMU
+callbacks still publish the held value so downstream TF consumers do not lose
+their pose stream; publication must not be mistaken for a fresh z observation.
+
+The height callback updates a stored z only when the vertical gate publishes.
+Every IMU callback independently converts the Wit quaternion to roll/pitch,
+combines it with that stored z, and publishes ``/odometry/local_vertical``.
 """
 
 import math
@@ -45,6 +51,8 @@ class AttitudeHeightObserverNode(Node):
         self.create_subscription(Imu, self.imu_topic, self.imu_callback, 50)
 
     def height_callback(self, message):
+        # Only the vertical gate can call this callback. Once it latches, this
+        # state is intentionally frozen until the localization stack restarts.
         z = message.pose.pose.position.z
         variance = message.pose.covariance[14]
         if math.isfinite(z) and math.isfinite(variance):
@@ -53,11 +61,15 @@ class AttitudeHeightObserverNode(Node):
 
     def imu_callback(self, message):
         roll, pitch = rpy_from_quaternion(message.orientation)
+        # Rebuild the quaternion with yaw=0. Yaw belongs to the independent
+        # horizontal EKF and is inserted later by local_odometry_composer.
         qx, qy, qz, qw = quaternion_from_roll_pitch(roll, pitch)
         output = Odometry()
         output.header = message.header
         output.header.frame_id = "odom"
         output.child_frame_id = "base_link"
+        # Horizontal position and yaw belong to the horizontal EKF/composer.
+        # This node owns only roll, pitch, and the guarded (possibly held) z.
         output.pose.pose.position.z = self.height
         output.pose.pose.orientation.x = qx
         output.pose.pose.orientation.y = qy

@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Safety gate for the VIO height observation consumed by local EKF.
+"""Safety gate for the VIO height observation consumed by the height observer.
 
 OpenVINS can reset or diverge while still publishing syntactically valid
 Odometry.  This node latches closed on an implausible VIO pose/velocity so a
-bad relative-height observation cannot corrupt the 3D local EKF.  It forwards
-the original message unchanged while healthy; the EKF YAML selects only z.
+bad relative-height observation cannot corrupt local odometry. It forwards the
+original message unchanged while healthy. After latching, it publishes nothing;
+the height observer intentionally holds its last accepted z.
+
+Each input is checked in this order: finite z/twist/covariance, total speed,
+vertical speed, reported z variance, and per-frame z step. The first failure
+latches the gate for the remainder of the launch, which makes the failure
+visible and prevents an automatic VIO reset from changing local height.
 """
 
 import math
@@ -80,6 +86,8 @@ class VioVerticalGateNode(Node):
 
     def callback(self, message: Odometry) -> None:
         if self.latched_reason:
+            # Latching, rather than immediately re-admitting finite samples,
+            # prevents an OpenVINS reset from becoming a silent height reset.
             return
         z = message.pose.pose.position.z
         vx = message.twist.twist.linear.x
@@ -111,6 +119,8 @@ class VioVerticalGateNode(Node):
                 abs(z - self.last_z), self.max_z_step_m
             ))
             return
+        # Store only values that passed every test; the next frame compares
+        # against this accepted z, not against an already rejected candidate.
         self.last_z = z
         self.publisher.publish(message)
 

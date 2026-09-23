@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Gate VIO relative velocity without treating a pose reset as a position fix."""
+"""Gate VIO relative velocity without treating a pose reset as a position fix.
+
+Processing for each ``/vio/odometry`` message is:
+
+1. extract ``vx, vy, vz`` and reject non-finite values, excessive speed, or a
+   discontinuous velocity step;
+2. after a rejection, collect a new consecutive healthy interval;
+3. publish the original Odometry unchanged only after both the message-count
+   and duration requirements are met.
+
+The output is intentionally a twist-only observation in EKF configuration;
+the untouched pose in the forwarded message is never an absolute correction.
+"""
 
 import math
 
@@ -72,6 +84,8 @@ class VioTwistGateNode(Node):
         self.forwarding = False
         self.healthy_count = 0
         self.healthy_start_stamp_sec = None
+        # Do not compare a new VIO epoch with the last sample from the failed
+        # epoch. The next valid message starts a new quarantine interval.
         self.previous_velocity = None
         if was_forwarding:
             self.get_logger().warn("VIO twist gate quarantined: %s" % reason)
@@ -102,6 +116,8 @@ class VioTwistGateNode(Node):
             ))
             return
         if self.previous_velocity is not None:
+            # A reset can emit finite, low-speed data. The difference test
+            # catches the discontinuity that an absolute-speed check misses.
             step = math.sqrt(sum(
                 (current - previous) ** 2
                 for current, previous in zip(velocity, self.previous_velocity)
@@ -126,6 +142,8 @@ class VioTwistGateNode(Node):
             self.publish_status(
                 "forwarding", "stable VIO twist admitted after %.2f s" % healthy_duration
             )
+        # Before admission, messages are deliberately consumed but not
+        # forwarded. This creates a time quarantine after an OpenVINS reset.
         if self.forwarding:
             self.publisher.publish(message)
 
