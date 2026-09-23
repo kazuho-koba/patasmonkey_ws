@@ -1,0 +1,19 @@
+User prompt:
+ありがとうございます、改めて、hazardが想定以上に値が高くなっている理由の仮説検証に戻ろうと思いますが、一度実機でデータを取り直すべきでしょうか。それとも今の7月bagに記録されているデータでまだ検証できることはありそうですか？
+20260923_july_hazard_cause_hypothesis_tests.mdを確認して、まだ検証可能と思われるものがあるかチェックしてください。
+
+Codex final response:
+確認した限り、**まず実機で取り直す必要はありません**。7月bagにはdepth/color画像・IMU・odometry/TFがあり、すでに行った1倍速再生と代表セルのforensic記録から、まだオフラインで掘れる項目があります。新規実機bagが必要になるのは、7月当時のセンサ設定・カメラ状態がbagに残っておらず現行状態を確認したい場合や、外部の真値と照合したい場合です。
+
+残っている主な検証候補は次のとおりです。
+
+- **黒セル全体のground候補／depth寄与監査**：報告の代表セルでは単発depth spike説は弱まりましたが、全走行経路の黒セルについて同じ検査をしたわけではありません。既存bagを再生し、raw pixel/depth、セル内min・median・max・support、融合前後ground、plane support/残差を黒区間ごとに紐付ければ、どのcueへ伝播したかを比較できます。
+- **同一点対応とodom姿勢の独立検査**：既存の2フレームPnPは品質不足で棄却され、odom誤差は未解決です。連続する複数RGB-D frameから静的な路面・壁の相対姿勢を推定し、品質基準を満たす区間だけwheel/VIO/local odomと比較する余地があります。ただし、テクスチャや遮蔽次第で7月bagだけでは成立しない可能性があります。
+- **intrinsics／歪み補正の感度**：今回、fallbackのfx/fy/cx/cyは実機EEPROM値と一致しました。一方、前回mapperはDを適用していません。取得済みEEPROMのDを使う場合と使わない場合で、同じ7月bagの投影・hazardがどう変わるかはオフラインA/Bできます。RGB-depth alignmentや静的camera extrinsicの仮定も別途確認対象です。
+- **融合方式のA/B**：min候補、中央値・分位点、support/時間持続性gateを7月bagで比較できます。ただし、黒率が下がるだけでは原因解決の証拠にならず、段差等を消していないかも評価が必要です。
+
+一方、report上で代表例については、IMU/TFの時刻ずれ、大きなbase z jump、単一pixel spike、frame内min/max幅だけで約28 cm差を説明する仮説は弱まっています。これらを同じ代表例で繰り返す優先度は低く、残課題は「候補が実世界のどの面だったか」「複数frameで位置・姿勢が正しく重なったか」「camera geometryやground選択がどれだけ影響したか」です。
+
+推奨順は、(1)既存bagで複数黒区間のraw provenanceを揃える、(2)intrinsics D有無とground集約のA/B、(3)成功条件を明示したmulti-frame相対姿勢比較、です。ここまでで不足する情報が特定されてから実機bagを取り直すのが効率的です。
+
+根拠資料：[仮説検証レポート](</home/kazuho/Projects/patasmonkey_ws/notes/reports/20260923_july_hazard_cause_hypothesis_tests.md>)、[走行経路の黒hazard分析](</home/kazuho/Projects/patasmonkey_ws/notes/reports/20260923_july_terrain_black_root_cause.md>)。

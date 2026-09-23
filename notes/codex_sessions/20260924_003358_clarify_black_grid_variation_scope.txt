@@ -1,0 +1,13 @@
+User prompt:
+UGVの中心点が実際に黒いグリッドを通過したものが37グリッドあり、それぞれのグリッドについて何度かの観測結果による重畳・更新の過程があるが、このときにセル高さ幅変動やGround高さ幅変動があったか確認したところ、そう多くは無いがtail case的に数十cmの変動があるグリッドもあった、という感じですかね？
+
+Codex final response:
+大筋は近いですが、2点補足が必要です。
+
+「37」は37個のunique gridと確認済みというより、実走行軌跡中心でhazard=1だったpath sample数です。それぞれの通過位置について、約2 m手前で生成されたmapのcenter cellを見ています。37件中30件は同時刻・同じ5 cm odom cellのforensic記録に対応しました。
+
+また、30件について各セルの全観測履歴を時系列で再生・集計したのではありません。主に、black判定時点の最新source frame内で、そのcellに入った複数depth sampleの高さ幅と、最新候補を融合する前後のground値を見ました。frame内z幅は中央値1.61 cm、p90 3.61 cm、最大25.71 cmでした。通常のweighted merge 25件ではground updateの絶対値は中央値1.42 cm、最大10.86 cm。既存groundからの大きなlower-replaceは1件あり、`(152,124)`で-28.88 cmでした。
+
+一方、全30件での最大`+56.60 cm`は既観測値の跳ねではなく、未観測cellの初期化（空cellの0から0.566 m）でした。したがって「多くは大きく変動しないが、数十cm級のtailが1件確認された」という理解が近いです。ただしそのtailが実世界の同一点上の誤差かどうかは確定していません。`(152,124)`ではこのlower-replace差がobstacle cue約28.9 cmを作り、そのcellのhazard=1判定の最大寄与になったことまでは追えています。
+
+この初期化と既観測更新の区別、検査範囲の限界を[レポート](</home/kazuho/Projects/patasmonkey_ws/notes/reports/20260923_235834_july_hazard_followup_hypothesis_tests.md>)へ反映しました。`git diff --check`は問題ありませんでした。

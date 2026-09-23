@@ -1,0 +1,16 @@
+User prompt:
+この修正で優先度１〜３の検証について解説が全て入っていますか？
+優先度２のblack center の候補とplane supportというところ、全体的にどのような検証をしてどのような結果を得たのかわからないので、もう少し補強してください。
+
+Codex final response:
+優先度1〜3について、実施した検査の説明はレポートにあります。ただし「解説がある」ことと「予定した検証がすべて完了した」ことは別です。優先度1はK/D感度や選定画像の粗いdepth統計まで、優先度2は保存済みforensic dataの集計まで、優先度3は選定された6 distinct depth frameのzero/ROI valid率までです。全map D A/B、全raw candidateによるrobust fusion A/B、RGB-depth pixel alignmentの確証などは未実施です。
+
+ご指摘を受け、特に優先度2を大幅に補強しました。[レポート](</home/kazuho/Projects/patasmonkey_ws/notes/reports/20260923_235834_july_hazard_followup_hypothesis_tests.md>)に以下を追記しています。
+
+- black centerの抽出条件（hazard=100）と、pathのmap timestamp＋絶対5 cm odom-cellでforensic rowへ照合する方法。37 sample中30 match、7件は近傍代用せず未照合として扱ったこと。
+- frame内sample count、min/max world-z幅、fusion前後ground差が何を表すかと、対応する中央値・p90・最大値。
+- plane supportがfresh（age≤3秒）な近傍cellから成り、最大3×3・最低5 supportで平面をfitし、266 support行の残差を集計したこと。行同士が独立測量ではない点。
+- cue閾値超過の重複集計と組み合わせ内訳、およびこれらが実地面の真値ではなく現行grid由来の評価であること。
+- 数値から言える範囲、言えない範囲、median/分位点の全bag A/Bに追加replayが必要な理由。
+
+production codeは変更していません。`git diff --check`は問題ありませんでした。

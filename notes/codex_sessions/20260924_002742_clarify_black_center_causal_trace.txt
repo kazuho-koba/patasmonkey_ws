@@ -1,0 +1,11 @@
+User prompt:
+black centerというのはhazard=1で黒く表示されていた部分のことですよね。これがどのような経緯でこの判定に至ったかを調べたということですか？
+
+Codex final response:
+はい。ここでいう「black center」は、RVizでhazard=1（OccupancyGrid値100）として黒表示され、あとでUGVが通過した軌跡中心のcellです。評価では通過時の現在位置を単に見るのでなく、その位置の約2 m手前にいる時点で作られたlocal mapからcellを選んでいます。
+
+ただし、原因を全履歴まで完全に遡って確定したわけではありません。既存forensicとの照合では、37件中30件について同じmap timestamp・5 cm odom cellの記録を見つけ、最新sourceのpixel/depth、frame内候補分布、fusion前後ground、plane support、cue値を調べました。7件は誤った近傍cellへ結び付けないよう未照合にしています。
+
+追った経路は、depth pixel→撮像時TFでodomへ投影→5 cm cell内のframe-minをground候補としてfusion→fresh 3×3近傍のplane/cue計算→4 cue最大値をhazard=1/黒表示、です。ですが保存データに全frameの全pixel候補が残っていないため、どの過去sampleが最初にhazardを発生させ、その後どう保持されたかまでは完全追跡できていません。したがって、判定に至る計算経路と現在の支持状況は調べましたが、各cellの物理的な誤判定原因を確定したという意味ではありません。
+
+この区別と照合方法を[レポート](</home/kazuho/Projects/patasmonkey_ws/notes/reports/20260923_235834_july_hazard_followup_hypothesis_tests.md>)にも追記しました。

@@ -1,0 +1,11 @@
+User prompt:
+歪み係数Dは、いま取得できる値と、先程実機から取得した値は同じですか？
+
+Codex final response:
+はい。現行driverが `/oak/depth/camera_info` / `/oak/color/camera_info` に載せる歪み係数Dは、起動時にDepthAI SDKから対象カメラのEEPROMを読み出して作るため、先ほど実機から直接読んだ値と同じになる想定です。D自体は画像サイズのgeometry選択（keepAspectRatio）では変わりません。
+
+先ほどのEEPROM読み出し値は14係数で、現行driverはCameraInfoの `D` に先頭8係数を入れます。したがって、topic上で照合するなら次の8値です。
+
+`[10.22323513, -109.25149536, -0.0004420212, 0.0010316186, 320.91735840, 9.92284966, -107.20381165, 315.32150269]`
+
+ただしJetson上では先ほどCameraInfo topicからの再取得まではしていないため、「topicで独立に一致を実測済み」という意味ではありません。driver実装が同じEEPROM APIを使うことに基づく回答です。また、Kalibr YAMLのDは左右のモノカメラ用でRGB/深度用ではないため、これと値が異なっていても不一致の証拠にはなりません。前回のhazard mapperはCameraInfoのDを読み取らず、Dによる補正もしていません。
