@@ -31,6 +31,7 @@ MESSAGE_TYPES: Dict[str, Type] = {
     "/oak/depth/image_raw": Image,
     "/oak/depth/camera_info": CameraInfo,
     "/oak/color/image_raw": Image,
+    "/oak/color/camera_info": CameraInfo,
 }
 
 

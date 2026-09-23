@@ -131,9 +131,10 @@ def generate_launch_description():
         "/oak/imu/data",
 
         # -------------------------------------------------------------
-        # OAK-D：RGB-D認識、オフロード走行解析用
+        # OAK-D：RGB-D認識用画像と各画像geometryを再現するCameraInfo。
         # -------------------------------------------------------------
         "/oak/color/image_raw",
+        "/oak/color/camera_info",
         "/oak/depth/image_raw",
         "/oak/depth/camera_info",
 

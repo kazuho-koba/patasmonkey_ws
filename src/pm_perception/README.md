@@ -9,8 +9,10 @@ robot-centric rolling 2.5D gridへ融合する最小実装です。Stage 3では
 
 - depth: `/oak/depth/image_raw`、`sensor_msgs/Image`、`16UC1` (mm)、640x400。
   driver設定値はRGB-D 10 Hzで、bag実測も約10.01 Hzでした。
-- depthはRGBへalign済みです。現行driverにCameraInfoが無かったため、
-  `/oak/depth/camera_info`をEEPROMからpublishする変更を`depthai_driver`へ追加しました。
+- depthはRGBカメラへalignする設定です。現行driverはRGBのEEPROM校正値から
+  `/oak/depth/camera_info`と`/oak/color/camera_info`をpublishします。RGB previewは
+  640x400へaspect比を保たずstretchし、depth outputは既定でaspect比を保つため、同じ画像寸法でも
+  intrinsicsは別です。画素単位で色とdepthを重畳する場合は、両画像の変換geometryを確認してください。
 - 既存bagのdepth frameは`oak_rgb_camera_optical_frame`ですが、URDFのTF名は
   `rgb_camera_optical_frame`です。旧bagでは専用launchがframe名をoverrideします。
   新しいdriverはURDF側の`rgb_camera_optical_frame`を既定値にしました。
@@ -206,7 +208,8 @@ ros2 run pm_evaluation bag_clock_player \
   --topic /tf_static \
   --topic /oak/depth/image_raw \
   --topic /oak/depth/camera_info \
-  --topic /oak/color/image_raw
+  --topic /oak/color/image_raw \
+  --topic /oak/color/camera_info
 ```
 
 terminal 3:
