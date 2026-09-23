@@ -62,6 +62,10 @@ For each completed user request, save one UTF-8 record under
 
     YYYYMMDD_HHMMSS_<brief-description>.md
 
+Use the record's local creation time, including seconds, in the filename. If
+multiple records are created within the same second, add a distinguishing
+suffix to keep their ordering clear.
+
 Include only the relevant user prompt(s), verbatim, and the exact final
 response. Do not include internal reasoning or raw tool output; do not create a
 record for an aborted request with no final response.
