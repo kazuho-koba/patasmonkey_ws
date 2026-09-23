@@ -7,7 +7,10 @@
 import numpy as np
 
 
-def sampled_points(depth_message, fx, fy, cx, cy, stride, min_depth, max_depth):
+def sampled_points(
+    depth_message, fx, fy, cx, cy, stride, min_depth, max_depth,
+    return_pixels=False,
+):
     """PointCloud2を生成せず、Nx3 optical-frame点列を返す。
 
     OAKの`16UC1`値はoptical-z方向のmm値である。`frombuffer`はROS payloadを全画像
@@ -32,16 +35,28 @@ def sampled_points(depth_message, fx, fy, cx, cy, stride, min_depth, max_depth):
     sampled = depth[::stride, ::stride].astype(np.float32) * 0.001
     valid = np.isfinite(sampled) & (sampled >= min_depth) & (sampled <= max_depth)
     if not np.any(valid):
-        return np.empty((0, 3), dtype=np.float32)
+        empty_points = np.empty((0, 3), dtype=np.float32)
+        if return_pixels:
+            empty_pixels = np.empty(0, dtype=np.int32)
+            empty_depth = np.empty(0, dtype=np.float32)
+            return empty_points, empty_pixels, empty_pixels.copy(), empty_depth
+        return empty_points
     # pinhole back-projection。zは観測したaxial depth、x/yはprincipal pointからの
     # pixel距離に対応する横方向offsetである。
     u, v = np.meshgrid(cols, rows)
     optical_z = sampled[valid]
     optical_x = (u[valid] - cx) * optical_z / fx
     optical_y = (v[valid] - cy) * optical_z / fy
-    return np.column_stack((optical_x, optical_y, optical_z)).astype(
+    points = np.column_stack((optical_x, optical_y, optical_z)).astype(
         np.float32, copy=False
     )
+    if not return_pixels:
+        return points
+
+    # forensic時だけ、各3D sampleを作った元画素とaxial depthも返す。通常経路では
+    # この追加配列を確保しないため、Jetsonの通常実行コストを増やさない。
+    pixel_u, pixel_v = np.meshgrid(cols, rows)
+    return points, pixel_u[valid], pixel_v[valid], optical_z
 
 
 def quaternion_matrix(quaternion):

@@ -55,3 +55,18 @@ def test_step_requires_observations_on_both_heading_sides():
     values[:, 2:] = 0.10
     result = _features(values, step_min_side_neighbors=2)
     assert np.isnan(result["step_height"][2, 2])
+
+
+def test_offline_diagnostics_return_plane_support_and_residuals_only_on_request():
+    x = np.arange(5, dtype=np.float32) * 0.1
+    plane = np.tile(0.08 * x, (5, 1))
+    standard = _features(plane)
+    assert "plane_a" not in standard
+
+    forensic = _features(plane, include_diagnostics=True)
+    assert forensic["support_count"][2, 2] == 9
+    assert np.isclose(forensic["plane_a"][2, 2], 0.08, atol=1e-5)
+    assert np.isclose(forensic["plane_b"][2, 2], 0.0, atol=1e-5)
+    assert forensic["residual_rms"][2, 2] < 1e-5
+    assert forensic["residual_min"][2, 2] > -1e-5
+    assert forensic["residual_max"][2, 2] < 1e-5

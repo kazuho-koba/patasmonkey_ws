@@ -76,3 +76,62 @@ def test_farther_observation_has_less_fusion_weight_and_stale_weight_decays():
     )
     # Four seconds old evidence is downweighted before the new measurement.
     assert grid.elevation_weight.max() < first_weight * 2.0
+
+
+def test_forensic_fusion_keeps_min_max_pixel_and_before_after_ground():
+    grid = RollingElevationGrid(2.0, 2.0, 0.1, forensic=True)
+    grid.recenter(0.0, 0.0)
+    grid.fuse_points(
+        np.array([0.25, 0.25, 0.25]),
+        np.array([0.25, 0.25, 0.25]),
+        np.array([0.12, 0.10, 0.11]),
+        1_000_000_000, 0.20, 0.20,
+        pixel_u=np.array([10, 20, 30]),
+        pixel_v=np.array([11, 21, 31]),
+        axial_depth=np.array([1.2, 1.0, 1.1]),
+        source_pose=(1.0, 2.0, 3.0, 0.1, -0.2, 0.3),
+    )
+    layers = grid.forensic_layers()
+    cell = layers["min_depth_m"] == 1.0
+    assert cell.sum() == 1
+    assert layers["sample_count"][cell].item() == 3
+    assert layers["min_pixel_u"][cell].item() == 20
+    assert layers["min_pixel_v"][cell].item() == 21
+    assert np.isclose(layers["min_world_z"][cell].item(), 0.10)
+    assert np.isclose(layers["ground_before"][cell].item(), 0.0)
+    assert np.isclose(layers["ground_after"][cell].item(), 0.10)
+    assert layers["fusion_mode"][cell].item() == 1
+    assert np.isclose(layers["base_pitch"][cell].item(), -0.2)
+
+
+def test_forensic_fusion_preserves_old_and_new_accepted_ground_sources():
+    grid = RollingElevationGrid(2.0, 2.0, 0.1, forensic=True)
+    grid.recenter(0.0, 0.0)
+    grid.fuse_points(
+        np.array([0.25]), np.array([0.25]), np.array([0.30]),
+        1_000_000_000, 0.20, 0.20,
+        pixel_u=np.array([12]), pixel_v=np.array([34]),
+        axial_depth=np.array([1.5]), source_pose=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+    )
+    # 次の撮像ではbase zが30 cm下がる。absolute candidateはfusion閾値を跨ぐが、
+    # 同じ水平面のrelative値になるよう今回frameのcamera referenceを30 cm補正する。
+    grid.fuse_points(
+        np.array([0.25]), np.array([0.25]), np.array([0.0]),
+        2_000_000_000, 0.20, 0.20,
+        relative_elevation_offset=0.30,
+        pixel_u=np.array([56]), pixel_v=np.array([78]),
+        axial_depth=np.array([1.6]), source_pose=(0.0, 0.0, -0.30, 0.0, 0.0, 0.0),
+    )
+    layers = grid.forensic_layers()
+    cell = layers["fusion_mode"] == 2
+    assert cell.sum() == 1
+    assert layers["previous_ground_input_stamp_ns"][cell].item() == 1_000_000_000
+    assert np.isclose(layers["previous_ground_input_world_z"][cell].item(), 0.30)
+    assert layers["previous_ground_input_pixel_u"][cell].item() == 12
+    assert np.isclose(layers["previous_ground_input_base_z"][cell].item(), 0.0)
+    assert layers["ground_input_stamp_ns"][cell].item() == 2_000_000_000
+    assert np.isclose(layers["ground_input_world_z"][cell].item(), 0.0)
+    assert layers["ground_input_pixel_u"][cell].item() == 56
+    assert np.isclose(layers["ground_input_base_z"][cell].item(), -0.30)
+    assert np.isclose(layers["ground_input_relative_z"][cell].item(), 0.30)
+    assert np.isclose(layers["relative_after"][cell].item(), 0.30)

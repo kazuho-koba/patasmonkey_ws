@@ -9,6 +9,8 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -19,12 +21,34 @@ def generate_launch_description():
     horizontal_config = config_share / "config" / "ekf_local_horizontal_vio_twist.yaml"
     mapper_config = perception_share / "config" / "depth_elevation_mapper.yaml"
     old_bag_config = perception_share / "config" / "depth_elevation_mapper_old_bag.yaml"
+    forensic_output_dir = LaunchConfiguration("terrain_forensic_output_dir")
+    forensic_roi_half_width = LaunchConfiguration(
+        "terrain_forensic_roi_half_width_m")
+    forensic_targets_csv = LaunchConfiguration("terrain_forensic_targets_csv")
     with open(description_share / "urdf" / "pm.urdf", "r") as urdf_stream:
         robot_description = urdf_stream.read()
 
     sim_time = {"use_sim_time": True}
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "terrain_forensic_output_dir",
+                default_value="",
+                description=(
+                    "空でなければ、危険セルとplane supportのdepth pixel forensic CSVを出力する。"
+                    "通常運用では指定しない。"
+                ),
+            ),
+            DeclareLaunchArgument(
+                "terrain_forensic_roi_half_width_m",
+                default_value="0.60",
+                description="forensic記録のロボット左右方向の半幅[m]。空の通常実行には影響しない。",
+            ),
+            DeclareLaunchArgument(
+                "terrain_forensic_targets_csv",
+                default_value="",
+                description="非空ならmap stampとodom cellで指定した走行中心黒セルだけを記録する。",
+            ),
             # The bag supplies its recorded /tf_static while the current
             # localizer supplies odom -> base_link.  Publish this replay-only
             # robot model's fixed transforms privately so it can provide
@@ -99,7 +123,14 @@ def generate_launch_description():
                 executable="depth_elevation_mapper_node",
                 name="depth_elevation_mapper",
                 output="screen",
-                parameters=[str(mapper_config), str(old_bag_config)],
+                parameters=[
+                    str(mapper_config), str(old_bag_config),
+                    {
+                        "forensic_output_dir": forensic_output_dir,
+                        "forensic_roi_half_width_m": forensic_roi_half_width,
+                        "forensic_targets_csv": forensic_targets_csv,
+                    },
+                ],
             ),
         ]
     )

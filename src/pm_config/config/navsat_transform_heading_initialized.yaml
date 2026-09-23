@@ -1,13 +1,13 @@
-# Used only by localization_mode:=separated_offroad.
-# Datum is intentionally withheld until heading_initializer_node has both
-# seeded local yaw while stationary and supplied one valid GNSS fix.
+# localization_mode:=separated_offroadだけで使う。
+# heading_initializer_nodeが停止中のlocal yaw seedと有効GNSS fixの両方を得るまで、
+# datumは意図して保留する。
 navsat_transform_node:
   ros__parameters:
     frequency: 10.0
     delay: 3.0
 
-    # /wit/imu/heading_calibrated already applies the verified mounting and
-    # magnetic-to-true-north correction. Do not correct it a second time.
+    # /wit/imu/heading_calibratedには検証済みの取付角・磁北から真北への補正を既に
+    # 適用している。ここで二重に補正してはならない。
     magnetic_declination_radians: 0.0
     yaw_offset: 0.0
 

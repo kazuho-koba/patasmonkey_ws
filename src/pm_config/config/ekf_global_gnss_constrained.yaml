@@ -1,8 +1,7 @@
 ekf_global_gnss_constrained_node:
   ros__parameters:
-    # This filter owns map-frame position. It deliberately does not consume
-    # /odometry/local pose, because that pose is an already-correlated summary
-    # of wheel/IMU/VIO and can otherwise overpower 1 Hz GNSS corrections.
+    # このfilterはmap座標系の位置を担当する。wheel/IMU/VIOを既に相関付きで要約した
+    # /odometry/local poseは、1 Hz GNSS補正を押し負かし得るため意図して入力しない。
     frequency: 20.0
     sensor_timeout: 1.0
     two_d_mode: false
@@ -15,7 +14,7 @@ ekf_global_gnss_constrained_node:
     base_link_frame: base_link
     world_frame: map
 
-    # Wheel supplies only measured forward body velocity.
+    # wheelからは車体前方速度だけを使う。
     odom0: /wheel/odometry
     odom0_config: [
       false, false, false,
@@ -28,9 +27,8 @@ ekf_global_gnss_constrained_node:
     odom0_differential: false
     odom0_relative: false
 
-    # Keep vehicle attitude without accepting magnetic yaw directly. Roll and
-    # pitch are gravity-referenced; yaw evolves from gyro z until a separately
-    # validated one-time heading seed is available.
+    # 磁気yawを直接採用せずに車体姿勢を保持する。roll/pitchは重力基準で、yawは別途検証
+    # された一回限りのheading seedまでgyro zで伝播する。
     imu0: /wit/imu
     imu0_config: [
       false, false, false,
@@ -43,8 +41,8 @@ ekf_global_gnss_constrained_node:
     imu0_differential: false
     imu0_relative: false
 
-    # VIO contributes only relative horizontal velocity after its health gate.
-    # Its pose, orientation, z, and vz are excluded from the global filter.
+    # VIOは健全性ゲート通過後の相対水平速度だけを与える。pose、orientation、z、vzは
+    # global filterから除外する。
     odom1: /vio/odometry/twist_gated
     odom1_config: [
       false, false, false,
@@ -58,8 +56,8 @@ ekf_global_gnss_constrained_node:
     odom1_relative: false
     odom1_twist_rejection_threshold: 5.0
 
-    # GNSS is the only global position observation. z remains excluded until
-    # the GNSS quality gate (step 5) can evaluate altitude reliability.
+    # GNSSを唯一のglobal位置観測とする。zはGNSS品質ゲート（ステップ5）がaltitudeの
+    # 信頼性を評価できるまで除外する。
     odom2: /odometry/gps
     odom2_config: [
       true,  true,  false,

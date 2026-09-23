@@ -1,7 +1,7 @@
 gnss_fix_gate_node:
   ros__parameters:
-    # The raw receiver streams remain recorded for diagnosis. Only the gated
-    # copy is consumed by navsat_transform in separated_offroad mode.
+    # 生receiver streamは診断用に記録し続ける。separated_offroad modeで
+    # navsat_transformが使うのはgate後のcopyだけである。
     input_fix_topic: /fix
     navpvt_topic: /navpvt
     output_fix_topic: /fix/gated
@@ -12,15 +12,14 @@ gnss_fix_gate_node:
     minimum_satellites: 6
     maximum_horizontal_accuracy_m: 20.0
 
-    # Patasmonkey's commanded maximum is 2 m/s; this includes margin for
-    # timestamp jitter and GNSS noise while still rejecting large jumps.
+    # Patasmonkeyの指令上限2 m/sに、timestamp jitterとGNSSノイズの余裕を加える。
+    # それでも大きな位置ジャンプは棄却する。
     maximum_receiver_speed_mps: 5.0
     jump_margin_m: 3.0
     consecutive_fixes_required: 3
 
-    # A non-fixed solution is usable only as a deliberately weak observation.
-    # Floors are one-sigma horizontal values and are combined with receiver
-    # reported h_acc and NavSatFix covariance by taking the largest value.
+    # non-fixed解は意図して弱い観測としてのみ使う。下限は水平1σであり、receiver報告の
+    # h_accとNavSatFix共分散の最大値を採用する。
     fixed_covariance_floor_m: 0.5
     float_covariance_floor_m: 2.0
     standalone_covariance_floor_m: 10.0

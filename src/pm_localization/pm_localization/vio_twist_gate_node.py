@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
-"""Gate VIO relative velocity without treating a pose reset as a position fix.
+"""VIOリセットを絶対位置補正として扱わず、相対速度だけをゲートする。
 
-Processing for each ``/vio/odometry`` message is:
+各``/vio/odometry``で、(1) ``vx, vy, vz``を取り出して有限値・速度・急変を
+検査し、(2) 異常後は連続した健全期間を数え直し、(3) メッセージ数と時間の両方を
+満たした場合だけ、元のOdometryをそのままpublishする。
 
-1. extract ``vx, vy, vz`` and reject non-finite values, excessive speed, or a
-   discontinuous velocity step;
-2. after a rejection, collect a new consecutive healthy interval;
-3. publish the original Odometry unchanged only after both the message-count
-   and duration requirements are met.
-
-The output is intentionally a twist-only observation in EKF configuration;
-the untouched pose in the forwarded message is never an absolute correction.
+EKF設定は出力Odometryのtwistだけを使う。転送messageに残るposeは、絶対位置の
+補正としては決して使わない。
 """
 
 import math
@@ -31,8 +27,8 @@ class VioTwistGateNode(Node):
         self.declare_parameter("max_linear_speed_mps", 2.5)
         self.declare_parameter("max_vertical_speed_mps", 1.0)
         self.declare_parameter("max_velocity_step_mps", 0.75)
-        # Do not immediately use VIO just because one message looks plausible.
-        # A reset can briefly emit finite but incorrect relative velocity.
+        # 一見もっともらしい1 messageだけではVIOを再利用しない。reset直後にも
+        # 有限値だが誤った相対速度が短時間出ることがある。
         self.declare_parameter("healthy_messages_required", 10)
         self.declare_parameter("healthy_duration_sec", 4.0)
 
@@ -84,8 +80,8 @@ class VioTwistGateNode(Node):
         self.forwarding = False
         self.healthy_count = 0
         self.healthy_start_stamp_sec = None
-        # Do not compare a new VIO epoch with the last sample from the failed
-        # epoch. The next valid message starts a new quarantine interval.
+        # 破綻前の最後の速度と、新しいVIO epochを比較しない。次の正常messageから
+        # 新しい隔離解除判定期間を開始する。
         self.previous_velocity = None
         if was_forwarding:
             self.get_logger().warn("VIO twist gate quarantined: %s" % reason)
@@ -116,8 +112,8 @@ class VioTwistGateNode(Node):
             ))
             return
         if self.previous_velocity is not None:
-            # A reset can emit finite, low-speed data. The difference test
-            # catches the discontinuity that an absolute-speed check misses.
+            # reset直後は有限・低速でもあり得る。差分検査で絶対速度検査だけでは
+            # 見落とす不連続を捕捉する。
             step = math.sqrt(sum(
                 (current - previous) ** 2
                 for current, previous in zip(velocity, self.previous_velocity)
@@ -142,8 +138,8 @@ class VioTwistGateNode(Node):
             self.publish_status(
                 "forwarding", "stable VIO twist admitted after %.2f s" % healthy_duration
             )
-        # Before admission, messages are deliberately consumed but not
-        # forwarded. This creates a time quarantine after an OpenVINS reset.
+        # 採用前のmessageは意図して消費だけし、転送しない。これによりOpenVINS
+        # reset後に時間ベースの隔離期間を作る。
         if self.forwarding:
             self.publisher.publish(message)
 

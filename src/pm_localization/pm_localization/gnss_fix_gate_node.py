@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-"""Qualify u-blox fixes before navsat_transform consumes them.
+"""navsat_transformへ渡す前にu-blox fixの品質を判定する。
 
-The gate does not invent RTK quality: it rejects invalid/stale/implausible
-measurements and makes the NavSatFix covariance no more optimistic than the
-receiver's NAV-PVT accuracy estimate and a solution-class floor.
+このゲートはRTK品質を生成しない。無効・古い・不自然な測位を棄却し、NavSatFixの
+共分散がreceiverのNAV-PVT精度推定値と解の種類ごとの下限より楽観的にならないようにする。
 
-The node has no map-frame pose input by design. Feeding global EKF output back
-into this admission decision would make the gate circular and hard to audit.
+このnodeは意図してmap座標系poseを入力に持たない。global EKF出力を採否判定へ戻すと
+循環構造になり、監査が困難になるためである。
 
-For each NavSatFix, it checks ROS-level validity, then the newest NAV-PVT
-status/age, then speed-bounded displacement from the prior candidate. Accepted
-fixes must form a consecutive run before publication. The published copy keeps
-the geographic coordinates but replaces horizontal covariance with a
-conservative value for navsat_transform and the global EKF.
+各NavSatFixでROSレベルの有効性、最新NAV-PVTの状態・鮮度、直前候補から速度上限付きの
+変位を順に検査する。採用fixは連続した正常列を形成してからpublishする。出力copyは
+地理座標を保持しつつ、navsat_transformとglobal EKF用に水平共分散だけを保守的に置換する。
 """
 
 import math
@@ -141,8 +138,8 @@ class GnssFixGateNode(Node):
             self.get_logger().warn("GNSS fix gate quarantined: %s" % reason)
         self.forwarding = False
         self.consecutive_good = 0
-        # Forget the previous candidate. Reacquisition must establish a fresh,
-        # continuous run of plausible fixes instead of bridging an outage.
+        # 直前候補を破棄する。再捕捉では途切れ前をまたがず、新しい連続した妥当fix列を
+        # 作らなければならない。
         self.last_candidate = None
         self.last_candidate_stamp_sec = None
         self.last_reason = reason
@@ -151,8 +148,8 @@ class GnssFixGateNode(Node):
     def navpvt_is_usable(self):
         if self.latest_navpvt is None:
             return False, "NAV-PVT unavailable"
-        # NAV-PVT has no ROS Header in this driver version, so freshness is
-        # measured from the local receive clock rather than GPS time-of-week.
+        # このdriver版のNAV-PVTにはROS Headerがないため、GPS週時刻ではなく
+        # local受信clockから鮮度を測る。
         age = self.get_clock().now().nanoseconds * 1e-9 - self.latest_navpvt_received_sec
         if age > self.navpvt_timeout_sec:
             return False, "NAV-PVT stale (%.2f s)" % age
@@ -189,15 +186,14 @@ class GnssFixGateNode(Node):
                 self.reject("non-monotonic NavSatFix timestamp")
                 return
             distance = self.horizontal_distance_m(self.last_candidate, message)
-            # This is a coarse safety gate, not a vehicle-motion estimator:
-            # generous speed margin accommodates GNSS noise and timestamps,
-            # while still rejecting multi-metre instantaneous teleportation.
+            # これは車両運動推定器ではなく粗い安全ゲートである。余裕を持たせた速度上限で
+            # GNSSノイズとtimestamp誤差を許容しつつ、数m級の瞬間移動を棄却する。
             limit = self.jump_margin_m + self.maximum_receiver_speed_mps * elapsed
             if distance > limit:
                 self.reject("position jump %.2f m exceeds %.2f m" % (distance, limit))
                 return
-        # Warm-up candidates are retained so the next sample can be checked
-        # for a jump even before the gate begins forwarding measurements.
+        # warm-up中の候補も保持する。これにより、ゲートが転送を開始する前から次sampleの
+        # 位置ジャンプを検査できる。
         self.last_candidate = message
         self.last_candidate_stamp_sec = stamp_sec
         self.consecutive_good += 1
@@ -216,9 +212,8 @@ class GnssFixGateNode(Node):
         output.latitude = message.latitude
         output.longitude = message.longitude
         output.altitude = message.altitude
-        # navsat_transform propagates this covariance into /odometry/gps. The
-        # maximum below avoids advertising centimetre-level confidence for a
-        # FLOAT/standalone solution whose raw covariance is optimistic.
+        # navsat_transformはこの共分散を/odometry/gpsへ伝える。以下で最大値を取ることで、
+        # 生共分散が楽観的なFLOAT/standalone解をcm級の確信度として扱わない。
         output.position_covariance_type = NavSatFix.COVARIANCE_TYPE_DIAGONAL_KNOWN
         original = message.position_covariance
         reported_sigma_m = 0.0
@@ -229,7 +224,7 @@ class GnssFixGateNode(Node):
         output.position_covariance = [0.0] * 9
         output.position_covariance[0] = sigma_m * sigma_m
         output.position_covariance[4] = sigma_m * sigma_m
-        # z is not fused in step 4, but retain the incoming vertical covariance.
+        # ステップ4ではzを融合しないが、入力の鉛直共分散は保持する。
         output.position_covariance[8] = max(0.0, original[8]) if len(original) >= 9 else 0.0
         self.forwarding = True
         self.last_reason = "forwarding qualified GNSS fix"

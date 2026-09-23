@@ -34,6 +34,7 @@ def compute_terrain_features(
     obstacle_limit=0.2,
     heading_yaw=0.0,
     step_min_side_neighbors=1,
+    include_diagnostics=False,
 ):
     """局所平面をfitし、slope・残差roughness・前後support付きstepを求める。
 
@@ -115,6 +116,14 @@ def compute_terrain_features(
     a[plane_valid] = a_numerator[plane_valid] / determinant[plane_valid]
     b[plane_valid] = b_numerator[plane_valid] / determinant[plane_valid]
     c[plane_valid] = c_numerator[plane_valid] / determinant[plane_valid]
+    if include_diagnostics:
+        # 係数配列はoffline診断時だけ返す。通常運転では追加のgrid配列を確保しない。
+        plane_a = np.full(shape, np.nan, dtype=np.float32)
+        plane_b = np.full(shape, np.nan, dtype=np.float32)
+        plane_c = np.full(shape, np.nan, dtype=np.float32)
+        plane_a[plane_valid] = a[plane_valid]
+        plane_b[plane_valid] = b[plane_valid]
+        plane_c[plane_valid] = c[plane_valid]
 
     # fit後に同じstencilを再走査する。3x3xHxW tensorを実体化せず、残差RMSと残差極値の
     # 両方を求める。
@@ -164,6 +173,11 @@ def compute_terrain_features(
     step_height[step_valid] = (
         residual_max[step_valid] - residual_min[step_valid]
     )
+    if include_diagnostics:
+        residual_min_out = np.full(shape, np.nan, dtype=np.float32)
+        residual_max_out = np.full(shape, np.nan, dtype=np.float32)
+        residual_min_out[plane_valid] = residual_min[plane_valid]
+        residual_max_out[plane_valid] = residual_max[plane_valid]
 
     # 各cueは独立に使用できる。obstacleは有効な局所平面を必要としないが、
     # roughness/slope/stepは必要とする。
@@ -191,7 +205,7 @@ def compute_terrain_features(
     max_cause[hazard_valid] = (
         np.argmax(scores[:, hazard_valid], axis=0).astype(np.uint8) + 1
     )
-    return {
+    result = {
         "slope_deg": slope,
         "roughness": roughness,
         "step_height": step_height,
@@ -201,3 +215,13 @@ def compute_terrain_features(
         "step_support_rear": rear_count,
         "max_cause": max_cause,
     }
+    if include_diagnostics:
+        result.update({
+            "plane_a": plane_a,
+            "plane_b": plane_b,
+            "plane_c": plane_c,
+            "residual_rms": roughness,
+            "residual_min": residual_min_out,
+            "residual_max": residual_max_out,
+        })
+    return result

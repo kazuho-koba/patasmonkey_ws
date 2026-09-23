@@ -339,6 +339,102 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 | `publish_hazard_cause_markers` | false | 最大寄与cueをRVizで色分けしたcubeとして出力。Jetson負荷を避け既定OFF |
 | `hazard_marker_max_points` | 2500 | 色分けmarkerの最大cube数。超過時は均等間引き |
 | `publish_debug_pointcloud` | false | 1点/cellのdebug cloud |
+| `forensic_output_dir` | 空 | 非空の場合だけoffline forensic CSVを保存。通常runtimeでは指定しない |
+
+## 黒hazardのoffline forensic記録
+
+通常のmapperではraw pixelの履歴や平面係数を保持しません。原因調査のbag replay時だけlaunch引数
+`terrain_forensic_output_dir`を指定すると、mapperが前方ROI（既定: 0.25–4.5 m、左右各0.60 m）にある
+黒hazard cellについてCSVを出力します。通常runtimeでは追加のprovenance配列、CSV I/O、ROS messageは
+作られません。
+
+```bash
+docker exec -i --user 1000:1000 --env HOME=/tmp patasmonkey_foxy_dev \
+  bash -s -- \
+  /workspaces/patasmonkey_ws/bags/rosbag2_2026_07_26-09_17_38 \
+  /workspaces/patasmonkey_ws/src/pm_evaluation/results/terrain_hazard/july_forensic \
+  /workspaces/patasmonkey_ws/src/pm_evaluation/results/terrain_hazard/july_forensic/forensic \
+  < src/pm_evaluation/tools/run_traversed_terrain_replay.sh
+```
+
+3番目の引数が forensic output directory です。同じpathに既存CSVがあるとmapperは上書きせず起動に失敗
+します。既定の横幅0.60 mより広い道路・旋回地点を調べる場合は、Dockerへ
+`--env TERRAIN_FORENSIC_ROI_HALF_WIDTH_M=3.0`を追加してから実行します。出力される`hazard_cells.csv`は
+黒cellのslope/roughness/step/obstacle値、fit support数、局所平面
+係数`a,b,c`、residual RMS/min/max、cell融合前後のground z、現在画像内のmin/max world-z候補を選んだ
+元pixel座標・axial depth、画像内候補数、選択時odom姿勢を1行にまとめます。`plane_support.csv`はそれぞれの
+黒cellの平面fitに実際に使用されたfresh近傍点ごとに1行を出し、近傍の相対標高・age・平面残差とその元pixel/
+depth情報と各supportを取得した時刻のbase pose (x/y/z/roll/pitch/yaw)を対応付けます。fusion modeは
+0=既存より高く融合対象外、1=初期化、2=低いground仮説へ置換、3=weighted averageです。
+
+CSVは危険セル全域ではなく、現行走行方向の前方ROIだけを対象にしてサイズを抑えます。また「最小z候補の
+source」は最後にそのcellを更新したdepth frameのmin/max候補です。過去の全raw pixel履歴を保存するものでは
+ありません。より深い検証ではCSVの`latest_source_stamp_ns`、`capture_roll/pitch/yaw`、support cellの各行を
+同じbagの画像と照合してください。
+
+`hazard_cells.csv`には、今回frameのcandidateだけでなく、そのcellのground仮説に最後に受け入れた候補と、
+その一つ前の受け入れ候補のtimestamp・pixel/depth・relative/world z・base姿勢も含みます。これは融合平均を
+構成する全履歴ではなく、直近accepted inputの代表です。今回candidateが閾値で棄却されたか、低いcandidateで
+置換されたかを、前候補とのpose/depth差から追うための記録です。
+
+経路上の中心黒cellを再生2回目で重点記録する場合は、まず同じ評価runnerで forensic を有効にして実行します。
+終了後に次の集計を実行すると、中心黒cellとその周囲1 cellを抽出する
+`forensic_target_cells.csv`が作られます。
+
+```bash
+python3 src/pm_evaluation/tools/summarize_terrain_forensics.py \
+  src/pm_evaluation/results/terrain_hazard/<bag>/<first-pass-result>
+```
+
+2回目は出力先を新しくし、Dockerへ対象CSVを渡します。CSVにはmap stampも含まれるため、対象地点と対象時刻
+だけが保存されます。集計の経路入力を先行passから明示する例です。
+
+```bash
+docker exec -i --user 1000:1000 --env HOME=/tmp \
+  --env TERRAIN_FORENSIC_TARGETS_CSV=/workspaces/patasmonkey_ws/src/pm_evaluation/results/terrain_hazard/<bag>/<first-pass-result>/forensic_target_cells.csv \
+  patasmonkey_foxy_dev bash -s -- \
+  /workspaces/patasmonkey_ws/bags/<bag> \
+  /workspaces/patasmonkey_ws/src/pm_evaluation/results/terrain_hazard/<bag>/<targeted-result> \
+  /workspaces/patasmonkey_ws/src/pm_evaluation/results/terrain_hazard/<bag>/<targeted-result>/forensic \
+  < src/pm_evaluation/tools/run_traversed_terrain_replay.sh
+```
+
+python3 src/pm_evaluation/tools/summarize_terrain_forensics.py \
+  src/pm_evaluation/results/terrain_hazard/<bag>/<targeted-result> \
+  --path-csv src/pm_evaluation/results/terrain_hazard/<bag>/<first-pass-result>/path_samples.csv
+```
+
+再生中にpublishされるmap timestampやodomがpass間で一致しない場合、完全一致で対応付かないpath cellが残ります。
+集計JSONには一致数と未一致地点を出すため、未一致を原因統計へ混ぜず別に確認してください。
+
+map stampの完全一致に依存せず、特定のodom上の場所をすべてのmap時刻で追跡するCSVも作れます。
+同じlookahead地点へ戻ったときの時系列を調べるには、まず次を実行します。
+
+```bash
+python3 src/pm_evaluation/tools/analyze_revisited_terrain_pose.py \
+  src/pm_evaluation/results/terrain_hazard/<bag>/<first-pass-result>/path_samples.csv \
+  src/pm_evaluation/results/terrain_hazard/<bag>/<first-pass-result>/forensic/hazard_cells.csv \
+  --output-dir src/pm_evaluation/results/terrain_hazard/<bag>/<first-pass-result>
+```
+
+最大z差があった再訪地点とその周囲cellを、`revisited_path_pose_targets.csv`へ空の`map_stamp_ns`付きで出力します。
+これを`TERRAIN_FORENSIC_TARGETS_CSV`に指定すると、そのセル群はhazard=0/unknownも含め、再生中に観測される
+たびに保存します。そこで初めて、旧ground candidateのpixel/poseと新candidateのpixel/poseを時系列に比較できます。
+
+同じ推定XY地点を時間を空けて再訪したときのodom zとhazard/groundを比べるには、次のoffline解析も使えます。
+指定半径・経過時間以上離れた経路点を再訪候補としてCSV化し、forensic cellが両方のmap時刻にあれば
+絶対ground・relative ground・cue値も同じ行へ並べます。
+
+```bash
+python3 src/pm_evaluation/tools/analyze_revisited_terrain_pose.py \
+  src/pm_evaluation/results/terrain_hazard/<bag>/<result>/path_samples.csv \
+  src/pm_evaluation/results/terrain_hazard/<bag>/<result>/forensic/hazard_cells.csv \
+  --output-dir src/pm_evaluation/results/terrain_hazard/<bag>/<result> \
+  --revisit-radius 0.15 --min-time-gap 30
+```
+
+この比較はodom上で近いXYへ戻ったかを見る診断で、実世界の同一点である保証やhazard原因の確定ではありません。
+対応する`forensic_found`列が0の組は高さ差の統計・cue解釈へ使わないでください。
 
 ## 現段階の制約と次段候補
 

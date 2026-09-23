@@ -15,7 +15,7 @@ UNASSIGNED = np.iinfo(np.int64).min
 class RollingElevationGrid:
     """ground統計量と将来拡張可能な最小obstacle fieldを保持する。"""
 
-    def __init__(self, size_x, size_y, resolution):
+    def __init__(self, size_x, size_y, resolution, forensic=False):
         if size_x <= 0.0 or size_y <= 0.0 or resolution <= 0.0:
             raise ValueError("map dimensions and resolution must be positive")
         self.resolution = float(resolution)
@@ -57,6 +57,60 @@ class RollingElevationGrid:
         self._frame_world_x = np.zeros(self.cell_count, dtype=np.int64)
         self._frame_world_y = np.zeros(self.cell_count, dtype=np.int64)
 
+        # 元画素との対応配列はoffline診断を明示した場合だけ確保する。通常のJetson経路では
+        # この分岐を通らず、セルごとの追加メモリを使わない。
+        self.forensic = bool(forensic)
+        if self.forensic:
+            self._frame_sample_count = np.zeros(self.cell_count, dtype=np.uint16)
+            self._frame_min_source_index = np.full(self.cell_count, -1, dtype=np.int32)
+            self._frame_max_source_index = np.full(self.cell_count, -1, dtype=np.int32)
+            self.last_source = {
+                "sample_count": np.zeros(self.cell_count, dtype=np.uint16),
+                "min_world_z": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "max_world_z": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "min_pixel_u": np.full(self.cell_count, -1, dtype=np.int16),
+                "min_pixel_v": np.full(self.cell_count, -1, dtype=np.int16),
+                "min_depth_m": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "max_pixel_u": np.full(self.cell_count, -1, dtype=np.int16),
+                "max_pixel_v": np.full(self.cell_count, -1, dtype=np.int16),
+                "max_depth_m": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "stamp_ns": np.zeros(self.cell_count, dtype=np.int64),
+                "ground_before": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "ground_after": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "relative_before": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "relative_after": np.full(self.cell_count, np.nan, dtype=np.float32),
+                # 0=既存sampleより高く融合対象外、1=初期化、2=低いground仮説へ置換、3=平均融合
+                "fusion_mode": np.zeros(self.cell_count, dtype=np.uint8),
+                "base_x": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "base_y": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "base_z": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "base_roll": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "base_pitch": np.full(self.cell_count, np.nan, dtype=np.float32),
+                "base_yaw": np.full(self.cell_count, np.nan, dtype=np.float32),
+            }
+            # elevationは過去sampleの重み付き平均なので元の全履歴は残さない。
+            # 代わりに最後にground仮説へ受け入れたcandidateと、その一つ前を記録し、
+            # 閾値reject/replace時に旧・新sampleのpose/depthを比較できるようにする。
+            self.ground_input = self._new_ground_input_buffers()
+            self.previous_ground_input = self._new_ground_input_buffers()
+
+    def _new_ground_input_buffers(self):
+        """offline診断でだけ使うaccepted ground sampleの代表source配列を作る。"""
+        return {
+            "stamp_ns": np.zeros(self.cell_count, dtype=np.int64),
+            "world_z": np.full(self.cell_count, np.nan, dtype=np.float32),
+            "relative_z": np.full(self.cell_count, np.nan, dtype=np.float32),
+            "pixel_u": np.full(self.cell_count, -1, dtype=np.int16),
+            "pixel_v": np.full(self.cell_count, -1, dtype=np.int16),
+            "depth_m": np.full(self.cell_count, np.nan, dtype=np.float32),
+            "base_x": np.full(self.cell_count, np.nan, dtype=np.float32),
+            "base_y": np.full(self.cell_count, np.nan, dtype=np.float32),
+            "base_z": np.full(self.cell_count, np.nan, dtype=np.float32),
+            "base_roll": np.full(self.cell_count, np.nan, dtype=np.float32),
+            "base_pitch": np.full(self.cell_count, np.nan, dtype=np.float32),
+            "base_yaw": np.full(self.cell_count, np.nan, dtype=np.float32),
+        }
+
     @property
     def origin_x(self):
         return self.origin_cell_x * self.resolution
@@ -85,6 +139,16 @@ class RollingElevationGrid:
         self.obstacle_height[slots] = 0.0
         self.obstacle_confidence[slots] = 0.0
         self.last_obstacle_observed_ns[slots] = 0
+        if self.forensic:
+            for name, values in self.last_source.items():
+                values[slots] = -1 if name.endswith("pixel_u") or name.endswith("pixel_v") else (
+                    0 if name in ("sample_count", "stamp_ns", "fusion_mode") else np.nan
+                )
+            for buffers in (self.ground_input, self.previous_ground_input):
+                for name, values in buffers.items():
+                    values[slots] = -1 if name in ("pixel_u", "pixel_v") else (
+                        0 if name == "stamp_ns" else np.nan
+                    )
 
     def fuse_points(
         self,
@@ -97,6 +161,10 @@ class RollingElevationGrid:
         observation_variance=None,
         relative_elevation_offset=0.0,
         observation_decay_time=0.0,
+        pixel_u=None,
+        pixel_v=None,
+        axial_depth=None,
+        source_pose=None,
     ):
         """frameをXY cellごとに集約し、cellごとにground sampleを1個fusionする。
 
@@ -125,6 +193,13 @@ class RollingElevationGrid:
             observation_variance = np.asarray(
                 observation_variance[inside], dtype=np.float32
             )
+        if self.forensic:
+            if pixel_u is None or pixel_v is None or axial_depth is None:
+                raise ValueError("forensic fusion requires source pixel and axial depth arrays")
+            pixel_u = np.asarray(pixel_u)[inside]
+            pixel_v = np.asarray(pixel_v)[inside]
+            axial_depth = np.asarray(axial_depth, dtype=np.float32)[inside]
+            source_indices = np.arange(z.size, dtype=np.int32)
         # moduloで無限に広がるodom-cell座標を固定arrayへ写像する。下の`world_x/world_y`
         # tagにより、使用中slotと偶然同じmodulo indexを共有する古いcellを区別する。
         slots = (
@@ -140,6 +215,18 @@ class RollingElevationGrid:
         np.minimum.at(self._frame_min, slots, z)
         np.maximum.at(self._frame_max, slots, z)
         np.maximum.at(self._frame_variance, slots, observation_variance)
+        if self.forensic:
+            self._frame_sample_count.fill(0)
+            self._frame_min_source_index.fill(-1)
+            self._frame_max_source_index.fill(-1)
+            np.add.at(self._frame_sample_count, slots, 1)
+            # 同じzのsampleが複数あっても、cellごとに代表pixelを1つ決定的に残す。
+            min_mask = z == self._frame_min[slots]
+            max_mask = z == self._frame_max[slots]
+            np.maximum.at(self._frame_min_source_index, slots[min_mask],
+                          source_indices[min_mask])
+            np.maximum.at(self._frame_max_source_index, slots[max_mask],
+                          source_indices[max_mask])
         self._frame_world_x[slots] = world_x
         self._frame_world_y[slots] = world_y
         observed = np.flatnonzero(np.isfinite(self._frame_min))
@@ -164,6 +251,13 @@ class RollingElevationGrid:
         sample_weight = 1.0 / sample_variance
         count = self.observation_count[observed]
         current = self.elevation[observed]
+        if self.forensic:
+            before_ground = current.copy()
+            before_relative = self.relative_elevation[observed].copy()
+            # 今回の分岐を適用する前に、既存ground仮説へ最後に採用したsampleを退避する。
+            # 今frameのraw candidateはlast_sourceへ別記録する。
+            for name, values in self.ground_input.items():
+                self.previous_ground_input[name][observed] = values[observed]
         empty = count == 0
         # 明確に低いminimumは、2つのsurfaceを平均せずground hypothesisを置き換える。垂直差は
         # weak obstacle evidenceとして残すが、視点やdepthのartifactである可能性もある。
@@ -172,6 +266,11 @@ class RollingElevationGrid:
 
         initialize = empty | lower
         existing = ~empty
+        if self.forensic:
+            fusion_mode = np.zeros(observed.size, dtype=np.uint8)
+            fusion_mode[initialize] = 1
+            fusion_mode[lower] = 2
+            fusion_mode[merge] = 3
         # confidence/weightは今回touchしたcellだけで減衰する。publish時にもageを評価するため、
         # 周期的な全map mutationなしに古いevidenceの影響を弱められる。
         if observation_decay_time > 0.0 and np.any(existing):
@@ -242,6 +341,27 @@ class RollingElevationGrid:
             self.relative_elevation_weight[merge_slots] = relative_new_weight
             self.observation_count[merge_slots] += np.uint32(1)
 
+        if self.forensic:
+            # initialize/lower-replace/weighted-mergeはground仮説にcandidateを採用する。
+            # mode 0（既存より高く、融合対象外）のセルは最後のaccepted sourceを維持する。
+            accepted = initialize | merge
+            accepted_slots = observed[accepted]
+            accepted_indices = self._frame_min_source_index[accepted_slots]
+            accepted_input = self.ground_input
+            accepted_input["stamp_ns"][accepted_slots] = stamp_ns
+            accepted_input["world_z"][accepted_slots] = sample[accepted]
+            accepted_input["relative_z"][accepted_slots] = (
+                sample[accepted] + relative_elevation_offset
+            )
+            accepted_input["pixel_u"][accepted_slots] = pixel_u[accepted_indices]
+            accepted_input["pixel_v"][accepted_slots] = pixel_v[accepted_indices]
+            accepted_input["depth_m"][accepted_slots] = axial_depth[accepted_indices]
+            if source_pose is not None:
+                for name, value in zip(
+                        ("base_x", "base_y", "base_z", "base_roll", "base_pitch", "base_yaw"),
+                        source_pose):
+                    accepted_input[name][accepted_slots] = value
+
         # この画像の最大returnをfusion済みground estimateと比較する。これはvertical extent
         # cueにすぎず、semantic判定やray-occlusion推論を含まない。
         ground = self.elevation[observed]
@@ -258,7 +378,65 @@ class RollingElevationGrid:
             self.last_obstacle_observed_ns[obstacle_slots] = stamp_ns
 
         self.last_observed_ns[observed] = stamp_ns
+        if self.forensic:
+            # Store only the newest frame's compact per-cell evidence. Full pixel history is not
+            # retained; CSV output later selects currently hazardous cells and their plane support.
+            source = self.last_source
+            min_index = self._frame_min_source_index[observed]
+            max_index = self._frame_max_source_index[observed]
+            source["sample_count"][observed] = self._frame_sample_count[observed]
+            source["min_world_z"][observed] = self._frame_min[observed]
+            source["max_world_z"][observed] = self._frame_max[observed]
+            source["min_pixel_u"][observed] = pixel_u[min_index]
+            source["min_pixel_v"][observed] = pixel_v[min_index]
+            source["min_depth_m"][observed] = axial_depth[min_index]
+            source["max_pixel_u"][observed] = pixel_u[max_index]
+            source["max_pixel_v"][observed] = pixel_v[max_index]
+            source["max_depth_m"][observed] = axial_depth[max_index]
+            source["stamp_ns"][observed] = stamp_ns
+            source["ground_before"][observed] = before_ground
+            source["ground_after"][observed] = self.elevation[observed]
+            source["relative_before"][observed] = before_relative
+            source["relative_after"][observed] = self.relative_elevation[observed]
+            source["fusion_mode"][observed] = fusion_mode
+            if source_pose is not None:
+                for name, value in zip(("base_x", "base_y", "base_z", "base_roll",
+                                        "base_pitch", "base_yaw"), source_pose):
+                    source[name][observed] = value
         return int(observed.size)
+
+    def forensic_layers(self):
+        """最後のdepth入力のpixel provenanceを論理map順へ並べ直す。"""
+        if not self.forensic:
+            return {}
+        xs = self.origin_cell_x + np.arange(self.width, dtype=np.int64)
+        ys = self.origin_cell_y + np.arange(self.height, dtype=np.int64)
+        world_x, world_y = np.meshgrid(xs, ys)
+        slots = (np.mod(world_y, self.height) * self.width
+                 + np.mod(world_x, self.width)).astype(np.intp)
+        valid = ((self.world_x[slots] == world_x)
+                 & (self.world_y[slots] == world_y)
+                 & (self.observation_count[slots] > 0))
+        result = {}
+        for name, values in self.last_source.items():
+            fill = -1 if name.endswith("pixel_u") or name.endswith("pixel_v") else np.nan
+            if values.dtype.kind in "iu":
+                fill = 0 if name in ("sample_count", "stamp_ns", "fusion_mode") else -1
+            layer = np.full((self.height, self.width), fill, dtype=values.dtype)
+            layer[valid] = values[slots][valid]
+            result[name] = layer
+        # 旧・新accepted ground sampleはrealtime feature pathが使わず、diagnostic writer
+        # を呼ぶ場合だけ論理map順にコピーされる。
+        for prefix, buffers in (("ground_input_", self.ground_input),
+                                ("previous_ground_input_", self.previous_ground_input)):
+            for name, values in buffers.items():
+                fill = -1 if name in ("pixel_u", "pixel_v") else (
+                    0 if name == "stamp_ns" else np.nan
+                )
+                layer = np.full((self.height, self.width), fill, dtype=values.dtype)
+                layer[valid] = values[slots][valid]
+                result[prefix + name] = layer
+        return result
 
     def logical_layers(self, measurement_variance):
         """publish用にcopyした、odom向きrow-major viewを返す。"""

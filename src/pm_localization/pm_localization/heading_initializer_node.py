@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-"""Calibrate one IMU heading stream and seed local EKF yaw once at startup.
+"""起動時にIMU headingを一度校正し、local EKF yawをseedする。
 
-The node deliberately never re-seeds heading while driving.  A runtime heading
-reset must reinitialize navsat_transform and global localization together, so
-it is an operator workflow rather than an automatic correction.
+走行中にheadingを再seedすることは意図して行わない。実行中のheading resetでは
+navsat_transformとglobal localizationも同時に再初期化する必要があるため、
+自動補正ではなく運用者の操作として扱う。
 
-With one GNSS antenna, datum position alone does not establish vehicle heading.
-The configurable yaw correction is therefore a measured mounting/magnetic
-constant, while the stationary sample average reduces short-term IMU noise.
+単一GNSSアンテナではdatum位置だけから車体headingは得られない。設定可能なyaw補正は
+実測した取付角・地磁気の固定補正値であり、停止時のサンプル平均は短期IMUノイズを
+低減するために使う。
 
-The node always republishes an orientation with the configured fixed yaw
-correction. During its startup window only, stationary wheel speed permits
-corrected yaw samples into a circular average. A sufficiently concentrated
-average causes one ``/set_pose`` call; a subsequently received gated fix causes
-one ``/datum`` call. No callback performs automatic reseeding after that.
+このnodeは固定yaw補正後のorientationを常時再publishする。起動window中だけ停止中の
+wheel速度でサンプル採用を許可し、円平均が十分に集中していれば``/set_pose``を一度、
+続いてgated fixが得られれば``/datum``を一度呼ぶ。その後のcallbackで自動再seedはしない。
 """
 
 import math
@@ -147,8 +145,8 @@ class HeadingInitializerNode(Node):
         output.orientation.y = qy
         output.orientation.z = qz
         output.orientation.w = qw
-        # Preserve every non-yaw IMU field and covariance. This stream is for
-        # navsat heading use; it must not silently change roll/pitch or rates.
+        # yaw以外のIMU fieldと共分散を全て保持する。このstreamはnavsat heading用で、
+        # roll/pitchや角速度を暗黙に変えてはならない。
         output.orientation_covariance = message.orientation_covariance
         output.angular_velocity = message.angular_velocity
         output.angular_velocity_covariance = message.angular_velocity_covariance
@@ -165,8 +163,8 @@ class HeadingInitializerNode(Node):
         if self.latest_speed is None:
             return
         if self.latest_speed > self.stationary_speed_threshold:
-            # Samples gathered before motion are not mixed with samples after
-            # motion; otherwise a turn during startup biases the seed yaw.
+            # 動き出す前後のサンプルを混ぜない。混ぜると起動中の旋回がseed yawを
+            # 偏らせる。
             self.reset_samples("wheel speed %.3f m/s is not stationary" % self.latest_speed)
             return
         self.sin_sum += math.sin(yaw)
@@ -200,10 +198,10 @@ class HeadingInitializerNode(Node):
 
     def seed_local_ekf(self):
         mean_yaw = math.atan2(self.sin_sum, self.cos_sum)
-        # Circular statistics remain correct across the -pi/+pi wrap point;
-        # an arithmetic mean would report a false heading near zero there.
+        # 円統計は-pi/+piの境界をまたいでも正しい。算術平均ではその近傍で誤って
+        # 0付近のheadingになる。
         concentration = math.hypot(self.sin_sum, self.cos_sum) / self.sample_count
-        # Circular standard deviation, robust for an angle near +/- pi.
+        # +/- pi近傍の角度にも頑健な円標準偏差。
         stddev = math.sqrt(max(0.0, -2.0 * math.log(max(concentration, 1e-12))))
         if stddev > self.max_initial_yaw_stddev:
             self.reset_samples(
@@ -217,9 +215,8 @@ class HeadingInitializerNode(Node):
             return
         request = SetPose.Request()
         pose = PoseWithCovarianceStamped()
-        # Use the sensor stamp, which keeps replayed set_pose requests in the
-        # EKF's simulated time domain without requiring this node to process a
-        # high-rate /clock timer for every recorded sensor message.
+        # sensor stampを使うことで、全記録sensor messageごとに高頻度/clock timerを
+        # 処理しなくても、再生時のset_pose requestをEKFのsimulated timeに保てる。
         pose.header.stamp = self.last_imu_stamp or self.get_clock().now().to_msg()
         pose.header.frame_id = "odom"
         qx, qy, qz, qw = quaternion_from_rpy(0.0, 0.0, mean_yaw)
@@ -250,9 +247,8 @@ class HeadingInitializerNode(Node):
         if (not self.initialization_complete or self.latest_fix is None
                 or self.datum_sent or not self.set_datum_client.service_is_ready()):
             return
-        # Datum position comes from the quality-gated fix. Its orientation is
-        # the same one-time local heading seed, so map conversion and local
-        # odometry start from one consistent yaw convention.
+        # datum位置は品質ゲート済みfixから取る。orientationには同じ一回限りのlocal
+        # heading seedを使い、map変換とlocal odometryを一貫したyaw規約で開始する。
         request = SetDatum.Request()
         request.geo_pose.position.latitude = self.latest_fix.latitude
         request.geo_pose.position.longitude = self.latest_fix.longitude

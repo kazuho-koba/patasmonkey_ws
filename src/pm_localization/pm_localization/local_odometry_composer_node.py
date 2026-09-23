@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
-"""Compose independent horizontal and attitude/height state into local odometry.
+"""独立推定した水平状態と姿勢・高さ状態をlocal odometryへ合成する。
 
-The horizontal EKF owns x/y/yaw; the attitude-height observer owns roll/pitch/z.
-This node intentionally does no filtering: it is the single compatibility and
-TF boundary that presents the combined state as /odometry/local.
+水平EKFはx/y/yaw、姿勢・高さ観測器はroll/pitch/zを担当する。このnodeは意図して
+filterを持たず、合成状態を``/odometry/local``として提示する互換性・TF境界である。
 
-For every horizontal EKF message, it uses the newest vertical observer message,
-forms a quaternion from vertical roll/pitch plus horizontal yaw, copies the
-corresponding covariance dimensions, publishes the combined Odometry, and then
-optionally broadcasts the matching ``odom -> base_link`` transform.
+各水平EKF messageで最新の鉛直観測器messageを使い、鉛直roll/pitchと水平yawから
+quaternionを作り、対応する共分散をコピーして合成Odometryをpublishする。その後、
+必要なら同じ状態の``odom -> base_link`` TFをbroadcastする。
 """
 
 import math
@@ -67,14 +65,14 @@ class LocalOdometryComposerNode(Node):
         self.create_subscription(Odometry, self.horizontal_topic, self.horizontal_callback, 50)
 
     def vertical_callback(self, message: Odometry) -> None:
-        # Retain the most recent guarded vertical state. It may contain a held
-        # z after a VIO fault, which is safer than extrapolating vertical speed.
+        # 最新のゲート済み鉛直状態を保持する。VIO異常後には保持zを含み得るが、
+        # 鉛直速度を外挿するより安全である。
         self.vertical = message
 
     def horizontal_callback(self, horizontal: Odometry) -> None:
         vertical = self.vertical
-        # Horizontal messages define the output cadence and timestamp. This
-        # preserves the EKF timeline even when VIO height is held or absent.
+        # 水平messageを出力周期とtimestampの基準にする。VIO高さが保持中または
+        # 未到着でも、EKFの時間軸を維持できる。
         output = Odometry()
         output.header = horizontal.header
         output.header.frame_id = self.odom_frame
@@ -82,9 +80,8 @@ class LocalOdometryComposerNode(Node):
         output.pose.pose.position.x = horizontal.pose.pose.position.x
         output.pose.pose.position.y = horizontal.pose.pose.position.y
         output.pose.pose.position.z = vertical.pose.pose.position.z if vertical else 0.0
-        # Take yaw only from the horizontal estimator and tilt only from the
-        # attitude observer. Mixing their complete quaternions would reintroduce
-        # the roll/pitch/yaw coupling this architecture is designed to avoid.
+        # yawは水平推定器だけから、tiltは姿勢観測器だけから取る。完全なquaternionを
+        # 混ぜると、この構成で避けたいroll/pitch/yawの結合が再導入される。
         h_roll, h_pitch, h_yaw = rpy_from_quaternion(horizontal.pose.pose.orientation)
         if vertical:
             v_roll, v_pitch, _ = rpy_from_quaternion(vertical.pose.pose.orientation)
@@ -102,8 +99,8 @@ class LocalOdometryComposerNode(Node):
         if vertical:
             output.twist.twist.angular.x = vertical.twist.twist.angular.x
             output.twist.twist.angular.y = vertical.twist.twist.angular.y
-        # Copy horizontal uncertainty, then replace exactly the dimensions
-        # owned by the vertical observer (z, roll, pitch and related twists).
+        # 水平の不確かさをコピーし、鉛直観測器が担当するz、roll、pitchと関連twistの
+        # 次元だけを置き換える。
         output.pose.covariance = horizontal.pose.covariance
         output.twist.covariance = horizontal.twist.covariance
         if vertical:

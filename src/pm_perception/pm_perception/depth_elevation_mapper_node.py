@@ -7,6 +7,8 @@ stampでlookupする。debug mapと任意cloudは低rateで生成し、可視化
 """
 
 from collections import deque
+import csv
+from pathlib import Path
 import time
 
 import numpy as np
@@ -106,6 +108,13 @@ class DepthElevationMapper(Node):
             "hazard_marker_max_points": 2500,
             "hazard_marker_z_offset": 0.04,
             "performance_log_period": 5.0,
+            # 空文字列なら診断配列・CSVを作らない。bag forensic専用の明示opt-in。
+            "forensic_output_dir": "",
+            "forensic_roi_forward_min_m": 0.25,
+            "forensic_roi_forward_max_m": 4.5,
+            "forensic_roi_half_width_m": 0.60,
+            # 走行評価CSVから渡されたmap stamp・絶対cellだけに診断対象を限定する。
+            "forensic_targets_csv": "",
         }
         for name, value in defaults.items():
             self.declare_parameter(name, value)
@@ -188,11 +197,68 @@ class DepthElevationMapper(Node):
         self.hazard_marker_max_points = int(value("hazard_marker_max_points"))
         self.hazard_marker_z_offset = float(value("hazard_marker_z_offset"))
         self.performance_log_period = float(value("performance_log_period"))
+        self.forensic_output_dir = str(value("forensic_output_dir")).strip()
+        self.forensic_roi_forward_min_m = float(value("forensic_roi_forward_min_m"))
+        self.forensic_roi_forward_max_m = float(value("forensic_roi_forward_max_m"))
+        self.forensic_roi_half_width_m = float(value("forensic_roi_half_width_m"))
+        self.forensic_targets_csv = str(value("forensic_targets_csv")).strip()
+        self.forensic_enabled = bool(self.forensic_output_dir)
+        self.forensic_target_cells = set()
+        self.forensic_target_spatial_cells = set()
+        if self.forensic_targets_csv:
+            target_path = Path(self.forensic_targets_csv)
+            with target_path.open(encoding="utf-8", newline="") as stream:
+                reader = csv.DictReader(stream)
+                required = {"map_stamp_ns", "odom_cell_x", "odom_cell_y"}
+                if not required.issubset(reader.fieldnames or []):
+                    raise ValueError(
+                        "forensic target CSV must contain map_stamp_ns, odom_cell_x, odom_cell_y"
+                    )
+                for row in reader:
+                    cell = (int(row["odom_cell_x"]), int(row["odom_cell_y"]))
+                    if row["map_stamp_ns"].strip():
+                        self.forensic_target_cells.add(
+                            (int(row["map_stamp_ns"]), cell[0], cell[1])
+                        )
+                    else:
+                        # 空stampは同じodom-cell座標を全replay時刻で記録する空間target。
+                        self.forensic_target_spatial_cells.add(cell)
 
         self.grid = RollingElevationGrid(
             float(value("map_size_x")), float(value("map_size_y")),
-            float(value("resolution"))
+            float(value("resolution")), forensic=self.forensic_enabled,
         )
+        self.latest_base_pose = None
+        self.forensic_cells_file = None
+        self.forensic_support_file = None
+        self.forensic_cells_writer = None
+        self.forensic_support_writer = None
+        if self.forensic_enabled:
+            # 出力先を排他的に作成し、過去のdiagnostic CSVを誤って上書きしない。
+            output_dir = Path(self.forensic_output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            cell_path = output_dir / "hazard_cells.csv"
+            support_path = output_dir / "plane_support.csv"
+            if cell_path.exists() or support_path.exists():
+                raise RuntimeError(
+                    "forensic output already exists; choose a fresh directory: {}".format(
+                        output_dir
+                    )
+                )
+            self.forensic_cells_file = cell_path.open(
+                "x", encoding="utf-8", newline=""
+            )
+            self.forensic_support_file = support_path.open(
+                "x", encoding="utf-8", newline=""
+            )
+            self.forensic_cells_writer = csv.DictWriter(
+                self.forensic_cells_file, fieldnames=self.forensic_cell_fields()
+            )
+            self.forensic_support_writer = csv.DictWriter(
+                self.forensic_support_file, fieldnames=self.forensic_support_fields()
+            )
+            self.forensic_cells_writer.writeheader()
+            self.forensic_support_writer.writeheader()
         # bounded FIFOはdepth stampに対応するTF/CameraInfoだけを待つ。TF欠落時にもlatencyと
         # memoryを制限できる。ここで最新transformを使うと移動中robotのmapが空間的にずれる。
         self.tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
@@ -359,14 +425,32 @@ class DepthElevationMapper(Node):
         self.last_processed_stamp_ns = stamp_ns
 
         fx, fy, cx, cy = intrinsics
-        points_camera = sampled_points(
+        sampled = sampled_points(
             message, fx, fy, cx, cy, self.pixel_stride,
-            self.min_depth, self.max_depth
+            self.min_depth, self.max_depth,
+            return_pixels=self.forensic_enabled,
         )
+        if self.forensic_enabled:
+            points_camera, pixel_u, pixel_v, axial_depth = sampled
+        else:
+            points_camera = sampled
         # base poseはcamera_tfと同じ画像stampから得る。そのXYでrolling windowをrecenterし、
         # yawはStage 3 step cueのsupport方向gateにだけ使う。追加のmap transformではない。
         translation = base_tf.transform.translation
         self.latest_heading_yaw = yaw_from_quaternion(base_tf.transform.rotation)
+        if self.forensic_enabled:
+            q = base_tf.transform.rotation
+            base_roll = float(np.arctan2(
+                2.0 * (q.w * q.x + q.y * q.z),
+                1.0 - 2.0 * (q.x * q.x + q.y * q.y),
+            ))
+            base_pitch = float(np.arcsin(np.clip(
+                2.0 * (q.w * q.y - q.z * q.x), -1.0, 1.0,
+            )))
+            self.latest_base_pose = (
+                translation.x, translation.y, translation.z,
+                base_roll, base_pitch, self.latest_heading_yaw,
+            )
         self.grid.recenter(translation.x, translation.y)
         if points_camera.size:
             points_map = transform_points(points_camera, camera_tf.transform)
@@ -388,6 +472,10 @@ class DepthElevationMapper(Node):
                 points_map[:, 0], points_map[:, 1], points_map[:, 2], stamp_ns,
                 self.ground_merge_threshold, self.obstacle_min_height,
                 point_variance, relative_offset, self.observation_decay_time,
+                pixel_u=pixel_u if self.forensic_enabled else None,
+                pixel_v=pixel_v if self.forensic_enabled else None,
+                axial_depth=axial_depth if self.forensic_enabled else None,
+                source_pose=self.latest_base_pose if self.forensic_enabled else None,
             )
         else:
             observed_cells = 0
@@ -417,6 +505,284 @@ class DepthElevationMapper(Node):
                 )
             )
             self.last_performance_log = now
+
+    @staticmethod
+    def forensic_cell_fields():
+        """hazard cellごとに一行保存するCSV列を返す。"""
+        return [
+            "map_stamp_ns", "cell_i", "cell_j", "odom_cell_x", "odom_cell_y",
+            "cell_center_x_m", "cell_center_y_m", "forward_m", "lateral_m",
+            "hazard", "max_cause", "slope_deg", "roughness_m", "step_m",
+            "obstacle_m", "plane_support_count", "step_front_support",
+            "step_rear_support", "plane_a", "plane_b", "plane_c",
+            "residual_rms_m", "residual_min_m", "residual_max_m",
+            "cumulative_observation_count", "cell_age_s", "latest_source_stamp_ns",
+            "latest_source_age_s", "frame_sample_count", "frame_min_world_z_m",
+            "frame_max_world_z_m", "frame_min_pixel_u", "frame_min_pixel_v",
+            "frame_min_axial_depth_m", "frame_max_pixel_u", "frame_max_pixel_v",
+            "frame_max_axial_depth_m", "ground_before_fusion_m",
+            "ground_after_fusion_m", "relative_ground_before_m",
+            "relative_ground_after_m", "fusion_mode", "capture_base_x_m",
+            "capture_base_y_m", "capture_base_z_m", "capture_roll_deg",
+            "capture_pitch_deg", "capture_yaw_deg",
+            "previous_ground_input_stamp_ns", "previous_ground_input_world_z_m",
+            "previous_ground_input_relative_z_m", "previous_ground_input_pixel_u",
+            "previous_ground_input_pixel_v", "previous_ground_input_depth_m",
+            "previous_ground_input_base_z_m", "previous_ground_input_roll_deg",
+            "previous_ground_input_pitch_deg", "previous_ground_input_yaw_deg",
+            "last_accepted_ground_input_stamp_ns", "last_accepted_ground_input_world_z_m",
+            "last_accepted_ground_input_relative_z_m", "last_accepted_ground_input_pixel_u",
+            "last_accepted_ground_input_pixel_v", "last_accepted_ground_input_depth_m",
+            "last_accepted_ground_input_base_z_m", "last_accepted_ground_input_roll_deg",
+            "last_accepted_ground_input_pitch_deg", "last_accepted_ground_input_yaw_deg",
+        ]
+
+    @staticmethod
+    def forensic_support_fields():
+        """平面fit支持点ごとの生値・残差を保存するCSV列を返す。"""
+        return [
+            "map_stamp_ns", "target_cell_x", "target_cell_y", "target_hazard",
+            "target_max_cause", "support_cell_x", "support_cell_y", "dx_cells",
+            "dy_cells", "relative_elevation_m", "age_s", "plane_residual_m",
+            "frame_sample_count", "frame_min_world_z_m", "frame_max_world_z_m",
+            "frame_min_pixel_u", "frame_min_pixel_v", "frame_min_axial_depth_m",
+            "frame_max_pixel_u", "frame_max_pixel_v", "frame_max_axial_depth_m",
+            "ground_before_fusion_m", "ground_after_fusion_m", "fusion_mode",
+            "latest_source_stamp_ns", "capture_base_x_m", "capture_base_y_m",
+            "capture_base_z_m", "capture_roll_deg", "capture_pitch_deg",
+            "capture_yaw_deg",
+        ]
+
+    @staticmethod
+    def _csv_value(value):
+        """NaN/Infやunknown sentinelを空欄にし、numpy scalarをCSV互換値にする。"""
+        if isinstance(value, (float, np.floating)):
+            return float(value) if np.isfinite(value) else ""
+        if isinstance(value, (int, np.integer)):
+            return int(value)
+        return value
+
+    def write_forensic_diagnostics(self, stamp, layers, features):
+        """現在の黒hazardと平面supportだけをpixel由来までたどって追記する。
+
+        この処理は`forensic_output_dir`指定時だけ呼ばれる。ROIはロボット前方4.5 m以内、
+        左右0.60 mに限定し、地図全域の大量な点・ROS message生成を避ける。
+        """
+        if not self.forensic_enabled or self.latest_base_pose is None:
+            return
+        hazard = features["hazard"]
+        if self.forensic_target_spatial_cells:
+            # 追跡対象の同じ絶対odom-cellを時系列に見るmode。hazardの有無に関係なく
+            # 観測済みcellを出し、黒になる直前のground fusion履歴も残す。
+            abs_x = self.grid.origin_cell_x + np.arange(self.grid.width, dtype=np.int64)
+            abs_y = self.grid.origin_cell_y + np.arange(self.grid.height, dtype=np.int64)
+            world_x, world_y = np.meshgrid(abs_x, abs_y)
+            target_mask = np.zeros((self.grid.height, self.grid.width), dtype=np.bool_)
+            for target_x, target_y in self.forensic_target_spatial_cells:
+                local_x = target_x - self.grid.origin_cell_x
+                local_y = target_y - self.grid.origin_cell_y
+                slot = (np.mod(target_y, self.grid.height) * self.grid.width
+                        + np.mod(target_x, self.grid.width))
+                if (0 <= local_x < self.grid.width and 0 <= local_y < self.grid.height
+                        and self.grid.world_x[slot] == target_x
+                        and self.grid.world_y[slot] == target_y
+                        and self.grid.observation_count[slot] > 0):
+                    target_mask[local_y, local_x] = True
+            rows, cols = np.nonzero(target_mask)
+        else:
+            rows, cols = np.nonzero(np.isfinite(hazard) & (hazard >= 1.0))
+        if rows.size == 0:
+            return
+
+        base_x, base_y, _base_z, base_roll, base_pitch, base_yaw = self.latest_base_pose
+        center_x = self.grid.origin_x + (cols + 0.5) * self.grid.resolution
+        center_y = self.grid.origin_y + (rows + 0.5) * self.grid.resolution
+        dx = center_x - base_x
+        dy = center_y - base_y
+        forward = dx * np.cos(base_yaw) + dy * np.sin(base_yaw)
+        lateral = -dx * np.sin(base_yaw) + dy * np.cos(base_yaw)
+        if self.forensic_target_cells or self.forensic_target_spatial_cells:
+            # 2段階replayでは経路評価が選んだ正確なmap stampとabsolute cellのみを残す。
+            absolute_x = self.grid.origin_cell_x + cols
+            absolute_y = self.grid.origin_cell_y + rows
+            if self.forensic_target_spatial_cells:
+                # 時刻stampのないtargetは危険セルでなくても全観測時点で書く。
+                selected = np.ones(rows.size, dtype=np.bool_)
+            else:
+                selected = np.fromiter(
+                    ((stamp_to_ns(stamp), int(cell_x), int(cell_y))
+                     in self.forensic_target_cells
+                     for cell_x, cell_y in zip(absolute_x, absolute_y)),
+                    dtype=np.bool_, count=rows.size,
+                )
+        else:
+            selected = (
+                (forward >= self.forensic_roi_forward_min_m)
+                & (forward <= self.forensic_roi_forward_max_m)
+                & (np.abs(lateral) <= self.forensic_roi_half_width_m)
+            )
+        rows, cols = rows[selected], cols[selected]
+        center_x, center_y = center_x[selected], center_y[selected]
+        forward, lateral = forward[selected], lateral[selected]
+        if rows.size == 0:
+            return
+
+        source = self.grid.forensic_layers()
+        stamp_ns = stamp_to_ns(stamp)
+        resolution = self.grid.resolution
+        radius = max(1, self.feature_neighborhood_radius_cells)
+        relative = layers["relative_elevation"]
+        age = layers["age_seconds"]
+        fresh = (np.isfinite(relative) & np.isfinite(age)
+                 & (age <= self.feature_max_observation_age))
+        origin_cell_x = self.grid.origin_cell_x
+        origin_cell_y = self.grid.origin_cell_y
+
+        for row, col, world_x, world_y, fwd, lat in zip(
+                rows, cols, center_x, center_y, forward, lateral):
+            cell_x = origin_cell_x + int(col)
+            cell_y = origin_cell_y + int(row)
+            src = {name: values[row, col] for name, values in source.items()}
+            source_stamp = int(src["stamp_ns"])
+            cell_row = {
+                "map_stamp_ns": stamp_ns,
+                "cell_i": int(col), "cell_j": int(row),
+                "odom_cell_x": cell_x, "odom_cell_y": cell_y,
+                "cell_center_x_m": float(world_x), "cell_center_y_m": float(world_y),
+                "forward_m": float(fwd), "lateral_m": float(lat),
+                "hazard": self._csv_value(hazard[row, col]),
+                "max_cause": int(features["max_cause"][row, col]),
+                "slope_deg": self._csv_value(features["slope_deg"][row, col]),
+                "roughness_m": self._csv_value(features["roughness"][row, col]),
+                "step_m": self._csv_value(features["step_height"][row, col]),
+                "obstacle_m": self._csv_value(layers["obstacle_height"][row, col]),
+                "plane_support_count": int(features["support_count"][row, col]),
+                "step_front_support": int(features["step_support_forward"][row, col]),
+                "step_rear_support": int(features["step_support_rear"][row, col]),
+                "plane_a": self._csv_value(features["plane_a"][row, col]),
+                "plane_b": self._csv_value(features["plane_b"][row, col]),
+                "plane_c": self._csv_value(features["plane_c"][row, col]),
+                "residual_rms_m": self._csv_value(features["residual_rms"][row, col]),
+                "residual_min_m": self._csv_value(features["residual_min"][row, col]),
+                "residual_max_m": self._csv_value(features["residual_max"][row, col]),
+                "cumulative_observation_count": int(layers["count"][row, col]),
+                "cell_age_s": self._csv_value(age[row, col]),
+                "latest_source_stamp_ns": source_stamp,
+                "latest_source_age_s": max(0.0, (stamp_ns - source_stamp) / 1e9),
+                "frame_sample_count": int(src["sample_count"]),
+                "frame_min_world_z_m": self._csv_value(src["min_world_z"]),
+                "frame_max_world_z_m": self._csv_value(src["max_world_z"]),
+                "frame_min_pixel_u": self._csv_value(src["min_pixel_u"]),
+                "frame_min_pixel_v": self._csv_value(src["min_pixel_v"]),
+                "frame_min_axial_depth_m": self._csv_value(src["min_depth_m"]),
+                "frame_max_pixel_u": self._csv_value(src["max_pixel_u"]),
+                "frame_max_pixel_v": self._csv_value(src["max_pixel_v"]),
+                "frame_max_axial_depth_m": self._csv_value(src["max_depth_m"]),
+                "ground_before_fusion_m": self._csv_value(src["ground_before"]),
+                "ground_after_fusion_m": self._csv_value(src["ground_after"]),
+                "relative_ground_before_m": self._csv_value(src["relative_before"]),
+                "relative_ground_after_m": self._csv_value(src["relative_after"]),
+                "fusion_mode": int(src["fusion_mode"]),
+                "capture_base_x_m": float(src["base_x"]),
+                "capture_base_y_m": float(src["base_y"]),
+                "capture_base_z_m": float(src["base_z"]),
+                "capture_roll_deg": float(np.degrees(src["base_roll"])),
+                "capture_pitch_deg": float(np.degrees(src["base_pitch"])),
+                "capture_yaw_deg": float(np.degrees(src["base_yaw"])),
+            }
+            # fusion前に保存しておいた旧accepted sampleと、fusion後の最新accepted inputを
+            # 出す。mode 0なら最新accepted inputは以前のままなので、現在frame candidateと
+            # 比較して棄却理由を追いやすい。平均値そのものの全入力履歴ではない点に注意する。
+            for prefix, output_prefix in (
+                    ("previous_ground_input_", "previous_ground_input_"),
+                    ("ground_input_", "last_accepted_ground_input_")):
+                cell_row[output_prefix + "stamp_ns"] = self._csv_value(
+                    src[prefix + "stamp_ns"])
+                cell_row[output_prefix + "world_z_m"] = self._csv_value(
+                    src[prefix + "world_z"])
+                cell_row[output_prefix + "relative_z_m"] = self._csv_value(
+                    src[prefix + "relative_z"])
+                cell_row[output_prefix + "pixel_u"] = self._csv_value(
+                    src[prefix + "pixel_u"])
+                cell_row[output_prefix + "pixel_v"] = self._csv_value(
+                    src[prefix + "pixel_v"])
+                cell_row[output_prefix + "depth_m"] = self._csv_value(
+                    src[prefix + "depth_m"])
+                cell_row[output_prefix + "base_z_m"] = self._csv_value(
+                    src[prefix + "base_z"])
+                cell_row[output_prefix + "roll_deg"] = self._csv_value(
+                    np.degrees(src[prefix + "base_roll"]))
+                cell_row[output_prefix + "pitch_deg"] = self._csv_value(
+                    np.degrees(src[prefix + "base_pitch"]))
+                cell_row[output_prefix + "yaw_deg"] = self._csv_value(
+                    np.degrees(src[prefix + "base_yaw"]))
+                if cell_row[output_prefix + "stamp_ns"] == 0:
+                    cell_row[output_prefix + "stamp_ns"] = ""
+                for pixel_column in ("pixel_u", "pixel_v"):
+                    if cell_row[output_prefix + pixel_column] == -1:
+                        cell_row[output_prefix + pixel_column] = ""
+            self.forensic_cells_writer.writerow(cell_row)
+
+            # 目標cellの平面を作った「同じ時点でfreshな近傍」だけを書き、各残差を再計算。
+            a = features["plane_a"][row, col]
+            b = features["plane_b"][row, col]
+            c = features["plane_c"][row, col]
+            for support_row in range(max(0, int(row) - radius),
+                                     min(self.grid.height, int(row) + radius + 1)):
+                for support_col in range(max(0, int(col) - radius),
+                                         min(self.grid.width, int(col) + radius + 1)):
+                    if not fresh[support_row, support_col]:
+                        continue
+                    sx = origin_cell_x + support_col
+                    sy = origin_cell_y + support_row
+                    offset_x = support_col - int(col)
+                    offset_y = support_row - int(row)
+                    residual = ""
+                    if np.isfinite(a) and np.isfinite(b) and np.isfinite(c):
+                        residual = float(
+                            relative[support_row, support_col]
+                            - (a * offset_x * resolution
+                               + b * offset_y * resolution + c)
+                        )
+                    neighbor = {name: values[support_row, support_col]
+                                for name, values in source.items()}
+                    self.forensic_support_writer.writerow({
+                        "map_stamp_ns": stamp_ns,
+                        "target_cell_x": cell_x, "target_cell_y": cell_y,
+                        "target_hazard": float(hazard[row, col]),
+                        "target_max_cause": int(features["max_cause"][row, col]),
+                        "support_cell_x": sx, "support_cell_y": sy,
+                        "dx_cells": offset_x, "dy_cells": offset_y,
+                        "relative_elevation_m": float(relative[support_row, support_col]),
+                        "age_s": float(age[support_row, support_col]),
+                        "plane_residual_m": residual,
+                        "frame_sample_count": int(neighbor["sample_count"]),
+                        "frame_min_world_z_m": self._csv_value(neighbor["min_world_z"]),
+                        "frame_max_world_z_m": self._csv_value(neighbor["max_world_z"]),
+                        "frame_min_pixel_u": self._csv_value(neighbor["min_pixel_u"]),
+                        "frame_min_pixel_v": self._csv_value(neighbor["min_pixel_v"]),
+                        "frame_min_axial_depth_m": self._csv_value(neighbor["min_depth_m"]),
+                        "frame_max_pixel_u": self._csv_value(neighbor["max_pixel_u"]),
+                        "frame_max_pixel_v": self._csv_value(neighbor["max_pixel_v"]),
+                        "frame_max_axial_depth_m": self._csv_value(neighbor["max_depth_m"]),
+                        "ground_before_fusion_m": self._csv_value(neighbor["ground_before"]),
+                        "ground_after_fusion_m": self._csv_value(neighbor["ground_after"]),
+                        "fusion_mode": int(neighbor["fusion_mode"]),
+                        "latest_source_stamp_ns": int(neighbor["stamp_ns"]),
+                        "capture_base_x_m": self._csv_value(neighbor["base_x"]),
+                        "capture_base_y_m": self._csv_value(neighbor["base_y"]),
+                        "capture_base_z_m": self._csv_value(neighbor["base_z"]),
+                        "capture_roll_deg": self._csv_value(
+                            np.degrees(neighbor["base_roll"])),
+                        "capture_pitch_deg": self._csv_value(
+                            np.degrees(neighbor["base_pitch"])),
+                        "capture_yaw_deg": self._csv_value(
+                            np.degrees(neighbor["base_yaw"])),
+                    })
+
+        # 2 Hzのpublish単位でflushし、bag再生が中断しても診断結果を残す。
+        self.forensic_cells_file.flush()
+        self.forensic_support_file.flush()
 
     def publish_debug(self, stamp):
         """一貫したgrid snapshotから低rateの検査layerをpublishする。"""
@@ -468,6 +834,7 @@ class DepthElevationMapper(Node):
                     layers["obstacle_height"],
                     self.hazard_obstacle_height_limit, self.latest_heading_yaw,
                     self.step_min_side_neighbors,
+                    include_diagnostics=self.forensic_enabled,
                 )
                 self.feature_times_ms.append(
                     (time.perf_counter() - feature_started) * 1000.0
@@ -500,10 +867,20 @@ class DepthElevationMapper(Node):
                             features["max_cause"],
                         )
                     )
+                if self.forensic_enabled:
+                    self.write_forensic_diagnostics(stamp, layers, features)
         if self.publish_debug_pointcloud:
             self.pointcloud_publisher.publish(
                 self.make_pointcloud(stamp, elevation, valid)
             )
+
+    def destroy_node(self):
+        """終了時にforensic CSVを閉じ、最後のbufferも確実にflushする。"""
+        for stream in (self.forensic_cells_file, self.forensic_support_file):
+            if stream is not None and not stream.closed:
+                stream.flush()
+                stream.close()
+        return super().destroy_node()
 
     def make_debug_grid(self, stamp, layer, valid, minimum, maximum):
         """1個のscalar layerを可視化専用OccupancyGridへ符号化する。

@@ -1,7 +1,7 @@
 ekf_local_horizontal_node:
   ros__parameters:
-    # This filter owns only horizontal motion. Keep 2D mode so VIO or terrain
-    # height cannot couple into x/y/yaw state.
+    # このfilterは水平運動だけを担当する。VIOまたは地形の高さがx/y/yaw状態へ結合
+    # しないよう2D modeを維持する。
     frequency: 50.0
     sensor_timeout: 0.1
     two_d_mode: true
@@ -25,7 +25,7 @@ ekf_local_horizontal_node:
     odom0_differential: false
     odom0_relative: false
 
-    # Do not fuse Wit orientation: yaw is propagated by gyro z only.
+    # Wit orientationは融合しない。yawはgyro zだけで伝播する。
     imu0: /wit/imu
     imu0_config: [
       false, false, false,
@@ -38,8 +38,8 @@ ekf_local_horizontal_node:
     imu0_differential: false
     imu0_relative: false
 
-    # VIO pose is deliberately excluded. The twist gate can quarantine a
-    # failed/restarted VIO, then re-admit stable relative vx/vy observations.
+    # VIO poseは意図して除外する。twist gateは破綻・再起動したVIOを隔離し、安定した
+    # 相対vx/vy観測だけを再投入できる。
     odom1: /vio/odometry/twist_gated
     odom1_config: [
       false, false, false,

@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-"""Publish roll/pitch and the last strictly validated VIO height.
+"""Witのroll/pitchと、厳密に検証済みの最後のVIO高さをpublishする。
 
-This is deliberately not an inertial z integrator. A stopped or rejected VIO
-stream leaves z at its last valid value, avoiding the unconstrained vertical
-velocity drift observed with a standalone robot_localization 3D filter. IMU
-callbacks still publish the held value so downstream TF consumers do not lose
-their pose stream; publication must not be mistaken for a fresh z observation.
+これは意図して慣性z積分器にはしない。VIOが停止・棄却されたら最後の正常zを保持し、
+単独3D EKFで見られた無拘束の鉛直速度ドリフトを防ぐ。IMU callbackは保持値を
+継続publishするため下流TFは失われないが、これは新しいz観測を意味しない。
 
-The height callback updates a stored z only when the vertical gate publishes.
-Every IMU callback independently converts the Wit quaternion to roll/pitch,
-combines it with that stored z, and publishes ``/odometry/local_vertical``.
+高さcallbackは鉛直ゲートがpublishした場合だけ保持zを更新する。各IMU callbackは
+Wit quaternionからroll/pitchを取り出し、保持zと組み合わせて
+``/odometry/local_vertical``をpublishする。
 """
 
 import math
@@ -51,8 +49,8 @@ class AttitudeHeightObserverNode(Node):
         self.create_subscription(Imu, self.imu_topic, self.imu_callback, 50)
 
     def height_callback(self, message):
-        # Only the vertical gate can call this callback. Once it latches, this
-        # state is intentionally frozen until the localization stack restarts.
+        # このcallbackの入力は鉛直ゲートだけである。ゲートがlatchした後は、
+        # localization stackを再起動するまでこの状態を意図して凍結する。
         z = message.pose.pose.position.z
         variance = message.pose.covariance[14]
         if math.isfinite(z) and math.isfinite(variance):
@@ -61,15 +59,15 @@ class AttitudeHeightObserverNode(Node):
 
     def imu_callback(self, message):
         roll, pitch = rpy_from_quaternion(message.orientation)
-        # Rebuild the quaternion with yaw=0. Yaw belongs to the independent
-        # horizontal EKF and is inserted later by local_odometry_composer.
+        # yaw=0でquaternionを再構成する。yawは独立した水平EKFの担当であり、
+        # 後段のlocal_odometry_composerが挿入する。
         qx, qy, qz, qw = quaternion_from_roll_pitch(roll, pitch)
         output = Odometry()
         output.header = message.header
         output.header.frame_id = "odom"
         output.child_frame_id = "base_link"
-        # Horizontal position and yaw belong to the horizontal EKF/composer.
-        # This node owns only roll, pitch, and the guarded (possibly held) z.
+        # 水平位置とyawは水平EKF/composerの担当である。このnodeはroll、pitch、
+        # およびゲート済み（保持中の可能性がある）zだけを担当する。
         output.pose.pose.position.z = self.height
         output.pose.pose.orientation.x = qx
         output.pose.pose.orientation.y = qy
