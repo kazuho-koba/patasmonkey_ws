@@ -1,10 +1,9 @@
-"""Timestamp-correct OAK depth to a robot-centric rolling elevation map.
+"""timestamp整合したOAK depthからrobot-centric rolling elevation mapを作るnode。
 
-The hot path samples a depth image and fuses it directly into fixed NumPy
-arrays in ``odom``; it intentionally does not create a full PointCloud2.  The
-camera-to-odom and base-to-odom transforms are both looked up at the image
-header stamp.  Debug maps and optional clouds are produced at a lower rate so
-that visualisation does not determine the Jetson runtime cost.
+hot pathはdepth画像をsamplingし、固定NumPy arrayの`odom` mapへ直接fusionする。full
+PointCloud2は意図的に生成しない。camera-to-odomとbase-to-odomの両transformは画像header
+stampでlookupする。debug mapと任意cloudは低rateで生成し、可視化がJetson runtime costを
+左右しないようにする。
 """
 
 from collections import deque
@@ -29,12 +28,12 @@ from pm_perception.terrain_features import compute_terrain_features
 
 
 def stamp_to_ns(stamp):
-    """Convert a ROS header stamp to an integer without floating-point loss."""
+    """ROS header stampをfloating-point誤差なしに整数nsへ変換する。"""
     return int(stamp.sec) * 1_000_000_000 + int(stamp.nanosec)
 
 
 def yaw_from_quaternion(quaternion):
-    """Return planar robot heading without pulling in a TF geometry helper."""
+    """TF geometry helperを使わず、平面robot headingを返す。"""
     return float(np.arctan2(
         2.0 * (quaternion.w * quaternion.z + quaternion.x * quaternion.y),
         1.0 - 2.0 * (quaternion.y * quaternion.y + quaternion.z * quaternion.z),
@@ -42,11 +41,10 @@ def yaw_from_quaternion(quaternion):
 
 
 class DepthElevationMapper(Node):
-    """Fuse sampled depth directly into a fixed-allocation ``odom`` 2.5D grid.
+    """samplingしたdepthを固定allocationの`odom` 2.5D gridへ直接fusionする。
 
-    ``elevation`` remains an odom-z layer.  ``relative_elevation`` is a
-    separate diagnostic layer normalised by the nominal camera-to-ground
-    height; it must never be mistaken for a globally consistent height map.
+    `elevation`はodom-z layerのままとする。`relative_elevation`は暫定camera対地高さで
+    正規化した別の診断layerであり、globalに一貫したheight mapとして扱ってはならない。
     """
 
     def __init__(self):
@@ -195,9 +193,8 @@ class DepthElevationMapper(Node):
             float(value("map_size_x")), float(value("map_size_y")),
             float(value("resolution"))
         )
-        # A bounded FIFO waits only for TF/CameraInfo that correspond to the
-        # depth stamp.  It bounds latency and memory under a missing-TF fault;
-        # using a newest transform here would spatially smear a moving robot.
+        # bounded FIFOはdepth stampに対応するTF/CameraInfoだけを待つ。TF欠落時にもlatencyと
+        # memoryを制限できる。ここで最新transformを使うと移動中robotのmapが空間的にずれる。
         self.tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.pending = deque()
@@ -222,9 +219,8 @@ class DepthElevationMapper(Node):
             Image, self.depth_topic, self.depth_callback, qos_profile_sensor_data
         )
         self.retry_timer = self.create_timer(0.01, self.process_pending)
-        # All OccupancyGrid publishers below are visual diagnostics, not Nav2
-        # costs.  Their private names deliberately keep this experimental API
-        # isolated from existing planner and localisation interfaces.
+        # 以下のOccupancyGrid publisherはすべて可視化診断用であり、Nav2 costではない。private
+        # nameにして、実験中のAPIを既存planner/localisation interfaceから隔離する。
         self.occupancy_publisher = self.create_publisher(
             OccupancyGrid, "~/elevation_debug", 1
         )
@@ -271,17 +267,16 @@ class DepthElevationMapper(Node):
         )
 
     def camera_info_callback(self, message):
-        """Keep only a usable pinhole calibration; image size is checked later."""
+        """使用可能なpinhole calibrationだけを保持し、画像サイズは後で照合する。"""
         if message.k[0] > 0.0 and message.k[4] > 0.0:
             self.camera_info = message
 
     def depth_callback(self, message):
-        """Rate-limit input, then retain a short exact-TF wait queue.
+        """入力をrate制限した後、短いexact-TF待ちqueueへ入れる。
 
-        Dropping the oldest queued image favours a current map over processing
-        stale depth after a temporary TF outage.  A dropped image is safer than
-        substituting a latest TF because every accepted image keeps its own
-        pose/time correspondence.
+        queue内で最も古い画像を捨てることで、一時的なTF停止後に古いdepthを処理するより現在の
+        mapを優先する。受理する各画像のpose/time対応を守れるため、最新TFへの置換よりdropが
+        安全である。
         """
         stamp_ns = stamp_to_ns(message.header.stamp)
         if (
@@ -297,11 +292,10 @@ class DepthElevationMapper(Node):
         self.process_pending()
 
     def intrinsics_for(self, message):
-        """Return calibration only when it belongs to this image geometry.
+        """この画像geometryに対応する場合だけcalibrationを返す。
 
-        The EEPROM fallback exists solely for old bags without CameraInfo and
-        is guarded by its configured width/height to avoid silently applying a
-        640x400 calibration to a different stream.
+        EEPROM fallbackはCameraInfoを持たない古いbag専用である。別streamへ640x400の
+        calibrationを暗黙適用しないよう、設定済みwidth/heightでguardする。
         """
         info = self.camera_info
         if info is not None and info.width == message.width and info.height == message.height:
@@ -317,11 +311,10 @@ class DepthElevationMapper(Node):
         return None
 
     def process_pending(self):
-        """Process queued images in timestamp order after exact data is ready.
+        """exactな入力が揃ったqueue画像をtimestamp順に処理する。
 
-        The queue head blocks later frames briefly.  This preserves temporal
-        fusion order and makes the timeout policy deterministic during bag
-        replay; no lookup with time zero (latest TF) is permitted.
+        queue先頭は後続frameを短時間blockする。これによりfusionの時間順を保ち、bag replay中の
+        timeout方針も決定的になる。time zero（最新TF）でのlookupは許可しない。
         """
         while self.pending:
             arrival, message = self.pending[0]
@@ -354,7 +347,7 @@ class DepthElevationMapper(Node):
             self.process_frame(message, intrinsics, camera_tf, base_tf)
 
     def process_frame(self, message, intrinsics, camera_tf, base_tf):
-        """Back-project one image, transform at its stamp, and fuse its cells."""
+        """1画像をback-projectし、そのstampでtransformしてcellへfusionする。"""
         started = time.perf_counter()
         stamp_ns = stamp_to_ns(message.header.stamp)
         if (
@@ -370,26 +363,23 @@ class DepthElevationMapper(Node):
             message, fx, fy, cx, cy, self.pixel_stride,
             self.min_depth, self.max_depth
         )
-        # The base pose is from the same image stamp as camera_tf.  Its XY
-        # recentres the rolling window; yaw is only a support-direction gate
-        # for the Stage 3 step cue, not an additional map transform.
+        # base poseはcamera_tfと同じ画像stampから得る。そのXYでrolling windowをrecenterし、
+        # yawはStage 3 step cueのsupport方向gateにだけ使う。追加のmap transformではない。
         translation = base_tf.transform.translation
         self.latest_heading_yaw = yaw_from_quaternion(base_tf.transform.rotation)
         self.grid.recenter(translation.x, translation.y)
         if points_camera.size:
             points_map = transform_points(points_camera, camera_tf.transform)
-            # OAK axial depth is converted to Euclidean optical-frame range.
-            # The simple a + b*r^2 model is intentionally conservative; its
-            # purpose is to prevent far samples from dominating a cell, not to
-            # claim a calibrated OAK-D noise model.
+            # OAKのaxial depthをEuclidean optical-frame rangeへ変換する。単純な`a+b*r^2`
+            # modelは意図的に保守的である。遠方sampleがcellを支配しないようにするもので、
+            # 校正済みOAK-D noise modelを主張するものではない。
             ranges = np.linalg.norm(points_camera, axis=1)
             point_variance = (
                 self.measurement_variance
                 + self.depth_variance_per_meter_sq * ranges * ranges
             )
-            # camera_z - nominal height is the expected odom z of level
-            # ground at this image stamp.  Subtracting it creates a second,
-            # local-height layer without modifying the original odom-z map.
+            # `camera_z - nominal height`は、この画像stampにおける水平groundの期待odom zで
+            # ある。これを差し引くと、元のodom-z mapを変更せずにlocal-height layerを作れる。
             relative_offset = (
                 self.nominal_camera_height_above_ground
                 - camera_tf.transform.translation.z
@@ -402,8 +392,8 @@ class DepthElevationMapper(Node):
         else:
             observed_cells = 0
 
-        # Expensive message construction and local-plane features are debug
-        # work, so run them independently of the depth fusion rate.
+        # 高価なmessage生成と局所平面featureはdebug処理なので、depth fusion rateとは独立して
+        # 実行する。
         if (
             stamp_ns - self.last_debug_ns >= self.debug_period_ns
             or self.last_debug_ns < 0
@@ -429,7 +419,7 @@ class DepthElevationMapper(Node):
             self.last_performance_log = now
 
     def publish_debug(self, stamp):
-        """Publish low-rate inspection layers from one coherent grid snapshot."""
+        """一貫したgrid snapshotから低rateの検査layerをpublishする。"""
         layers = self.grid.stage2_layers(
             self.measurement_variance, stamp_to_ns(stamp),
             self.obstacle_confidence_min, self.observation_decay_time,
@@ -465,10 +455,9 @@ class DepthElevationMapper(Node):
                     self.debug_obstacle_height_max,
                 ))
             if self.publish_stage3_debug_layers:
-                # Features consume relative elevation so a common-mode odom-z
-                # offset does not masquerade as terrain shape.  Obstacle
-                # evidence remains independently valid when plane support is
-                # insufficient, as encoded by compute_terrain_features().
+                # featureにはrelative elevationを使い、common-mode odom-z offsetがterrain
+                # shapeに見えることを抑える。局所平面supportが不足してもobstacle evidenceは
+                # 独立に有効であり、compute_terrain_features()がそのように扱う。
                 feature_started = time.perf_counter()
                 features = compute_terrain_features(
                     layers["relative_elevation"], layers["age_seconds"],
@@ -517,13 +506,11 @@ class DepthElevationMapper(Node):
             )
 
     def make_debug_grid(self, stamp, layer, valid, minimum, maximum):
-        """Encode one scalar layer as a visual-only OccupancyGrid.
+        """1個のscalar layerを可視化専用OccupancyGridへ符号化する。
 
-        These are not Nav2 costs: values are linearly encoded as 0--100 and
-        -1 is unobserved. RViz's ``map`` palette renders the conventional
-        OccupancyGrid direction (0 white, 100 black, -1 gray). Keeping this
-        conversion at debug publish rate avoids image/message work in the
-        depth fusion hot path.
+        Nav2 costではない。値は0--100へ線形符号化し、-1は未観測である。RVizの`map` paletteは
+        通常のOccupancyGrid方向（0白、100黒、-1灰）で描画する。この変換をdebug publish rateに
+        留めることで、depth fusion hot pathでのimage/message処理を避ける。
         """
         message = OccupancyGrid()
         message.header.stamp = stamp
@@ -543,11 +530,10 @@ class DepthElevationMapper(Node):
         return message
 
     def make_hazard_cause_marker(self, stamp, elevation, hazard, cause):
-        """Publish capped colored cubes only when explicitly enabled for RViz.
+        """RVizで明示的に有効化したときだけ、上限付き色cubeをpublishする。
 
-        Markers represent only saturated (hazard >= 1) cells.  Their cap avoids
-        unbounded Point/Color message growth; they are an offline explanation
-        aid, not a complete terrain-map representation.
+        Markerはsaturated（hazard >= 1）cellだけを表す。上限によりPoint/Color messageの無制限
+        な増加を防ぐ。これはofflineでの説明補助であり、完全なterrain-map表現ではない。
         """
         message = Marker()
         message.header.stamp = stamp
@@ -584,10 +570,10 @@ class DepthElevationMapper(Node):
         return message
 
     def make_pointcloud(self, stamp, elevation, valid):
-        """Build one ground point per valid cell for opt-in RViz inspection.
+        """任意RViz検査用に、有効cellあたりground pointを1個作る。
 
-        This allocates and serialises a ROS PointCloud2, hence it remains off
-        by default and is never used by depth fusion or terrain features.
+        ROS PointCloud2のallocateとserializeを行うため既定OFFとし、depth fusionやterrain
+        featureでは使用しない。
         """
         rows, cols = np.nonzero(valid)
         points = np.empty((rows.size, 3), dtype=np.float32)

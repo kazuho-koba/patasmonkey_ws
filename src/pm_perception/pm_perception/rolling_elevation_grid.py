@@ -1,8 +1,7 @@
-"""Fixed-allocation robot-centric rolling elevation grid.
+"""固定allocationのrobot-centric rolling elevation grid。
 
-The array indices form a ring buffer. Each slot carries the absolute odom-grid
-coordinate that currently owns it, so moving the map only changes its logical
-origin. Cells that leave the window are reset lazily when their slots are reused.
+array indexはring bufferを構成する。各slotは現在対応する絶対odom-grid座標を保持するため、
+map移動時は論理originだけを更新する。window外へ出たcellはslot再利用時にlazy resetする。
 """
 
 import math
@@ -14,7 +13,7 @@ UNASSIGNED = np.iinfo(np.int64).min
 
 
 class RollingElevationGrid:
-    """Store ground statistics and small forward-compatible obstacle fields."""
+    """ground統計量と将来拡張可能な最小obstacle fieldを保持する。"""
 
     def __init__(self, size_x, size_y, resolution):
         if size_x <= 0.0 or size_y <= 0.0 or resolution <= 0.0:
@@ -26,19 +25,17 @@ class RollingElevationGrid:
         self.origin_cell_x = 0
         self.origin_cell_y = 0
 
-        # Structure-of-arrays keeps each hot update contiguous and makes all
-        # per-frame fusion operations NumPy-vectorizable.
+        # Structure-of-arraysによりhot updateを連続配置し、frameごとのfusion処理を
+        # NumPyでvectorize可能にする。
         self.world_x = np.full(self.cell_count, UNASSIGNED, dtype=np.int64)
         self.world_y = np.full(self.cell_count, UNASSIGNED, dtype=np.int64)
         self.elevation = np.zeros(self.cell_count, dtype=np.float32)
         self.elevation_m2 = np.zeros(self.cell_count, dtype=np.float32)
-        # Sum of inverse observation variances.  It is deliberately separate
-        # from observation_count: count remains an easily interpreted raw
-        # measurement count, while weight can decay when a cell is stale.
+        # 観測分散の逆数和。observation_countとは意図的に分離する。countは解釈しやすい
+        # 生の観測数のままとし、weightだけがcellの古さに応じて減衰する。
         self.elevation_weight = np.zeros(self.cell_count, dtype=np.float32)
-        # This layer subtracts the camera's expected ground level at each
-        # image stamp.  A level surface at the nominal camera height is near
-        # zero even when odometry has a common-mode z offset.
+        # このlayerは各画像timestampにおけるcameraの期待ground高さを差し引く。odomに
+        # common-mode z offsetがあっても、暫定camera高さでの水平面は概ねゼロになる。
         self.relative_elevation = np.zeros(self.cell_count, dtype=np.float32)
         self.relative_elevation_m2 = np.zeros(self.cell_count, dtype=np.float32)
         self.relative_elevation_weight = np.zeros(
@@ -47,8 +44,8 @@ class RollingElevationGrid:
         self.observation_count = np.zeros(self.cell_count, dtype=np.uint32)
         self.last_observed_ns = np.zeros(self.cell_count, dtype=np.int64)
 
-        # Stage 1 only populates a simple vertical extent. Keeping these fields
-        # here avoids changing the rolling-grid ownership model in Stage 2.
+        # Stage 1では単純なvertical extentだけを埋める。ここでfieldを持たせることで、
+        # Stage 2でrolling-gridのownership modelを変更せずに済む。
         self.obstacle_height = np.zeros(self.cell_count, dtype=np.float32)
         self.obstacle_confidence = np.zeros(self.cell_count, dtype=np.float32)
         self.last_obstacle_observed_ns = np.zeros(
@@ -101,14 +98,12 @@ class RollingElevationGrid:
         relative_elevation_offset=0.0,
         observation_decay_time=0.0,
     ):
-        """Aggregate a frame by XY cell, then fuse one ground sample per cell.
+        """frameをXY cellごとに集約し、cellごとにground sampleを1個fusionする。
 
-        The lowest sample in a cell is the provisional ground observation and
-        the highest sample supplies a minimal obstacle-height cue. This is not
-        a complete ground classifier, but prevents every vertical return from
-        being averaged into one meaningless height.  Observation variances are
-        reduced conservatively per cell (the largest point variance is used)
-        and become inverse-variance fusion weights.
+        cell内の最小sampleを暫定ground観測、最大sampleを最小限のobstacle-height cueに
+        用いる。完全なground classifierではないが、垂直方向のreturnすべてを意味のない1高さに
+        平均することを防ぐ。観測分散はcellごとに保守的に縮約（最大point分散を使用）し、
+        逆分散fusion weightに変換する。
         """
         world_x = np.floor(x / self.resolution).astype(np.int64)
         world_y = np.floor(y / self.resolution).astype(np.int64)
@@ -130,11 +125,15 @@ class RollingElevationGrid:
             observation_variance = np.asarray(
                 observation_variance[inside], dtype=np.float32
             )
+        # moduloで無限に広がるodom-cell座標を固定arrayへ写像する。下の`world_x/world_y`
+        # tagにより、使用中slotと偶然同じmodulo indexを共有する古いcellを区別する。
         slots = (
             np.mod(world_y, self.height) * self.width
             + np.mod(world_x, self.width)
         ).astype(np.intp)
 
+        # まずこの画像のsample点をXY cellごとのmin/max一組へ縮約する。これによりfusionは
+        # samplingした全depth pixelではなく、touchしたcell数に対してO()で実行できる。
         self._frame_min.fill(np.inf)
         self._frame_max.fill(-np.inf)
         self._frame_variance.fill(0.0)
@@ -147,6 +146,8 @@ class RollingElevationGrid:
         observed_x = self._frame_world_x[observed]
         observed_y = self._frame_world_y[observed]
 
+        # rolling originの移動後、slotが別の絶対odom cellへ対応していることがある。古い
+        # elevationが新しい物理位置へ漏れないよう、使用前にresetする。
         reused = (
             (self.world_x[observed] != observed_x)
             | (self.world_y[observed] != observed_y)
@@ -164,11 +165,15 @@ class RollingElevationGrid:
         count = self.observation_count[observed]
         current = self.elevation[observed]
         empty = count == 0
+        # 明確に低いminimumは、2つのsurfaceを平均せずground hypothesisを置き換える。垂直差は
+        # weak obstacle evidenceとして残すが、視点やdepthのartifactである可能性もある。
         lower = (~empty) & (sample < current - ground_merge_threshold)
         merge = (~empty) & (np.abs(sample - current) <= ground_merge_threshold)
 
         initialize = empty | lower
         existing = ~empty
+        # confidence/weightは今回touchしたcellだけで減衰する。publish時にもageを評価するため、
+        # 周期的な全map mutationなしに古いevidenceの影響を弱められる。
         if observation_decay_time > 0.0 and np.any(existing):
             existing_slots = observed[existing]
             age_seconds = np.maximum(
@@ -207,6 +212,8 @@ class RollingElevationGrid:
             self.observation_count[init_slots] = 1
 
         if np.any(merge):
+            # weighted Welford型update。画像やdepth点の履歴を保存せず、meanとweighted
+            # second momentを保持する。
             merge_slots = observed[merge]
             old_weight = self.elevation_weight[merge_slots]
             weight = sample_weight[merge]
@@ -235,6 +242,8 @@ class RollingElevationGrid:
             self.relative_elevation_weight[merge_slots] = relative_new_weight
             self.observation_count[merge_slots] += np.uint32(1)
 
+        # この画像の最大returnをfusion済みground estimateと比較する。これはvertical extent
+        # cueにすぎず、semantic判定やray-occlusion推論を含まない。
         ground = self.elevation[observed]
         height = self._frame_max[observed] - ground
         obstacle = height >= obstacle_min_height
@@ -252,10 +261,12 @@ class RollingElevationGrid:
         return int(observed.size)
 
     def logical_layers(self, measurement_variance):
-        """Return odom-oriented row-major views copied for publication."""
+        """publish用にcopyした、odom向きrow-major viewを返す。"""
         xs = self.origin_cell_x + np.arange(self.width, dtype=np.int64)
         ys = self.origin_cell_y + np.arange(self.height, dtype=np.int64)
         world_x, world_y = np.meshgrid(xs, ys)
+        # odom-cell昇順で連続した論理mapを再構成する。これは低rate publishのためだけに行う
+        # 意図的な全grid copyである。
         slots = (
             np.mod(world_y, self.height) * self.width
             + np.mod(world_x, self.width)
@@ -290,11 +301,10 @@ class RollingElevationGrid:
         obstacle_confidence_min,
         observation_decay_time,
     ):
-        """Return publication-ready Stage 2 layers in logical map order.
+        """論理map順でpublish可能なStage 2 layerを返す。
 
-        `age_seconds` and obstacle confidence are evaluated at publish time;
-        therefore an unobserved map naturally becomes less trusted without a
-        periodic full-grid mutation.
+        `age_seconds`とobstacle confidenceはpublish時に評価する。このため、周期的な全grid
+        mutationをせずに未観測mapの信頼度を自然に下げられる。
         """
         elevation, variance, count, last_observed_ns = self.logical_layers(
             measurement_variance

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Replay selected MCAP topics while publishing the recorded ROS clock.
+"""記録済みROS clockをpublishしつつ、選択したMCAP topicをreplayする。
 
-ROS 2 Foxy's ``ros2 bag play`` does not provide a ``--clock`` option.  This
-small, intentionally typed player is used for deterministic EKF replays: the
-clock follows each MCAP record timestamp and the original message is published
-with its original header stamp. Records are streamed from MCAP instead of being
-accumulated in memory, so RGB-D playback remains practical on the Jetson.
+ROS 2 Foxyの`ros2 bag play`には`--clock` optionがない。この小さく意図的に型を限定した
+playerは決定的なEKF replayに用いる。clockは各MCAP record timestampに追従し、元messageは
+元のheader stampのままpublishする。recordをmemoryへ蓄積せずMCAPからstreamするため、
+JetsonでもRGB-D playbackを実行可能に保つ。
 """
 
 import argparse
@@ -44,7 +43,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def iter_records(bag: Path, topics: List[str]) -> Iterable[Tuple[int, str, bytes]]:
-    """Yield selected records in MCAP file order without retaining image data."""
+    """画像dataを保持せず、MCAP file順に選択recordをyieldする。"""
     for mcap_path in sorted(glob.glob(str(bag / "*.mcap"))):
         with open(mcap_path, "rb") as stream:
             for _, channel, record in make_reader(stream).iter_messages():
@@ -56,8 +55,8 @@ def main() -> None:
     args = parse_args()
     if args.rate <= 0.0:
         raise SystemExit("--rate must be positive")
-    # The explicit whitelist makes deserialisation predictable on Foxy and
-    # prevents a replay command from accidentally publishing control topics.
+    # 明示的なwhitelistによりFoxyでのdeserializeを予測可能にし、replay commandがcontrol
+    # topicを誤ってpublishすることを防ぐ。
     unknown = sorted(set(args.topic) - set(MESSAGE_TYPES))
     if unknown:
         raise SystemExit("Unsupported typed replay topic(s): {}".format(unknown))
@@ -69,9 +68,9 @@ def main() -> None:
         reliability=ReliabilityPolicy.RELIABLE,
         durability=DurabilityPolicy.TRANSIENT_LOCAL,
     )
-    # /tf_static must be transient-local so subscribers that start after the
-    # replay can still receive camera/base transforms.  Other replayed data is
-    # regular bounded reliable traffic, matching the offline evaluator use.
+    # `/tf_static`はreplay後に起動するsubscriberもcamera/base transformを受け取れるよう
+    # transient-localにする。他のreplay dataはoffline evaluatorに合わせた通常のbounded
+    # reliable trafficである。
     publishers = {
         topic: node.create_publisher(
             MESSAGE_TYPES[topic], topic, static_qos if topic == "/tf_static" else regular_qos
@@ -80,9 +79,8 @@ def main() -> None:
     }
     clock_pub = node.create_publisher(Clock, "/clock", regular_qos)
 
-    # Let subscriptions and transient-local /tf_static discovery settle before
-    # the first simulated timestamp.  This avoids an initial depth/TF race in
-    # short offline runs without modifying the source bag.
+    # 最初のsimulated timestampより前にsubscriptionとtransient-local `/tf_static` discoveryを
+    # 落ち着かせる。元bagを変更せず、短いoffline runでの初期depth/TF raceを避ける。
     time.sleep(1.0)
     first_time = None
     wall_start = None

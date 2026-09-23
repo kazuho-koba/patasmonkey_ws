@@ -33,11 +33,15 @@ ROS 2 Foxy stack for Patasmonkey UGV. Target is Jetson AGX Xavier / Ubuntu
 - Inspect git status before editing; keep changes minimal and task-focused;
   never discard unrelated user changes. Inspect the diff and run proportional
   builds/tests after editing when practical.
-- Add deliberate, useful comments to new or materially changed code. Document
-  non-obvious intent, coordinate frames and units, algorithm assumptions,
+- Add deliberate, useful comments to new or materially changed code. Explain
+  both non-obvious intent and the actual processing flow: inputs/units,
+  filtering, coordinate transforms, intermediate values, branch/timeout
+  conditions, and state updates. Also document algorithm assumptions,
   parameter/threshold semantics, data ownership or real-time performance
   choices, and safety-relevant behavior. Use module/class/function docstrings
   where they clarify an API or processing stage.
+- README、docstring、コードコメントは日本語で記述する。ROS名、API名、変数名、
+  数式、一般に定着した技術用語は英語表記を保ってよい。
 - Do not add comments that merely restate obvious syntax. Keep comments current
   when changing behavior; code and comments must agree.
 - Report modified files plus relevant build/test results.

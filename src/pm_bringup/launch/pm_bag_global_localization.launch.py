@@ -28,8 +28,8 @@ def generate_launch_description():
     # rosbagを記録するかどうか
     record_bag = LaunchConfiguration("record_bag")
     bag_name = LaunchConfiguration("bag_name")
-    # Keep the legacy local EKF as the default. Select localization_mode:=
-    # separated_offroad for the off-road-safe, split localizer.
+    # legacy local EKFを既定とする。off-road向けにlocalizerを分離する場合は
+    # `localization_mode:=separated_offroad`を選ぶ。
     local_ekf_config = LaunchConfiguration("local_ekf_config")
     localization_mode = LaunchConfiguration("localization_mode")
 
@@ -98,7 +98,7 @@ def generate_launch_description():
     )
 
     def validate_trial_directory(context, runtime_actions):
-        """Reject ambiguous or existing destinations before starting nodes."""
+        """node起動前に曖昧または既存の出力先を拒否する。"""
         resolved_name = LaunchConfiguration("bag_name").perform(context)
         if not resolved_name or Path(resolved_name).name != resolved_name:
             raise RuntimeError(
@@ -138,10 +138,9 @@ def generate_launch_description():
         "/oak/depth/camera_info",
 
         # -------------------------------------------------------------
-        # Stage 2 local terrain mapping outputs.  The depth input, CameraInfo,
-        # current localization outputs, and TF above are sufficient to replay
-        # the mapper; these layers additionally preserve the online result for
-        # direct comparison without requiring a second reconstruction.
+        # Stage 2 local terrain mappingの出力。上記のdepth input、CameraInfo、現在の
+        # localisation output、TFだけでmapperをreplayできる。加えてこれらのlayerを保存し、
+        # 再構成なしにonline結果を直接比較できるようにする。
         # -------------------------------------------------------------
         "/depth_elevation_mapper/elevation_debug",
         "/depth_elevation_mapper/relative_elevation_debug",
@@ -149,7 +148,7 @@ def generate_launch_description():
         "/depth_elevation_mapper/observation_count_debug",
         "/depth_elevation_mapper/observation_age_debug",
         "/depth_elevation_mapper/obstacle_height_debug",
-        # Stage 3 feature cues are recorded as diagnostics, not planner costs.
+        # Stage 3 feature cueはplanner costではなくdiagnosticとして記録する。
         "/depth_elevation_mapper/slope_debug",
         "/depth_elevation_mapper/roughness_debug",
         "/depth_elevation_mapper/step_height_debug",
@@ -205,8 +204,8 @@ def generate_launch_description():
         # robot_localization出力
         # -------------------------------------------------------------
         "/odometry/local",
-        # Intermediate outputs make the separated profile auditable: these
-        # distinguish a horizontal VIO/wheel issue from an attitude/height issue.
+        # intermediate outputを保存するとseparated profileを検証可能になる。horizontal
+        # VIO/wheelの問題とattitude/heightの問題を区別できる。
         "/odometry/local_horizontal",
         "/odometry/local_vertical",
         "/odometry/global",
@@ -370,15 +369,15 @@ def generate_launch_description():
             'enable_diagnostics': True,
             'diagnostics_interval_sec': 0.1,
 
-            # This adapter publishes Odometry only.
-            # Let robot_localization publish odom -> base_link TF.
+            # このadapterはOdometryだけをpublishする。`odom -> base_link` TFは
+            # robot_localizationがpublishする。
             'publish_tf': False,
         }]
     )
 
-    # Gate VIO before the off-road local-EKF profile consumes its z pose.
-    # It forwards healthy data unchanged and latches closed after a VIO reset
-    # or divergence; legacy EKF profiles keep using /vio/odometry directly.
+    # off-road local-EKF profileがVIO z poseを使う前にgateする。正常dataはそのまま通し、
+    # VIO reset/divergence後は閉状態をlatchする。legacy EKF profileは引き続き
+    # `/vio/odometry`を直接使う。
     vio_vertical_gate_node = Node(
         package="pm_localization",
         executable="vio_vertical_gate_node",
@@ -405,7 +404,7 @@ def generate_launch_description():
             ("odometry/filtered", "/odometry/local"),
         ],
     )
-    # In this profile, VIO pose is isolated from horizontal x/y/yaw.
+    # このprofileではVIO poseをhorizontal x/y/yawから分離する。
     ekf_local_horizontal_node = Node(
         package="robot_localization", executable="ekf_node",
         name="ekf_local_horizontal_node", output="screen",
@@ -429,8 +428,8 @@ def generate_launch_description():
             "'", localization_mode, "' == 'separated_offroad'",
         ])),
     )
-    # Only the separated profile seeds yaw once while stationary. It also
-    # publishes the calibrated heading stream used by navsat_transform.
+    # stationary中にyawを一度seedするのはseparated profileだけである。また
+    # navsat_transformが使うcalibrated heading streamもpublishする。
     heading_initializer_node = Node(
         package="pm_localization", executable="heading_initializer_node",
         name="heading_initializer_node", output="screen",
@@ -439,8 +438,8 @@ def generate_launch_description():
             "'", localization_mode, "' == 'separated_offroad'",
         ])),
     )
-    # Gate raw GNSS before both datum initialization and navsat_transform.
-    # Raw /fix and /navpvt remain available and recorded for post-run audit.
+    # datum初期化とnavsat_transformの両方より前にraw GNSSをgateする。raw `/fix`と
+    # `/navpvt`はpost-run audit用に利用可能なまま記録する。
     gnss_fix_gate_node = Node(
         package="pm_localization", executable="gnss_fix_gate_node",
         name="gnss_fix_gate_node", output="screen",
@@ -478,10 +477,9 @@ def generate_launch_description():
         output="screen",
         parameters=[str(navsat_config_file)],
         remappings=[
-            # robot_localization 3.1.x (ROS 2 Foxy) subscribes to the
-            # relative name "imu", not "imu/data".  Remapping the latter
-            # leaves navsat_transform without heading data and prevents
-            # /odometry/gps from ever being published.
+            # robot_localization 3.1.x（ROS 2 Foxy）は`imu/data`ではなくrelative name
+            # `imu`をsubscribeする。後者をremapするとnavsat_transformへheading dataが
+            # 届かず、`/odometry/gps`がpublishされない。
             ("imu", "/wit/imu"),
             ("gps/fix", "/fix"),
             ("odometry/filtered", "/odometry/local"),
@@ -499,8 +497,8 @@ def generate_launch_description():
         output="screen",
         parameters=[str(navsat_heading_initialized_config_file)],
         remappings=[
-            # The heading initializer keeps roll/pitch and IMU rates unchanged,
-            # but applies the one verified yaw correction to orientation.
+            # heading initializerはroll/pitchとIMU rateを変えず、検証済みのyaw補正だけを
+            # orientationへ適用する。
             ("imu", "/wit/imu/heading_calibrated"),
             ("gps/fix", "/fix/gated"),
             ("odometry/filtered", "/odometry/local"),
@@ -526,8 +524,8 @@ def generate_launch_description():
             "' == 'legacy'",
         ])),
     )
-    # The separated profile predicts directly from raw wheel/IMU/VIO velocity
-    # and lets /odometry/gps be the sole map-position observation.
+    # separated profileはraw wheel/IMU/VIO velocityから直接predictし、`/odometry/gps`を
+    # 唯一のmap-position observationとする。
     ekf_global_gnss_constrained_node = Node(
         package="robot_localization",
         executable="ekf_node",

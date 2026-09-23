@@ -1,8 +1,8 @@
-"""Low-copy local terrain cues derived from the rolling elevation grid.
+"""rolling elevation gridから低copyで求める局所terrain cue。
 
-The calculation runs only at the mapper's debug/feature rate (normally 2 Hz).
-It uses fixed 3x3-style NumPy stencils: no PointCloud conversion, SciPy, or
-per-cell Python loops are used in the Jetson runtime path.
+計算はmapperのdebug/feature rate（通常2 Hz）だけで実行する。固定3x3相当のNumPy
+stencilを用い、Jetson runtime pathではPointCloud変換、SciPy、cellごとのPython loopを
+用いない。
 """
 
 import numpy as np
@@ -12,7 +12,7 @@ CAUSE_NAMES = ("slope", "roughness", "step", "obstacle")
 
 
 def _window_slices(height, width, dy, dx):
-    """Return target/source slices where source is `(dx, dy)` from target."""
+    """targetから`(dx, dy)`だけ離れたsourceのtarget/source sliceを返す。"""
     target_y = slice(max(0, -dy), min(height, height - dy))
     source_y = slice(max(0, dy), min(height, height + dy))
     target_x = slice(max(0, -dx), min(width, width - dx))
@@ -35,26 +35,26 @@ def compute_terrain_features(
     heading_yaw=0.0,
     step_min_side_neighbors=1,
 ):
-    """Fit local planes and derive slope, residual roughness and forward step.
+    """局所平面をfitし、slope・残差roughness・前後support付きstepを求める。
 
-    Roughness is the RMS residual to the locally fitted plane, not raw height
-    spread. Step is the peak-to-peak plane residual, while fresh points must
-    exist on both forward and rear sides of the robot heading. A smooth plane
-    therefore produces neither a roughness nor a step response. ``heading_yaw``
-    is expressed in the map XY axes and gates support only; it does not make
-    the residual range a signed, direction-specific step. Both require fresh
-    observation support; obstacle evidence remains independent.
+    roughnessは局所平面に対する残差RMSであり、生の高さばらつきではない。stepは平面残差の
+    peak-to-peakで、robot headingの前後双方にfresh点が必要である。従って滑らかな平面は
+    roughnessにもstepにも反応しない。`heading_yaw`はmap XY軸で表し、supportのgateにだけ
+    用いる。残差範囲を符号付き・方向別のstepへ変換するものではない。いずれもfresh観測
+    supportを必要とし、obstacle evidenceは独立して扱う。
     """
     values = np.asarray(relative_elevation, dtype=np.float32)
     age = np.asarray(observation_age_seconds, dtype=np.float32)
+    # unknown、invalid、古いcellは全ての局所和の前に除外する。観測がないことを平坦な
+    # terrainと解釈してはならない。
     fresh = np.isfinite(values) & np.isfinite(age) & (age <= max_observation_age)
     height, width = values.shape
     shape = values.shape
     radius = max(1, int(neighborhood_radius_cells))
     minimum_support = max(3, int(min_neighbors))
 
-    # Normal-equation terms for z = a*x + b*y + c. Fixed offsets make this
-    # cheaper and more predictable than a batched generic least-squares solve.
+    # `z = a*x + b*y + c`用のnormal equation項。固定offsetを使うことで、genericな
+    # batched least-squares solveより低負荷かつ予測可能にする。
     count = np.zeros(shape, dtype=np.uint16)
     sx = np.zeros(shape, dtype=np.float32)
     sy = np.zeros(shape, dtype=np.float32)
@@ -67,6 +67,9 @@ def compute_terrain_features(
     offsets = []
     for dy in range(-radius, radius + 1):
         for dx in range(-radius, radius + 1):
+            # 各source stencilを全target cellへshiftする。dx/dyはm単位で既知のgrid
+            # offsetなので、これらの和を蓄積すればcellごとのloopなしにtargetごとの
+            # normal equationを作れる。
             target, source = _window_slices(height, width, dy, dx)
             valid = fresh[source]
             z = values[source]
@@ -83,8 +86,8 @@ def compute_terrain_features(
             syz[target] += np.where(valid, z * y_m, 0.0)
             offsets.append((dx, dy, target, source))
 
-    # Cramer's rule for symmetric 3x3 normal equations. The determinant gate
-    # rejects collinear/sparse support without an expensive per-cell solver.
+    # 対称3x3 normal equationに対するCramer's rule。determinant gateにより、高価な
+    # cellごとのsolverを使わずcollinearまたはsparseなsupportを除外する。
     determinant = (
         sxx * (syy * count - sy * sy)
         - sxy * (sxy * count - sy * sx)
@@ -113,6 +116,8 @@ def compute_terrain_features(
     b[plane_valid] = b_numerator[plane_valid] / determinant[plane_valid]
     c[plane_valid] = c_numerator[plane_valid] / determinant[plane_valid]
 
+    # fit後に同じstencilを再走査する。3x3xHxW tensorを実体化せず、残差RMSと残差極値の
+    # 両方を求める。
     residual_sq_sum = np.zeros(shape, dtype=np.float32)
     residual_min = np.full(shape, np.inf, dtype=np.float32)
     residual_max = np.full(shape, -np.inf, dtype=np.float32)
@@ -132,6 +137,8 @@ def compute_terrain_features(
         residual_max[target] = np.maximum(
             residual_max[target], np.where(valid, residual, -np.inf)
         )
+        # offsetとheadingのdot productで前後neighborを識別する。0.5 cellの閾値は、
+        # ほぼ側方のsampleをstep supportから除外する。
         projection = dx * heading_x + dy * heading_y
         if projection >= 0.5:
             forward_count[target] += valid
@@ -152,12 +159,14 @@ def compute_terrain_features(
         & (forward_count >= max(1, int(step_min_side_neighbors)))
         & (rear_count >= max(1, int(step_min_side_neighbors)))
     )
+    # 出力する量は近傍全体の残差範囲のままである。前後supportは片側だけのsparse観測を
+    # 抑制するためだけに使う。
     step_height[step_valid] = (
         residual_max[step_valid] - residual_min[step_valid]
     )
 
-    # Each cue remains independently usable. An obstacle does not need a
-    # usable local plane, while roughness/slope/step do require one.
+    # 各cueは独立に使用できる。obstacleは有効な局所平面を必要としないが、
+    # roughness/slope/stepは必要とする。
     scores = np.full((4,) + shape, -np.inf, dtype=np.float32)
     for index, (cue, limit) in enumerate((
         (slope, slope_limit_deg),
@@ -170,14 +179,15 @@ def compute_terrain_features(
         obstacle = np.asarray(obstacle_height, dtype=np.float32)
         valid = np.isfinite(obstacle)
         scores[3, valid] = obstacle[valid] / max(float(obstacle_limit), 1e-6)
+    # `-inf`は欠測cueを表すためmaxから除外される。4 cueすべてが使えないときだけcellを
+    # unknownとし、安全（0）とは扱わない。
     max_score = np.max(scores, axis=0)
     hazard_valid = np.isfinite(max_score)
     hazard = np.full(shape, np.nan, dtype=np.float32)
     hazard[hazard_valid] = np.clip(max_score[hazard_valid], 0.0, 1.0)
     max_cause = np.zeros(shape, dtype=np.uint8)
-    # np.argmax is deterministic: ties select the first cue in the order
-    # slope, roughness, step, obstacle.  This is an RViz/analysis label only;
-    # another cue may also be over its limit in the same cell.
+    # np.argmaxは決定的で、同率ならslope、roughness、step、obstacleの順で最初のcueを選ぶ。
+    # これはRViz/解析用labelにすぎず、同じcellで別cueもlimit超過していることがある。
     max_cause[hazard_valid] = (
         np.argmax(scores[:, hazard_valid], axis=0).astype(np.uint8) + 1
     )
