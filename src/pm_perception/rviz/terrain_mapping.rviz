@@ -120,6 +120,47 @@ Visualization Manager:
       Name: Obstacle height (Stage 2)
       Topic: /depth_elevation_mapper/obstacle_height_debug
       Value: false
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: false
+      Name: Slope (Stage 3)
+      Topic: /depth_elevation_mapper/slope_debug
+      Value: false
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: false
+      Name: Roughness (Stage 3)
+      Topic: /depth_elevation_mapper/roughness_debug
+      Value: false
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: false
+      Name: Step height (Stage 3)
+      Topic: /depth_elevation_mapper/step_height_debug
+      Value: false
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: false
+      Name: Preliminary terrain hazard (Stage 3)
+      Topic: /depth_elevation_mapper/terrain_hazard_debug
+      Value: false
+    - Alpha: 0.9
+      Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: Hazard cause (colored, optional)
+      Namespaces:
+        terrain_hazard_cause: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /depth_elevation_mapper/terrain_hazard_cause_markers
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

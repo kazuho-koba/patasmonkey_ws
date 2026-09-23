@@ -20,7 +20,7 @@ import rclpy
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.serialization import deserialize_message
 from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import Image, Imu
+from sensor_msgs.msg import CameraInfo, Image, Imu
 from tf2_msgs.msg import TFMessage
 
 
@@ -30,6 +30,7 @@ MESSAGE_TYPES: Dict[str, Type] = {
     "/wit/imu": Imu,
     "/tf_static": TFMessage,
     "/oak/depth/image_raw": Image,
+    "/oak/depth/camera_info": CameraInfo,
     "/oak/color/image_raw": Image,
 }
 
@@ -55,6 +56,8 @@ def main() -> None:
     args = parse_args()
     if args.rate <= 0.0:
         raise SystemExit("--rate must be positive")
+    # The explicit whitelist makes deserialisation predictable on Foxy and
+    # prevents a replay command from accidentally publishing control topics.
     unknown = sorted(set(args.topic) - set(MESSAGE_TYPES))
     if unknown:
         raise SystemExit("Unsupported typed replay topic(s): {}".format(unknown))
@@ -66,6 +69,9 @@ def main() -> None:
         reliability=ReliabilityPolicy.RELIABLE,
         durability=DurabilityPolicy.TRANSIENT_LOCAL,
     )
+    # /tf_static must be transient-local so subscribers that start after the
+    # replay can still receive camera/base transforms.  Other replayed data is
+    # regular bounded reliable traffic, matching the offline evaluator use.
     publishers = {
         topic: node.create_publisher(
             MESSAGE_TYPES[topic], topic, static_qos if topic == "/tf_static" else regular_qos
@@ -74,7 +80,9 @@ def main() -> None:
     }
     clock_pub = node.create_publisher(Clock, "/clock", regular_qos)
 
-    # Let subscriptions and transient-local /tf_static discovery settle.
+    # Let subscriptions and transient-local /tf_static discovery settle before
+    # the first simulated timestamp.  This avoids an initial depth/TF race in
+    # short offline runs without modifying the source bag.
     time.sleep(1.0)
     first_time = None
     wall_start = None

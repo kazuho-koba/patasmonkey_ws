@@ -6,3 +6,4 @@ depth_elevation_mapper:
     allow_fallback_intrinsics: true
     publish_debug_occupancy: true
     publish_debug_pointcloud: true
+    publish_stage3_debug_layers: true

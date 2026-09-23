@@ -6,8 +6,8 @@ depth_elevation_mapper:
     base_frame: base_link
     camera_frame_override: ""
 
-    map_size_x: 6.0
-    map_size_y: 6.0
+    map_size_x: 8.0
+    map_size_y: 8.0
     resolution: 0.05
     # Provisional physical mount geometry: 0.28 m from chassis-bottom
     # base_link to camera + 0.12 m vehicle ground clearance. Stage 1 keeps
@@ -15,7 +15,7 @@ depth_elevation_mapper:
     # layers and is not applied as an artificial TF or z offset.
     nominal_camera_height_above_ground: 0.40
     min_depth: 0.4
-    max_depth: 4.0
+    max_depth: 5.0
     pixel_stride: 4
     max_processing_rate: 12.0
 
@@ -58,5 +58,31 @@ depth_elevation_mapper:
     debug_variance_max: 0.02
     debug_count_saturation: 10
     debug_age_max: 5.0
-    debug_obstacle_height_max: 0.50
+    # The four debug maxima equal the hazard thresholds below. In RViz's
+    # standard map palette, an at-threshold component is black, just like
+    # terrain_hazard_debug. Larger values are intentionally saturated.
+    debug_obstacle_height_max: 0.20
+    # Stage 3 derives lightweight local terrain cues only at debug_publish_rate,
+    # not in the depth-frame fusion path. They are not Nav2 costs.
+    publish_stage3_debug_layers: true
+    feature_max_observation_age: 3.0
+    feature_neighborhood_radius_cells: 1
+    feature_min_neighbors: 5
+    # Step needs fresh evidence on both vehicle-heading sides of the fitted
+    # plane. Insufficient support stays unknown instead of becoming a step.
+    step_min_side_neighbors: 2
+    hazard_slope_limit_deg: 20.0
+    hazard_roughness_limit: 0.03
+    # Patasmonkey's provisional impassable step limit is 7 cm.
+    hazard_step_limit: 0.07
+    hazard_obstacle_height_limit: 0.20
+    debug_slope_max_deg: 20.0
+    debug_roughness_max: 0.03
+    debug_step_height_max: 0.07
+    # Colored RViz cause markers are intentionally off on Jetson. When
+    # enabled for a bag review, only black hazard cells are emitted and the
+    # message is capped to bound serialization/allocation cost.
+    publish_hazard_cause_markers: false
+    hazard_marker_max_points: 2500
+    hazard_marker_z_offset: 0.04
     performance_log_period: 5.0

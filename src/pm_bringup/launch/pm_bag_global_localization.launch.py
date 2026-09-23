@@ -149,6 +149,12 @@ def generate_launch_description():
         "/depth_elevation_mapper/observation_count_debug",
         "/depth_elevation_mapper/observation_age_debug",
         "/depth_elevation_mapper/obstacle_height_debug",
+        # Stage 3 feature cues are recorded as diagnostics, not planner costs.
+        "/depth_elevation_mapper/slope_debug",
+        "/depth_elevation_mapper/roughness_debug",
+        "/depth_elevation_mapper/step_height_debug",
+        "/depth_elevation_mapper/terrain_hazard_debug",
+        "/depth_elevation_mapper/terrain_hazard_cause_debug",
 
         # -------------------------------------------------------------
         # OAK-D：device時計・sequence・露光・IMU内部同期の診断

@@ -1,10 +1,21 @@
-"""Vectorized depth-image sampling and pinhole back-projection."""
+"""Vectorized OAK depth sampling and pinhole back-projection helpers.
+
+The returned coordinates use the ROS optical convention (x right, y down,
+z forward) in metres.  Conversion to ``odom`` is deliberately separate so the
+caller can apply the TF matching the depth image timestamp.
+"""
 
 import numpy as np
 
 
 def sampled_points(depth_message, fx, fy, cx, cy, stride, min_depth, max_depth):
-    """Return Nx3 optical-frame points without constructing PointCloud2."""
+    """Return Nx3 optical-frame points without constructing PointCloud2.
+
+    OAK ``16UC1`` values are axial optical-z in millimetres.  ``frombuffer``
+    views the ROS payload without a full image copy; the sampled float array is
+    the intentional working allocation.  ``stride`` applies in both pixel
+    axes, so a value of four evaluates about one sixteenth of the image.
+    """
     if depth_message.encoding not in ("16UC1", "mono16"):
         raise ValueError("expected 16UC1/mono16 depth, got " + depth_message.encoding)
     dtype = ">u2" if depth_message.is_bigendian else "<u2"
@@ -28,7 +39,11 @@ def sampled_points(depth_message, fx, fy, cx, cy, stride, min_depth, max_depth):
 
 
 def quaternion_matrix(quaternion):
-    """Return a 3x3 rotation matrix for geometry_msgs Quaternion."""
+    """Return a normalised 3x3 rotation matrix for geometry_msgs Quaternion.
+
+    A near-zero quaternion is treated as identity rather than creating NaNs in
+    the mapping path.  Valid TF transforms are expected to be normalised.
+    """
     q = np.array(
         [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
         dtype=np.float64,
@@ -61,6 +76,7 @@ def quaternion_matrix(quaternion):
 
 
 def transform_points(points, transform):
+    """Apply one TF transform to all Nx3 points with vectorised NumPy math."""
     rotation = quaternion_matrix(transform.rotation)
     translation = np.array(
         [transform.translation.x, transform.translation.y, transform.translation.z]
