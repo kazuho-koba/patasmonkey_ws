@@ -8,10 +8,20 @@ from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
+from matplotlib import font_manager
 import matplotlib.pyplot as plt
 import numpy as np
 
-plt.rcParams["font.family"] = "Noto Sans CJK JP"
+# GUIを持たないコンテナでは日本語fontが未導入のことがあり、Matplotlibが警告だけ
+# 出して日本語glyphのないfontへ置換するとPNGに豆腐が残る。利用可能性を明示確認し、
+# fontがない環境では同じ情報を英語labelで描いて、読めない画像を作らない。
+try:
+    font_manager.findfont("Noto Sans CJK JP", fallback_to_default=False)
+    plt.rcParams["font.family"] = "Noto Sans CJK JP"
+    USE_JAPANESE_LABELS = True
+except ValueError:
+    plt.rcParams["font.family"] = "DejaVu Sans"
+    USE_JAPANESE_LABELS = False
 
 
 def main():
@@ -35,32 +45,54 @@ def main():
     coverage = np.array([int(r["observed_cells"]) / max(1, int(r["footprint_cells"]))
                          for r in rows])
 
+    # Fontの有無で表現だけを切り替え、データ系列や色の意味は常に同じに保つ。
+    if USE_JAPANESE_LABELS:
+        label_not_black = "中心は黒ではない"
+        label_black = "中心が黒"
+        label_unknown = "中心が未観測/先読み不可"
+        label_black_fraction = "占有範囲内の黒セル率"
+        label_coverage = "占有範囲の観測率"
+        title_path = "実走行軌跡：2 m手前の中心hazard"
+        title_footprint = "通過予定の占有範囲：黒セルと観測率"
+        xlabel_distance = "累積走行距離 [m]"
+        ylabel_fraction = "割合"
+    else:
+        label_not_black = "Center not black"
+        label_black = "Center black"
+        label_unknown = "Unobserved / no lookahead"
+        label_black_fraction = "Black cells in footprint"
+        label_coverage = "Footprint observation coverage"
+        title_path = "Traversed path: center hazard 2 m ahead"
+        title_footprint = "Footprint ahead: black cells and coverage"
+        xlabel_distance = "Cumulative travel distance [m]"
+        ylabel_fraction = "Fraction"
+
     fig, axes = plt.subplots(1, 2, figsize=(13, 5), constrained_layout=True)
     axes[0].plot(x, y, color="lightgray", linewidth=1, zorder=0)
     axes[0].scatter(x[observed & ~black], y[observed & ~black], s=13,
-                    color="#287b3f", label="中心は黒ではない")
+                    color="#287b3f", label=label_not_black)
     axes[0].scatter(x[black], y[black], s=20, color="#d62728",
-                    label="中心が黒")
+                    label=label_black)
     axes[0].scatter(x[~observed], y[~observed], s=10, color="#888888",
-                    label="中心が未観測/先読み不可")
+                    label=label_unknown)
     axes[0].set_aspect("equal", adjustable="box")
     axes[0].set_xlabel("odom x [m]")
     axes[0].set_ylabel("odom y [m]")
-    axes[0].set_title("実走行軌跡：2 m手前の中心hazard")
+    axes[0].set_title(title_path)
     axes[0].legend(fontsize=8, loc="lower right")
 
     # 欠測を線でつなぐと、観測していない区間に値が存在するように見えるため点表示する。
     axes[1].scatter(distance, fraction, color="#d62728", s=10,
-                    label="占有範囲内の黒セル率")
+                    label=label_black_fraction)
     axes[1].plot(distance, coverage, color="#1f77b4", linewidth=1,
-                 alpha=0.75, label="占有範囲の観測率")
+                 alpha=0.75, label=label_coverage)
     axes[1].scatter(distance[black], np.ones(black.sum()), s=12,
-                    color="black", label="中心が黒")
+                    color="black", label=label_black)
     axes[1].set_xlim(0, distance[-1])
     axes[1].set_ylim(-0.03, 1.05)
-    axes[1].set_xlabel("累積走行距離 [m]")
-    axes[1].set_ylabel("割合")
-    axes[1].set_title("通過予定の占有範囲：黒セルと観測率")
+    axes[1].set_xlabel(xlabel_distance)
+    axes[1].set_ylabel(ylabel_fraction)
+    axes[1].set_title(title_footprint)
     axes[1].legend(fontsize=8, loc="upper right")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.output, dpi=160)

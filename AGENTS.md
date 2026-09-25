@@ -57,14 +57,22 @@ ROS 2 Foxy stack for Patasmonkey UGV. Target is Jetson AGX Xavier / Ubuntu
 
 ## Session records
 
-For each completed user request, save one UTF-8 record under
-`notes/codex_sessions/` named:
+Group conversation records and reports by the exact session title by default.
+For the ongoing local-planning/traversability workstream, use the stable topic
+folder `perception` for both session records and reports. Use:
+
+- `notes/codex_sessions/perception/YYYYMMDD_HHMMSS_<brief-description>.md`
+- `notes/reports/perception/<report-name>.md`
+
+Keep report figures and other required assets beside their report. Do not mix
+records or reports from different sessions. These records, reports, and their
+assets are local-only; do not add them to Git or publish them. For each completed
+user request, save one record named:
 
     YYYYMMDD_HHMMSS_<brief-description>.md
 
-Use the record's local creation time, including seconds, in the filename. If
-multiple records are created within the same second, add a distinguishing
-suffix to keep their ordering clear.
+Use the local creation time, including seconds, in the filename. If multiple
+records are created within the same second, add a distinguishing suffix.
 
 Include only the relevant user prompt(s), verbatim, and the exact final
 response. Do not include internal reasoning or raw tool output; do not create a

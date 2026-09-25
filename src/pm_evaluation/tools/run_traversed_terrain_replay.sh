@@ -26,6 +26,10 @@ export ROS_LOG_DIR="$result_dir/ros_logs"
 mkdir -p "$ROS_LOG_DIR"
 
 launch_args=()
+if [ -n "${TERRAIN_MAPPER_CONFIG:-}" ]; then
+  # 検証用YAMLを明示指定すると、通常運用YAMLへのユーザー変更に左右されない。
+  launch_args+=("terrain_mapper_config:=$TERRAIN_MAPPER_CONFIG")
+fi
 if [ -n "$forensic_dir" ]; then
   # 第3引数がある場合だけ、低速なCSV・pixel由来情報の保存を明示的に有効化する。
   launch_args+=("terrain_forensic_output_dir:=$forensic_dir")
@@ -33,6 +37,10 @@ if [ -n "$forensic_dir" ]; then
   launch_args+=("terrain_forensic_roi_half_width_m:=$forensic_half_width")
   if [ -n "${TERRAIN_FORENSIC_TARGETS_CSV:-}" ]; then
     launch_args+=("terrain_forensic_targets_csv:=$TERRAIN_FORENSIC_TARGETS_CSV")
+  fi
+  if [ "${TERRAIN_FORENSIC_FRAME_EVENTS:-false}" = true ]; then
+    launch_args+=("terrain_forensic_frame_events:=true")
+    launch_args+=("terrain_forensic_frame_neighbor_radius_cells:=${TERRAIN_FORENSIC_FRAME_NEIGHBOR_RADIUS_CELLS:-0}")
   fi
 fi
 setsid ros2 launch pm_perception terrain_mapping_latest_localization_replay.launch.py \

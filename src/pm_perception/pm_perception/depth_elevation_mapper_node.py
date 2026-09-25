@@ -94,6 +94,9 @@ class DepthElevationMapper(Node):
             "debug_obstacle_height_max": 0.20,
             "publish_stage3_debug_layers": True,
             "feature_max_observation_age": 3.0,
+            # 0なら従来どおり任意の観測時刻を使う。正値ならground受理時刻に
+            # 基づいてfeature計算の時間窓を制限する（比較実験用）。
+            "feature_max_accepted_ground_age": 0.0,
             "feature_neighborhood_radius_cells": 1,
             "feature_min_neighbors": 5,
             "step_min_side_neighbors": 2,
@@ -115,6 +118,9 @@ class DepthElevationMapper(Node):
             "forensic_roi_half_width_m": 0.60,
             # 走行評価CSVから渡されたmap stamp・絶対cellだけに診断対象を限定する。
             "forensic_targets_csv": "",
+            # 対象cellだけ、受理した全depth callbackをCSV化するoffline専用スイッチ。
+            "forensic_frame_events": False,
+            "forensic_frame_neighbor_radius_cells": 0,
         }
         for name, value in defaults.items():
             self.declare_parameter(name, value)
@@ -177,6 +183,11 @@ class DepthElevationMapper(Node):
         self.feature_max_observation_age = float(
             value("feature_max_observation_age")
         )
+        self.feature_max_accepted_ground_age = float(
+            value("feature_max_accepted_ground_age")
+        )
+        if self.feature_max_accepted_ground_age < 0.0:
+            raise ValueError("feature_max_accepted_ground_age must be >= 0")
         self.feature_neighborhood_radius_cells = int(
             value("feature_neighborhood_radius_cells")
         )
@@ -202,7 +213,15 @@ class DepthElevationMapper(Node):
         self.forensic_roi_forward_max_m = float(value("forensic_roi_forward_max_m"))
         self.forensic_roi_half_width_m = float(value("forensic_roi_half_width_m"))
         self.forensic_targets_csv = str(value("forensic_targets_csv")).strip()
+        self.forensic_frame_events = bool(value("forensic_frame_events"))
+        self.forensic_frame_neighbor_radius_cells = int(
+            value("forensic_frame_neighbor_radius_cells")
+        )
         self.forensic_enabled = bool(self.forensic_output_dir)
+        if self.forensic_frame_events and not (self.forensic_enabled and self.forensic_targets_csv):
+            raise ValueError("forensic_frame_events requires output_dir and targets_csv")
+        if not 0 <= self.forensic_frame_neighbor_radius_cells <= 2:
+            raise ValueError("forensic_frame_neighbor_radius_cells must be 0..2")
         self.forensic_target_cells = set()
         self.forensic_target_spatial_cells = set()
         if self.forensic_targets_csv:
@@ -223,6 +242,19 @@ class DepthElevationMapper(Node):
                     else:
                         # 空stampは同じodom-cell座標を全replay時刻で記録する空間target。
                         self.forensic_target_spatial_cells.add(cell)
+        if self.forensic_frame_events and not self.forensic_target_spatial_cells:
+            raise ValueError(
+                "forensic_frame_events requires targets with empty map_stamp_ns"
+            )
+        # 地形平面のsupportも追う場合だけ、depth frameのCSV対象を周囲へ広げる。
+        # 2 Hzのhazard snapshot対象は元の中心セル集合のまま保持する。
+        radius = self.forensic_frame_neighbor_radius_cells
+        self.forensic_frame_target_cells = {
+            (x + dx, y + dy)
+            for x, y in self.forensic_target_spatial_cells
+            for dx in range(-radius, radius + 1)
+            for dy in range(-radius, radius + 1)
+        }
 
         self.grid = RollingElevationGrid(
             float(value("map_size_x")), float(value("map_size_y")),
@@ -233,6 +265,10 @@ class DepthElevationMapper(Node):
         self.forensic_support_file = None
         self.forensic_cells_writer = None
         self.forensic_support_writer = None
+        self.forensic_events_file = None
+        self.forensic_pixels_file = None
+        self.forensic_events_writer = None
+        self.forensic_pixels_writer = None
         if self.forensic_enabled:
             # 出力先を排他的に作成し、過去のdiagnostic CSVを誤って上書きしない。
             output_dir = Path(self.forensic_output_dir)
@@ -259,6 +295,22 @@ class DepthElevationMapper(Node):
             )
             self.forensic_cells_writer.writeheader()
             self.forensic_support_writer.writeheader()
+            if self.forensic_frame_events:
+                # 画像ごとのCSVはmap publish 2 Hzとは独立。対象cell以外は記録しない。
+                self.forensic_events_file = (output_dir / "frame_events.csv").open(
+                    "x", encoding="utf-8", newline=""
+                )
+                self.forensic_pixels_file = (output_dir / "frame_pixels.csv").open(
+                    "x", encoding="utf-8", newline=""
+                )
+                self.forensic_events_writer = csv.DictWriter(
+                    self.forensic_events_file, fieldnames=self.forensic_event_fields()
+                )
+                self.forensic_pixels_writer = csv.DictWriter(
+                    self.forensic_pixels_file, fieldnames=self.forensic_pixel_fields()
+                )
+                self.forensic_events_writer.writeheader()
+                self.forensic_pixels_writer.writeheader()
         # bounded FIFOはdepth stampに対応するTF/CameraInfoだけを待つ。TF欠落時にもlatencyと
         # memoryを制限できる。ここで最新transformを使うと移動中robotのmapが空間的にずれる。
         self.tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
@@ -477,6 +529,11 @@ class DepthElevationMapper(Node):
                 axial_depth=axial_depth if self.forensic_enabled else None,
                 source_pose=self.latest_base_pose if self.forensic_enabled else None,
             )
+            if self.forensic_frame_events:
+                self.write_forensic_frame_events(
+                    stamp_ns, points_map, pixel_u, pixel_v, axial_depth,
+                    intrinsics, camera_tf.transform,
+                )
         else:
             observed_cells = 0
 
@@ -505,6 +562,89 @@ class DepthElevationMapper(Node):
                 )
             )
             self.last_performance_log = now
+
+    @staticmethod
+    def forensic_event_fields():
+        """毎depth処理の対象cell更新と撮像時刻TFを保存するCSV列。"""
+        return [
+            "source_stamp_ns", "odom_cell_x", "odom_cell_y", "sample_count",
+            "frame_min_world_z_m", "frame_max_world_z_m", "fusion_mode",
+            "ground_before_m", "ground_after_m", "relative_before_m",
+            "relative_after_m", "base_x_m", "base_y_m", "base_z_m",
+            "base_roll_rad", "base_pitch_rad", "base_yaw_rad",
+            "camera_x_m", "camera_y_m", "camera_z_m", "camera_qx",
+            "camera_qy", "camera_qz", "camera_qw", "fx", "fy", "cx", "cy",
+        ]
+
+    @staticmethod
+    def forensic_pixel_fields():
+        """対象cellに入った間引き済みraw depth候補点のCSV列。"""
+        return [
+            "source_stamp_ns", "odom_cell_x", "odom_cell_y", "pixel_u",
+            "pixel_v", "axial_depth_m", "world_x_m", "world_y_m", "world_z_m",
+        ]
+
+    def write_forensic_frame_events(
+            self, stamp_ns, points_map, pixel_u, pixel_v, axial_depth,
+            intrinsics, camera_tf):
+        """対象odom cellへの全depth更新を、次frameに上書きされる前に書き出す。
+
+        処理済みframeに限るためrate/TF dropした画像は数えない。pixel CSVはstride後の
+        点だけを含む。通常運用ではこの関数へ到達せず、追加の全点cell計算も発生しない。
+        """
+        targets = self.forensic_frame_target_cells
+        if not targets:
+            return
+        grid = self.grid
+        observed = grid.last_frame_observed_slots
+        selected = [
+            (int(grid.world_x[slot]), int(grid.world_y[slot]), int(slot))
+            for slot in observed
+            if (int(grid.world_x[slot]), int(grid.world_y[slot])) in targets
+        ]
+        if not selected:
+            return
+        # 同じ5 cm cellに入った候補の全zとpixelを保存し、後からmedianや
+        # ray再投影を正確に試せるようにする。対象が少数なのでPython側の走査を限定できる。
+        cell_x = np.floor(points_map[:, 0] / grid.resolution).astype(np.int64)
+        cell_y = np.floor(points_map[:, 1] / grid.resolution).astype(np.int64)
+        source = grid.last_source
+        t = camera_tf.translation
+        q = camera_tf.rotation
+        fx, fy, cx, cy = intrinsics
+        bx, by, bz, br, bp, byaw = self.latest_base_pose
+        for x, y, slot in selected:
+            self.forensic_events_writer.writerow({
+                "source_stamp_ns": stamp_ns, "odom_cell_x": x, "odom_cell_y": y,
+                "sample_count": int(source["sample_count"][slot]),
+                "frame_min_world_z_m": float(source["min_world_z"][slot]),
+                "frame_max_world_z_m": float(source["max_world_z"][slot]),
+                "fusion_mode": int(source["fusion_mode"][slot]),
+                "ground_before_m": float(source["ground_before"][slot]),
+                "ground_after_m": float(source["ground_after"][slot]),
+                "relative_before_m": float(source["relative_before"][slot]),
+                "relative_after_m": float(source["relative_after"][slot]),
+                "base_x_m": bx, "base_y_m": by, "base_z_m": bz,
+                "base_roll_rad": br, "base_pitch_rad": bp, "base_yaw_rad": byaw,
+                "camera_x_m": t.x, "camera_y_m": t.y, "camera_z_m": t.z,
+                "camera_qx": q.x, "camera_qy": q.y, "camera_qz": q.z,
+                "camera_qw": q.w, "fx": fx, "fy": fy, "cx": cx, "cy": cy,
+            })
+            indices = np.flatnonzero((cell_x == x) & (cell_y == y))
+            for index in indices:
+                self.forensic_pixels_writer.writerow({
+                    "source_stamp_ns": stamp_ns, "odom_cell_x": x,
+                    "odom_cell_y": y, "pixel_u": int(pixel_u[index]),
+                    "pixel_v": int(pixel_v[index]),
+                    "axial_depth_m": float(axial_depth[index]),
+                    "world_x_m": float(points_map[index, 0]),
+                    "world_y_m": float(points_map[index, 1]),
+                    "world_z_m": float(points_map[index, 2]),
+                })
+        # launch停止でNode.destroy_node()が呼ばれない場合もある。診断は少数cellに
+        # 限定したoffline実行なので、各対象frameの終わりに両CSVを同期して末尾欠落を防ぐ。
+        self.forensic_events_file.flush()
+        self.forensic_pixels_file.flush()
 
     @staticmethod
     def forensic_cell_fields():
@@ -789,6 +929,9 @@ class DepthElevationMapper(Node):
         layers = self.grid.stage2_layers(
             self.measurement_variance, stamp_to_ns(stamp),
             self.obstacle_confidence_min, self.observation_decay_time,
+            include_accepted_ground_age=(
+                self.feature_max_accepted_ground_age > 0.0
+            ),
         )
         elevation = layers["elevation"]
         valid = layers["count"] > 0
@@ -825,9 +968,17 @@ class DepthElevationMapper(Node):
                 # shapeに見えることを抑える。局所平面supportが不足してもobstacle evidenceは
                 # 独立に有効であり、compute_terrain_features()がそのように扱う。
                 feature_started = time.perf_counter()
+                # 比較モードではground融合に採用された観測の時刻だけで近傍を選ぶ。
+                # obstacle layerはground featureと独立なので、従来どおり別途評価される。
+                if self.feature_max_accepted_ground_age > 0.0:
+                    feature_age = layers["accepted_ground_age_seconds"]
+                    feature_max_age = self.feature_max_accepted_ground_age
+                else:
+                    feature_age = layers["age_seconds"]
+                    feature_max_age = self.feature_max_observation_age
                 features = compute_terrain_features(
-                    layers["relative_elevation"], layers["age_seconds"],
-                    self.grid.resolution, self.feature_max_observation_age,
+                    layers["relative_elevation"], feature_age,
+                    self.grid.resolution, feature_max_age,
                     self.feature_neighborhood_radius_cells,
                     self.feature_min_neighbors, self.hazard_slope_limit_deg,
                     self.hazard_roughness_limit, self.hazard_step_limit,
@@ -876,7 +1027,8 @@ class DepthElevationMapper(Node):
 
     def destroy_node(self):
         """終了時にforensic CSVを閉じ、最後のbufferも確実にflushする。"""
-        for stream in (self.forensic_cells_file, self.forensic_support_file):
+        for stream in (self.forensic_cells_file, self.forensic_support_file,
+                       self.forensic_events_file, self.forensic_pixels_file):
             if stream is not None and not stream.closed:
                 stream.flush()
                 stream.close()

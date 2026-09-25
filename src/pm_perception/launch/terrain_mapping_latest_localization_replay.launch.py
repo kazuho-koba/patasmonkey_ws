@@ -12,6 +12,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -25,12 +26,31 @@ def generate_launch_description():
     forensic_roi_half_width = LaunchConfiguration(
         "terrain_forensic_roi_half_width_m")
     forensic_targets_csv = LaunchConfiguration("terrain_forensic_targets_csv")
+    mapper_config_arg = LaunchConfiguration("terrain_mapper_config")
+    forensic_frame_events = LaunchConfiguration("terrain_forensic_frame_events")
+    forensic_frame_neighbor_radius = LaunchConfiguration(
+        "terrain_forensic_frame_neighbor_radius_cells")
     with open(description_share / "urdf" / "pm.urdf", "r") as urdf_stream:
         robot_description = urdf_stream.read()
 
     sim_time = {"use_sim_time": True}
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "terrain_mapper_config",
+                default_value=str(mapper_config),
+                description="mapperの設定YAML。過去条件の再現には固定済み検証用YAMLを指定する。",
+            ),
+            DeclareLaunchArgument(
+                "terrain_forensic_frame_events",
+                default_value="false",
+                description="対象cellについて処理した全depth frameの診断CSVを保存する。",
+            ),
+            DeclareLaunchArgument(
+                "terrain_forensic_frame_neighbor_radius_cells",
+                default_value="0",
+                description="全depth frame診断に含める対象cell周囲の半径[cell]。",
+            ),
             DeclareLaunchArgument(
                 "terrain_forensic_output_dir",
                 default_value="",
@@ -124,11 +144,17 @@ def generate_launch_description():
                 name="depth_elevation_mapper",
                 output="screen",
                 parameters=[
-                    str(mapper_config), str(old_bag_config),
+                    mapper_config_arg, str(old_bag_config),
                     {
                         "forensic_output_dir": forensic_output_dir,
                         "forensic_roi_half_width_m": forensic_roi_half_width,
                         "forensic_targets_csv": forensic_targets_csv,
+                        "forensic_frame_events": ParameterValue(
+                            forensic_frame_events, value_type=bool
+                        ),
+                        "forensic_frame_neighbor_radius_cells": ParameterValue(
+                            forensic_frame_neighbor_radius, value_type=int
+                        ),
                     },
                 ],
             ),

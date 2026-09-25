@@ -43,6 +43,9 @@ class RollingElevationGrid:
         )
         self.observation_count = np.zeros(self.cell_count, dtype=np.uint32)
         self.last_observed_ns = np.zeros(self.cell_count, dtype=np.int64)
+        # plane supportの鮮度を「何らかの点が届いた時刻」と区別するためのstamp。
+        # fusion_mode=0（ground候補として不採用）の観測では更新しない。
+        self.last_ground_update_ns = np.zeros(self.cell_count, dtype=np.int64)
 
         # Stage 1では単純なvertical extentだけを埋める。ここでfieldを持たせることで、
         # Stage 2でrolling-gridのownership modelを変更せずに済む。
@@ -136,6 +139,7 @@ class RollingElevationGrid:
         self.relative_elevation_weight[slots] = 0.0
         self.observation_count[slots] = 0
         self.last_observed_ns[slots] = 0
+        self.last_ground_update_ns[slots] = 0
         self.obstacle_height[slots] = 0.0
         self.obstacle_confidence[slots] = 0.0
         self.last_obstacle_observed_ns[slots] = 0
@@ -182,6 +186,8 @@ class RollingElevationGrid:
             & (world_y < self.origin_cell_y + self.height)
         )
         if not np.any(inside):
+            if self.forensic:
+                self.last_frame_observed_slots = np.empty(0, dtype=np.intp)
             return 0
 
         world_x = world_x[inside]
@@ -230,6 +236,10 @@ class RollingElevationGrid:
         self._frame_world_x[slots] = world_x
         self._frame_world_y[slots] = world_y
         observed = np.flatnonzero(np.isfinite(self._frame_min))
+        # offline診断だけが直近frameでtouchしたslotを参照する。2 Hzのmap snapshotでは
+        # 上書きされる中間更新も、呼出し元がこのframe直後にCSVへ保存できる。
+        if self.forensic:
+            self.last_frame_observed_slots = observed
         observed_x = self._frame_world_x[observed]
         observed_y = self._frame_world_y[observed]
 
@@ -340,6 +350,13 @@ class RollingElevationGrid:
             self.relative_elevation[merge_slots] = relative_new_mean
             self.relative_elevation_weight[merge_slots] = relative_new_weight
             self.observation_count[merge_slots] += np.uint32(1)
+
+        # feature temporal gate用に、ground仮説へ採用された時刻だけを保存する。
+        # initializeには初期化とlower-replaceが含まれ、mergeはweighted average。
+        # mode 0の高い候補はgroundへ採用されないためこの時刻を進めない。
+        accepted_ground = initialize | merge
+        if np.any(accepted_ground):
+            self.last_ground_update_ns[observed[accepted_ground]] = stamp_ns
 
         if self.forensic:
             # initialize/lower-replace/weighted-mergeはground仮説にcandidateを採用する。
@@ -478,6 +495,7 @@ class RollingElevationGrid:
         current_stamp_ns,
         obstacle_confidence_min,
         observation_decay_time,
+        include_accepted_ground_age=False,
     ):
         """論理map順でpublish可能なStage 2 layerを返す。
 
@@ -518,7 +536,7 @@ class RollingElevationGrid:
         obstacle_height[obstacle_valid] = self.obstacle_height[slots][
             obstacle_valid
         ]
-        return {
+        layers = {
             "elevation": elevation,
             "relative_elevation": relative,
             "variance": variance,
@@ -527,3 +545,16 @@ class RollingElevationGrid:
             "obstacle_height": obstacle_height,
             "obstacle_confidence": obstacle_confidence,
         }
+        if include_accepted_ground_age:
+            # 通常運用では追加のgrid array生成を避け、時間窓比較時だけage layerを作る。
+            ground_update_stamp_ns = np.zeros_like(elevation, dtype=np.int64)
+            ground_update_stamp_ns[valid] = self.last_ground_update_ns[slots][valid]
+            accepted_ground_age_seconds = np.full_like(elevation, np.nan)
+            accepted_ground_age_seconds[valid] = np.maximum(
+                0.0,
+                (current_stamp_ns - ground_update_stamp_ns[valid]).astype(
+                    np.float64
+                ) / 1e9,
+            )
+            layers["accepted_ground_age_seconds"] = accepted_ground_age_seconds
+        return layers

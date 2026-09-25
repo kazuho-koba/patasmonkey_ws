@@ -31,6 +31,9 @@ build_foxy/
 install_foxy/
 log_foxy/
 bags/
+# 対話ログ・作業レポートはローカル保管のみとし、GitHubへは含めない。
+notes/codex_sessions/
+notes/reports/
 # Evaluation outputs may contain raw GNSS/location data. Keep them private by
 # default, but retain distilled, manually reviewed findings in version control.
 src/pm_evaluation/results/**

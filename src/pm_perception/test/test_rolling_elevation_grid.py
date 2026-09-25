@@ -61,6 +61,37 @@ def test_relative_layer_uses_camera_ground_reference_at_each_stamp():
     assert np.isclose(layers["relative_elevation"][valid].item(), 0.0)
 
 
+def test_accepted_ground_age_ignores_rejected_high_candidate():
+    grid = RollingElevationGrid(2.0, 2.0, 0.1)
+    grid.recenter(0.0, 0.0)
+    x = np.array([0.25])
+    y = np.array([0.25])
+    grid.fuse_points(x, y, np.array([0.10]), 1_000_000_000, 0.20, 0.20)
+    # 20 cmより高い値はground融合されないが、一般観測時刻は更新される。
+    grid.fuse_points(x, y, np.array([0.50]), 1_200_000_000, 0.20, 0.20)
+    layers = grid.stage2_layers(
+        0.0025, 1_300_000_000, 0.15, 8.0,
+        include_accepted_ground_age=True,
+    )
+    valid = layers["count"] > 0
+    assert np.isclose(layers["age_seconds"][valid].item(), 0.1)
+    assert np.isclose(
+        layers["accepted_ground_age_seconds"][valid].item(), 0.3,
+        atol=1e-6,
+    )
+
+    # groundに採用される新観測が来ると、その時刻だけは前進する。
+    grid.fuse_points(x, y, np.array([0.12]), 1_250_000_000, 0.20, 0.20)
+    layers = grid.stage2_layers(
+        0.0025, 1_300_000_000, 0.15, 8.0,
+        include_accepted_ground_age=True,
+    )
+    assert np.isclose(
+        layers["accepted_ground_age_seconds"][valid].item(), 0.05,
+        atol=1e-6,
+    )
+
+
 def test_farther_observation_has_less_fusion_weight_and_stale_weight_decays():
     grid = RollingElevationGrid(2.0, 2.0, 0.1)
     grid.recenter(0.0, 0.0)
