@@ -329,8 +329,10 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 | `obstacle_min_height` | 0.20 m | 1 frame内の垂直extentをobstacle候補として蓄積し始める最小高さ |
 | `obstacle_confidence_min` | 0.15 | obstacle debug表示の最小confidence |
 | `publish_debug_occupancy` | true | 高さ色表示をpublish |
+| `debug_publish_rate` | 2.0 Hz | Stage 2/3 debug snapshotのstamp-based上限。独立timerではなく、処理できたdepth frame上で評価する |
 | `publish_stage2_debug_layers` | true | relative / variance / count / age / obstacleのdebug topicをpublish |
 | `publish_stage3_debug_layers` | true | slope / roughness / step / provisional hazardのdebug topicをpublish |
+| `performance_log_period` | 5.0 s | callback/fusion/snapshot件数と処理時間をログする間隔 |
 | `feature_max_observation_age` | 3.0 s | これより古いセルはStage 3 featureをunknownにする |
 | `feature_neighborhood_radius_cells` | 1 | feature近傍半径（既定は3x3） |
 | `feature_min_neighbors` | 5 | roughness/stepを計算する最低fresh観測数 |
@@ -343,6 +345,20 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 | `hazard_marker_max_points` | 2500 | 色分けmarkerの最大cube数。超過時は均等間引き |
 | `publish_debug_pointcloud` | false | 1点/cellのdebug cloud |
 | `forensic_output_dir` | 空 | 非空の場合だけoffline forensic CSVを保存。通常runtimeでは指定しない |
+
+### 処理率診断ログ
+
+`performance_log_period`ごとに、mapper自身が直近区間の`depth_cb`受信Hz、grid fusion完了Hz、
+debug snapshot完了Hz、drop件数（rate / TF timeout / queue overflow / CameraInfo不一致）を出力します。
+これにより、bag内のdepth topic記録Hzと、mapper callbackが実際に処理したHzを区別できます。
+`frame`はdepth frame処理時間、`feature`は局所terrain feature計算時間、`snapshot`時間は
+debug layer生成・message化・publishまでの同期所要時間です。frame/feature/snapshotのmean/maxは
+直近最大100標本の移動値ですが、Hzとdrop件数はログ間隔内の値です。
+
+snapshotはdepth処理callback内で同期実行されます。そのため、RVizやbag記録用に多数のdebug layerを
+有効化した状態では、snapshot時間が次のdepth callback処理へ影響する可能性があります。CPU負荷評価では、
+depth topicのbag Hzだけでfusionが維持できたと判断せず、このログの`depth_cb`・`fusion`・`snapshot`
+を同じ区間で確認してください。
 
 ## 黒hazardのoffline forensic記録
 

@@ -54,6 +54,13 @@ ROS 2 Foxy stack for Patasmonkey UGV. Target is Jetson AGX Xavier / Ubuntu
   builds, and non-actuating ROS inspection are allowed.
 - Access the Jetson with `ssh pmjet1` when needed. Do not request, print,
   store, or alter SSH passwords or private keys.
+- For a long-running ROS launch or rosbag recorder over SSH, keep the control
+  session open until the remote launch and recorder have exited. Stop them with
+  SIGINT on the remote process, wait for shutdown, and do not use local SSH
+  session termination, broad `pkill`, or SIGKILL as the normal stop method.
+- Before treating a recorded bag as complete, verify the recorder is stopped,
+  `metadata.yaml` exists, and `ros2 bag info <bag-directory>` succeeds. For a
+  detached launch, retain its exact remote PID and stop only that process tree.
 
 ## Session records
 

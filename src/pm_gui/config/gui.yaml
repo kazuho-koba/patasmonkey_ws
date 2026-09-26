@@ -1,0 +1,67 @@
+operator_console:
+  ros__parameters:
+    manager:
+      backend: ros
+      status_topic: /pm/robot_manager/status
+      start_service: /pm/robot_manager/start
+      stop_service: /pm/robot_manager/stop
+      get_status_service: /pm/robot_manager/get_status
+      stale_timeout_sec: 3.0
+    topics:
+      stale_timeout_sec: 2.0
+      odometry: /odometry/global
+      joy: /pm/joy
+      cmd_vel: /cmd_vel_joy
+      gnss_fix: /fix
+      navpvt: /navpvt
+    joystick:
+      enable_button: 4
+      turbo_button: 1
+    camera:
+      topic: /oak/color/image_raw
+    ui:
+      refresh_hz: 4.0
+      window_size: [1120, 780]
+      window_title: Patasmonkey UGV Operator Console
+    recording:
+      output_directory: /workspaces/patasmonkey_ws/bags/gui
+      storage_id: mcap
+      compression_mode: none
+      compression_format: zstd
+      max_bag_size_bytes: 1000000000
+      stop_timeout_sec: 12.0
+      low_disk_gib: 5.0
+      external_recorder_node_name: rosbag2_recorder
+      profiles:
+        mission:
+          topics:
+            - /oak/color/image_raw
+            - /oak/color/camera_info
+            - /oak/imu/data
+            - /odometry/global
+            - /odometry/local
+            - /fix
+            - /navpvt
+            - /pm/joy
+            - /cmd_vel_joy
+            - /tf
+            - /tf_static
+        debug:
+          topics:
+            - /oak/stereo/left/image_raw
+            - /oak/stereo/right/image_raw
+            - /oak/depth/image_raw
+            - /oak/depth/camera_info
+            - /motor_state
+            - /wheel/odometry
+            - /ov_msckf/odomimu
+            - /vio/odometry
+            - /fix/gated
+            - /gnss/fix_gate/diagnostics
+            - /navpvt
+            - /navrelposned
+            - /navstatus
+            - /rtcm
+            - /rxmrtcm
+            - /diagnostics
+            - /rosout

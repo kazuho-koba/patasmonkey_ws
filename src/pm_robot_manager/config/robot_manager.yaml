@@ -1,0 +1,10 @@
+pm_robot_manager:
+  ros__parameters:
+    unit_name: start-pm.service
+    use_sudo: true
+    startup_timeout_sec: 45.0
+    shutdown_timeout_sec: 35.0
+    status_topic: /pm/robot_manager/status
+    start_service: /pm/robot_manager/start
+    stop_service: /pm/robot_manager/stop
+    get_status_service: /pm/robot_manager/get_status

@@ -1,0 +1,5 @@
+# Robot Managerから操作できるsystemd unitを既存Robot Coreだけに限定する。
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block start-pm.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl stop start-pm.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl is-active start-pm.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGTERM --kill-who=all start-pm.service

@@ -15,11 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nano \
     wget \
     curl \
+    fontconfig \
+    fonts-noto-cjk \
     build-essential \
     cmake \
     zstd \
     tree \
     python3-pip \
+    python3-pyqt5 \
+    python3-yaml \
     python3-usb \
     python3-colcon-common-extensions \
     python3-rosdep \

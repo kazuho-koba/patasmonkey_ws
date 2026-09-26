@@ -1,0 +1,19 @@
+[Unit]
+Description=Patasmonkey Robot Manager ROS 2 node
+After=network-online.target start-pm.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nvidia
+Group=nvidia
+Environment=HOME=/home/nvidia
+Environment=ROS_DOMAIN_ID=0
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec ros2 run pm_robot_manager robot_manager --ros-args --params-file /home/nvidia/patasmonkey_ws/install/pm_robot_manager/share/pm_robot_manager/config/robot_manager.yaml'
+Restart=on-failure
+RestartSec=3
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

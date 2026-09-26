@@ -324,9 +324,20 @@ class DepthElevationMapper(Node):
         )
         self.processing_times_ms = deque(maxlen=100)
         self.feature_times_ms = deque(maxlen=100)
+        self.debug_times_ms = deque(maxlen=100)
         self.last_performance_log = time.monotonic()
         self.dropped_tf = 0
         self.dropped_rate = 0
+        self.dropped_queue = 0
+        self.dropped_camera_info = 0
+        # 直近周期の件数を分け、topic記録Hzとmapper完了Hzを比較する。
+        self.window_depth_received = 0
+        self.window_depth_fused = 0
+        self.window_debug_cycles = 0
+        self.window_dropped_tf = 0
+        self.window_dropped_rate = 0
+        self.window_dropped_queue = 0
+        self.window_dropped_camera_info = 0
         self.warned_fallback = False
         self.latest_heading_yaw = 0.0
 
@@ -394,19 +405,23 @@ class DepthElevationMapper(Node):
 
         queue内で最も古い画像を捨てることで、一時的なTF停止後に古いdepthを処理するより現在の
         mapを優先する。受理する各画像のpose/time対応を守れるため、最新TFへの置換よりdropが
-        安全である。
+        安全である。受信数はrate制限前に記録する。
+        fusion完了数との比較に使い、入力と処理の欠落箇所を区別する。
         """
+        self.window_depth_received += 1
         stamp_ns = stamp_to_ns(message.header.stamp)
         if (
             self.last_processed_stamp_ns >= 0
             and stamp_ns - self.last_processed_stamp_ns < self.minimum_period_ns
         ):
             self.dropped_rate += 1
+            self.window_dropped_rate += 1
             return
         self.pending.append((time.monotonic(), message))
         while len(self.pending) > self.pending_queue_size:
             self.pending.popleft()
-            self.dropped_tf += 1
+            self.dropped_queue += 1
+            self.window_dropped_queue += 1
         self.process_pending()
 
     def intrinsics_for(self, message):
@@ -441,6 +456,8 @@ class DepthElevationMapper(Node):
                 if time.monotonic() - arrival <= self.tf_wait_timeout:
                     return
                 self.pending.popleft()
+                self.dropped_camera_info += 1
+                self.window_dropped_camera_info += 1
                 self.get_logger().warn("dropping depth frame: no matching CameraInfo")
                 continue
             source_frame = self.camera_frame_override or message.header.frame_id
@@ -457,6 +474,7 @@ class DepthElevationMapper(Node):
                     return
                 self.pending.popleft()
                 self.dropped_tf += 1
+                self.window_dropped_tf += 1
                 self.get_logger().warn(
                     "dropping depth frame after timestamped TF timeout: " + str(error)
                 )
@@ -473,6 +491,7 @@ class DepthElevationMapper(Node):
             and stamp_ns - self.last_processed_stamp_ns < self.minimum_period_ns
         ):
             self.dropped_rate += 1
+            self.window_dropped_rate += 1
             return
         self.last_processed_stamp_ns = stamp_ns
 
@@ -537,13 +556,22 @@ class DepthElevationMapper(Node):
         else:
             observed_cells = 0
 
+        # callback受信数と分け、TF lookupとdepth fusion完了後に数える。
+        # 受信Hzとの差から、callback以降でdropした件数を確認できる。
+        self.window_depth_fused += 1
+
         # 高価なmessage生成と局所平面featureはdebug処理なので、depth fusion rateとは独立して
         # 実行する。
         if (
             stamp_ns - self.last_debug_ns >= self.debug_period_ns
             or self.last_debug_ns < 0
         ):
+            debug_started = time.perf_counter()
             self.publish_debug(message.header.stamp)
+            self.debug_times_ms.append(
+                (time.perf_counter() - debug_started) * 1000.0
+            )
+            self.window_debug_cycles += 1
             self.last_debug_ns = stamp_ns
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         self.processing_times_ms.append(elapsed_ms)
@@ -551,17 +579,38 @@ class DepthElevationMapper(Node):
         if now - self.last_performance_log >= self.performance_log_period:
             values = np.asarray(self.processing_times_ms)
             feature_values = np.asarray(self.feature_times_ms)
+            debug_values = np.asarray(self.debug_times_ms)
+            window_duration = max(now - self.last_performance_log, 1e-3)
             self.get_logger().info(
-                "terrain frame %.2f ms mean / %.2f ms max, feature %.2f ms mean, "
-                "sampled=%d, cells=%d, rate_drops=%d, tf_drops=%d"
+                "terrain %.1f s window: depth_cb=%.2f Hz, fusion=%.2f Hz, "
+                "snapshot=%.2f Hz, drops(rate/tf/queue/info)="
+                "%d/%d/%d/%d; "
+                "frame %.2f ms mean / %.2f ms max, feature %.2f ms mean, "
+                "debug %.2f ms mean / %.2f ms max, sampled=%d, cells=%d"
                 % (
+                    window_duration,
+                    self.window_depth_received / window_duration,
+                    self.window_depth_fused / window_duration,
+                    self.window_debug_cycles / window_duration,
+                    self.window_dropped_rate,
+                    self.window_dropped_tf,
+                    self.window_dropped_queue,
+                    self.window_dropped_camera_info,
                     float(values.mean()), float(values.max()),
                     float(feature_values.mean()) if feature_values.size else 0.0,
-                    points_camera.shape[0], observed_cells, self.dropped_rate,
-                    self.dropped_tf,
+                    float(debug_values.mean()) if debug_values.size else 0.0,
+                    float(debug_values.max()) if debug_values.size else 0.0,
+                    points_camera.shape[0], observed_cells,
                 )
             )
             self.last_performance_log = now
+            self.window_depth_received = 0
+            self.window_depth_fused = 0
+            self.window_debug_cycles = 0
+            self.window_dropped_tf = 0
+            self.window_dropped_rate = 0
+            self.window_dropped_queue = 0
+            self.window_dropped_camera_info = 0
 
     @staticmethod
     def forensic_event_fields():
