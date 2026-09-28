@@ -17,6 +17,8 @@ xhost +local:$(whoami)
 
 # --rmをつけるとコンテナ停止時に破棄
 docker run -it --rm \
+  --user 1000:1000 \
+  --env HOME=/home/developer \
   --name "${CONTAINER_NAME}" \
   --network host \
   --ipc host \

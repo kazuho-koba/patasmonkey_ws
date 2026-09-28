@@ -133,4 +133,9 @@ RUN echo 'source /opt/ros/foxy/setup.bash' >> /root/.bashrc && \
 # RUN echo "alias build_pm_foxy='cd /workspaces/patasmonkey_ws && colcon --log-base log_foxy build --symlink-install --build-base build_foxy --install-base install_foxy'" >> /root/.bashrc
 # RUN echo "alias src_foxy='source /opt/ros/foxy/setup.bash && if [ -f /workspaces/ros2_ws/install_foxy/setup.bash ]; then source /workspaces/ros2_ws/install_foxy/setup.bash; fi && if [ -f /workspaces/patasmonkey_ws/install_foxy/setup.bash ]; then source /workspaces/patasmonkey_ws/install_foxy/setup.bash; fi'" >> /root/.bashrc
 
+# workspaceはhost bind mountなので、開発時の既定ユーザーもhostと同じUID/GIDにする。
+# colcon成果物をroot所有にして、後のUID 1000 buildが上書きできなくなるのを防ぐ。
+ENV HOME=/home/developer
+USER developer
+
 CMD ["/bin/bash"]
