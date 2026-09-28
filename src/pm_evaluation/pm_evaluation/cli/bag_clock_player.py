@@ -27,11 +27,17 @@ MESSAGE_TYPES: Dict[str, Type] = {
     "/wheel/odometry": Odometry,
     "/vio/odometry": Odometry,
     "/wit/imu": Imu,
+    # Mapper単独再生でも画像timestampに対応するdynamic TFを供給できるようにする。
+    "/tf": TFMessage,
     "/tf_static": TFMessage,
     "/oak/depth/image_raw": Image,
     "/oak/depth/camera_info": CameraInfo,
     "/oak/color/image_raw": Image,
     "/oak/color/camera_info": CameraInfo,
+    # 記録済みstereo/IMU入力もclock付き再生でき、OpenVINSの負荷試験へ流用できる。
+    "/oak/stereo/left/image_raw": Image,
+    "/oak/stereo/right/image_raw": Image,
+    "/oak/imu/data": Imu,
 }
 
 

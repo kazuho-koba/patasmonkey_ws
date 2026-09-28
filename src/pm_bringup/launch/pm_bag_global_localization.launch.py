@@ -15,6 +15,7 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -25,6 +26,11 @@ def generate_launch_description():
     # Visual Odometryを使うかどうかのパラメータ
     use_oakd = LaunchConfiguration("use_oakd")
     use_openvins = LaunchConfiguration("use_openvins")
+    use_teleop = LaunchConfiguration("use_teleop")
+    use_vehicle_interface = LaunchConfiguration("use_vehicle_interface")
+    mapper_callback_diagnostics = LaunchConfiguration(
+        "mapper_callback_diagnostics"
+    )
     # rosbagを記録するかどうか
     record_bag = LaunchConfiguration("record_bag")
     bag_name = LaunchConfiguration("bag_name")
@@ -98,7 +104,7 @@ def generate_launch_description():
     )
 
     def validate_trial_directory(context, runtime_actions):
-        """node起動前に曖昧または既存の出力先を拒否する。"""
+        """node起動前にbag出力先とlegacy EKF設定を検証する。"""
         resolved_name = LaunchConfiguration("bag_name").perform(context)
         if not resolved_name or Path(resolved_name).name != resolved_name:
             raise RuntimeError(
@@ -113,6 +119,17 @@ def generate_launch_description():
                     resolved_directory
                 )
             )
+
+        # legacy modeではCLIで指定された設定ファイル名を実パスへ解決する。
+        # YAMLが存在しないままEKFを無設定で起動する事態を、他nodeの起動前に防ぐ。
+        if localization_mode.perform(context) == "legacy":
+            resolved_ekf_config = Path(ekf_local_config_file.perform(context))
+            if not resolved_ekf_config.is_file():
+                raise RuntimeError(
+                    "Legacy EKF config does not exist: {}".format(
+                        resolved_ekf_config
+                    )
+                )
         return runtime_actions
 
     # rosbagに記録するトピック
@@ -270,9 +287,13 @@ def generate_launch_description():
         robot_description = f.read()
 
     teleop_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(str(teleop_launch_file)))
+        PythonLaunchDescriptionSource(str(teleop_launch_file)),
+        condition=IfCondition(use_teleop),
+    )
     vehicle_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(str(vehicle_launch_file)))
+        PythonLaunchDescriptionSource(str(vehicle_launch_file)),
+        condition=IfCondition(use_vehicle_interface),
+    )
     openvins_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(openvins_launch_file)),
         launch_arguments={
@@ -341,7 +362,14 @@ def generate_launch_description():
         executable="depth_elevation_mapper_node",
         name="depth_elevation_mapper",
         output="screen",
-        parameters=[str(terrain_mapper_config_file)],
+        parameters=[
+            str(terrain_mapper_config_file),
+            {
+                "diagnostic_callback_timing": ParameterValue(
+                    mapper_callback_diagnostics, value_type=bool
+                )
+            },
+        ],
         condition=IfCondition(use_oakd),
     )
     vio_odom_adapter_node = Node(
@@ -392,12 +420,16 @@ def generate_launch_description():
         output="screen",
     )
 
+    # `local_ekf_config`はlaunch引数から実行時に選ばれるため、
+    # PathJoinSubstitutionを文字列化せずNodeへ渡す。
+    # `str()`にすると解決済みパスではなくPython objectのreprになり、
+    # EKFがYAMLを読まず、設定topicやodom TFを生成できなくなる。
     ekf_local_node = Node(
         package="robot_localization",
         executable="ekf_node",
         name="ekf_local_node",
         output="screen",
-        parameters=[str(ekf_local_config_file)],
+        parameters=[ekf_local_config_file],
         condition=IfCondition(PythonExpression([
             "'", localization_mode, "' == 'legacy'",
         ])),
@@ -659,6 +691,24 @@ def generate_launch_description():
             "use_openvins",
             default_value="true",
             description="Start OpenVINS",
+        ),
+        DeclareLaunchArgument(
+            "use_teleop",
+            default_value="true",
+            description="ジョイスティック操縦を起動する。センサ単独試験ではfalseにする",
+        ),
+        DeclareLaunchArgument(
+            "use_vehicle_interface",
+            default_value="true",
+            description="モーター制御可能な車両interfaceを起動する。センサ単独試験ではfalseにする",
+        ),
+        DeclareLaunchArgument(
+            "mapper_callback_diagnostics",
+            default_value="false",
+            description=(
+                "mapperのdepth/TF callback間隔・age・処理時間をログする。"
+                "負荷測定時のみtrueにする"
+            ),
         ),
         DeclareLaunchArgument(
             "record_bag",

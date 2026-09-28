@@ -17,7 +17,8 @@ depth_elevation_mapper:
     min_depth: 0.4
     max_depth: 5.0
     pixel_stride: 4
-    max_processing_rate: 12.0
+    # 10 Hz depthのstamp jitter（bagでは約50 ms間隔）を落とさず、25 Hzを上限にする。
+    max_processing_rate: 25.0
 
     # Frames are retained briefly until TF for the exact image timestamp is
     # available. Expired frames are dropped; latest TF is never substituted.
@@ -48,6 +49,8 @@ depth_elevation_mapper:
 
     publish_debug_occupancy: true
     publish_debug_pointcloud: false
+    # node clock上のROS timer周期。初回fusion後は新規depthが途切れても周期評価し、
+    # 古くなったterrain featureをunknownとして反映する。
     debug_publish_rate: 2.0
     debug_elevation_min: -0.5
     debug_elevation_max: 0.5
@@ -88,3 +91,5 @@ depth_elevation_mapper:
     hazard_marker_max_points: 2500
     hazard_marker_z_offset: 0.04
     performance_log_period: 5.0
+    # CPU/DDS/executor切り分け時だけ有効化する。受信頻度・stamp age・TF callback時間をログへ追加する。
+    diagnostic_callback_timing: false

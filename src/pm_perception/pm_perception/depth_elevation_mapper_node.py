@@ -42,6 +42,72 @@ def yaw_from_quaternion(quaternion):
     ))
 
 
+class _MeasuredTransformListener(TransformListener):
+    """TF listenerのsubscription callback負荷を任意計測する薄いwrapper。
+
+    TFの受信・Buffer登録は親クラスへそのまま委譲する。計測有効時だけwall timeと
+    callback内のtransform数を数え、5秒周期の性能ログで集計値を取り出す。
+    mapperがSingleThreadedExecutorで動く通常構成を前提に、追加lockやmessage複製は行わない。
+    """
+
+    def __init__(self, buffer, node, diagnostics_enabled=False):
+        self.diagnostics_enabled = bool(diagnostics_enabled)
+        self._diagnostic_counters = self._empty_counters()
+        super().__init__(buffer, node)
+
+    @staticmethod
+    def _empty_counters():
+        """dynamic/staticそれぞれの直近集計区間を初期化する。"""
+        return {
+            "dynamic_calls": 0,
+            "dynamic_transforms": 0,
+            "dynamic_time_ms": 0.0,
+            "dynamic_max_ms": 0.0,
+            "static_calls": 0,
+            "static_transforms": 0,
+            "static_time_ms": 0.0,
+            "static_max_ms": 0.0,
+        }
+
+    def callback(self, data):
+        """dynamic `/tf` callbackを通常処理し、必要なときだけ所要時間を集計する。"""
+        if not self.diagnostics_enabled:
+            return super().callback(data)
+        started = time.perf_counter()
+        try:
+            return super().callback(data)
+        finally:
+            elapsed_ms = (time.perf_counter() - started) * 1000.0
+            counters = self._diagnostic_counters
+            counters["dynamic_calls"] += 1
+            counters["dynamic_transforms"] += len(data.transforms)
+            counters["dynamic_time_ms"] += elapsed_ms
+            counters["dynamic_max_ms"] = max(
+                counters["dynamic_max_ms"], elapsed_ms
+            )
+
+    def static_callback(self, data):
+        """`/tf_static` callbackも同じ方法で測る（TF登録自体は変更しない）。"""
+        if not self.diagnostics_enabled:
+            return super().static_callback(data)
+        started = time.perf_counter()
+        try:
+            return super().static_callback(data)
+        finally:
+            elapsed_ms = (time.perf_counter() - started) * 1000.0
+            counters = self._diagnostic_counters
+            counters["static_calls"] += 1
+            counters["static_transforms"] += len(data.transforms)
+            counters["static_time_ms"] += elapsed_ms
+            counters["static_max_ms"] = max(counters["static_max_ms"], elapsed_ms)
+
+    def take_diagnostics(self):
+        """直近log区間のTF callback統計を返し、次の区間用にゼロクリアする。"""
+        counters = self._diagnostic_counters
+        self._diagnostic_counters = self._empty_counters()
+        return counters
+
+
 class DepthElevationMapper(Node):
     """samplingしたdepthを固定allocationの`odom` 2.5D gridへ直接fusionする。
 
@@ -64,7 +130,9 @@ class DepthElevationMapper(Node):
             "min_depth": 0.4,
             "max_depth": 4.0,
             "pixel_stride": 4,
-            "max_processing_rate": 12.0,
+            # depth header間隔は通常約100 msでも、bagに約50 msの短周期が含まれる。
+            # 25 Hz上限（40 ms間隔）ならその揺れを落とさず、異常な高頻度入力には上限を残せる。
+            "max_processing_rate": 25.0,
             "pending_queue_size": 5,
             "tf_wait_timeout": 0.25,
             "ground_merge_threshold": 0.20,
@@ -111,6 +179,8 @@ class DepthElevationMapper(Node):
             "hazard_marker_max_points": 2500,
             "hazard_marker_z_offset": 0.04,
             "performance_log_period": 5.0,
+            # CPU/DDS/executor切り分け用。通常runtimeではcallback毎の時計取得を行わない。
+            "diagnostic_callback_timing": False,
             # 空文字列なら診断配列・CSVを作らない。bag forensic専用の明示opt-in。
             "forensic_output_dir": "",
             "forensic_roi_forward_min_m": 0.25,
@@ -139,6 +209,7 @@ class DepthElevationMapper(Node):
             value("nominal_camera_height_above_ground")
         )
         self.pixel_stride = int(value("pixel_stride"))
+        # 上限はdepthのheader stamp間隔で守る。arrival wall timeやlatest TFへ置き換えない。
         self.minimum_period_ns = int(
             1e9 / max(float(value("max_processing_rate")), 0.001)
         )
@@ -208,6 +279,9 @@ class DepthElevationMapper(Node):
         self.hazard_marker_max_points = int(value("hazard_marker_max_points"))
         self.hazard_marker_z_offset = float(value("hazard_marker_z_offset"))
         self.performance_log_period = float(value("performance_log_period"))
+        self.diagnostic_callback_timing = bool(
+            value("diagnostic_callback_timing")
+        )
         self.forensic_output_dir = str(value("forensic_output_dir")).strip()
         self.forensic_roi_forward_min_m = float(value("forensic_roi_forward_min_m"))
         self.forensic_roi_forward_max_m = float(value("forensic_roi_forward_max_m"))
@@ -314,17 +388,37 @@ class DepthElevationMapper(Node):
         # bounded FIFOはdepth stampに対応するTF/CameraInfoだけを待つ。TF欠落時にもlatencyと
         # memoryを制限できる。ここで最新transformを使うと移動中robotのmapが空間的にずれる。
         self.tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
-        self.tf_listener = TransformListener(self.tf_buffer, self)
+        if self.diagnostic_callback_timing:
+            # 診断中だけlistener wrapperを使う。通常運用ではTF hot pathへ追加dispatchすら
+            # 持ち込まず、Foxy標準listenerをそのまま使う。
+            self.tf_listener = _MeasuredTransformListener(
+                self.tf_buffer, self, diagnostics_enabled=True
+            )
+        else:
+            self.tf_listener = TransformListener(self.tf_buffer, self)
         self.pending = deque()
         self.camera_info = None
         self.last_processed_stamp_ns = -1
-        self.last_debug_ns = -1
-        self.debug_period_ns = int(
-            1e9 / max(float(value("debug_publish_rate")), 0.001)
-        )
+        self.debug_period_sec = 1.0 / max(float(value("debug_publish_rate")), 0.001)
+        # 最初のTF付きdepth処理が完了するまでは空mapを出さない。その後は新規fusionがなくても
+        # 固定周期で評価し、観測ageに応じたfeatureのunknown化を止めない。
+        self.has_fused_depth = False
         self.processing_times_ms = deque(maxlen=100)
         self.feature_times_ms = deque(maxlen=100)
         self.debug_times_ms = deque(maxlen=100)
+        # 有効化された場合だけ、受信間隔・stamp間隔・受信時age・callback占有時間を
+        # 最大200件保持する。5秒ごとのログ後に消去し、bag全長に比例したmemory増加を防ぐ。
+        self.diagnostic_depth_header_intervals_ms = deque(maxlen=200)
+        self.diagnostic_depth_arrival_intervals_ms = deque(maxlen=200)
+        self.diagnostic_depth_age_ms = deque(maxlen=200)
+        self.diagnostic_depth_callback_ms = deque(maxlen=200)
+        self.diagnostic_last_depth_stamp_ns = None
+        self.diagnostic_last_depth_arrival_sec = None
+        self.diagnostic_processed_frames_total = 0
+        self.diagnostic_retry_calls = 0
+        self.diagnostic_retry_fused_frames = 0
+        self.diagnostic_retry_time_ms = 0.0
+        self.diagnostic_retry_max_ms = 0.0
         self.last_performance_log = time.monotonic()
         self.dropped_tf = 0
         self.dropped_rate = 0
@@ -347,7 +441,16 @@ class DepthElevationMapper(Node):
         self.create_subscription(
             Image, self.depth_topic, self.depth_callback, qos_profile_sensor_data
         )
-        self.retry_timer = self.create_timer(0.01, self.process_pending)
+        # 通常時は元のcallbackを直接timerへ登録する。診断時だけwrapperを通して、TF待ちqueueを
+        # 100 Hzで確認するtimerがexecutorを占有する時間も測る。
+        retry_callback = (
+            self.diagnostic_retry_timer_callback
+            if self.diagnostic_callback_timing else self.process_pending
+        )
+        self.retry_timer = self.create_timer(0.01, retry_callback)
+        self.debug_timer = self.create_timer(
+            self.debug_period_sec, self.debug_timer_callback
+        )
         # 以下のOccupancyGrid publisherはすべて可視化診断用であり、Nav2 costではない。private
         # nameにして、実験中のAPIを既存planner/localisation interfaceから隔離する。
         self.occupancy_publisher = self.create_publisher(
@@ -408,6 +511,38 @@ class DepthElevationMapper(Node):
         安全である。受信数はrate制限前に記録する。
         fusion完了数との比較に使い、入力と処理の欠落箇所を区別する。
         """
+        if not self.diagnostic_callback_timing:
+            self._depth_callback_impl(message)
+            return
+
+        # 画像timestamp間隔はpublisherが生成した周期、arrival間隔はexecutorがcallbackを
+        # 開始した周期である。両者の差とheader ageから、受信待ち・callback遅延を推定する。
+        callback_started = time.perf_counter()
+        arrival_sec = time.monotonic()
+        stamp_ns = stamp_to_ns(message.header.stamp)
+        if self.diagnostic_last_depth_stamp_ns is not None:
+            self.diagnostic_depth_header_intervals_ms.append(
+                (stamp_ns - self.diagnostic_last_depth_stamp_ns) / 1e6
+            )
+            self.diagnostic_depth_arrival_intervals_ms.append(
+                (arrival_sec - self.diagnostic_last_depth_arrival_sec) * 1000.0
+            )
+        self.diagnostic_last_depth_stamp_ns = stamp_ns
+        self.diagnostic_last_depth_arrival_sec = arrival_sec
+        # ROS clockを使うためbagのuse_sim_timeにも揃う。負値も補正せず記録し、clock不整合を
+        # 遅延と誤認しないようにする。
+        self.diagnostic_depth_age_ms.append(
+            (self.get_clock().now().nanoseconds - stamp_ns) / 1e6
+        )
+        try:
+            self._depth_callback_impl(message)
+        finally:
+            self.diagnostic_depth_callback_ms.append(
+                (time.perf_counter() - callback_started) * 1000.0
+            )
+
+    def _depth_callback_impl(self, message):
+        """従来の受信・rate gate・FIFO処理。診断の有無でmap入力動作を変えない。"""
         self.window_depth_received += 1
         stamp_ns = stamp_to_ns(message.header.stamp)
         if (
@@ -423,6 +558,34 @@ class DepthElevationMapper(Node):
             self.dropped_queue += 1
             self.window_dropped_queue += 1
         self.process_pending()
+
+    @staticmethod
+    def _diagnostic_sample_summary(samples):
+        """少数の診断sampleをログ向けのmean/max/min文字列へ変換する。"""
+        if not samples:
+            return "n=0"
+        values = np.asarray(samples, dtype=np.float64)
+        return "n=%d mean=%.2f max=%.2f min=%.2f ms" % (
+            values.size, float(values.mean()), float(values.max()),
+            float(values.min()),
+        )
+
+    def diagnostic_retry_timer_callback(self):
+        """100 Hz TF-wait timerからのqueue処理時間を診断区間内で集計する。"""
+        started = time.perf_counter()
+        frames_before = self.diagnostic_processed_frames_total
+        try:
+            self.process_pending()
+        finally:
+            elapsed_ms = (time.perf_counter() - started) * 1000.0
+            self.diagnostic_retry_calls += 1
+            self.diagnostic_retry_time_ms += elapsed_ms
+            self.diagnostic_retry_max_ms = max(
+                self.diagnostic_retry_max_ms, elapsed_ms
+            )
+            self.diagnostic_retry_fused_frames += (
+                self.diagnostic_processed_frames_total - frames_before
+            )
 
     def intrinsics_for(self, message):
         """この画像geometryに対応する場合だけcalibrationを返す。
@@ -559,20 +722,14 @@ class DepthElevationMapper(Node):
         # callback受信数と分け、TF lookupとdepth fusion完了後に数える。
         # 受信Hzとの差から、callback以降でdropした件数を確認できる。
         self.window_depth_fused += 1
+        # depthが一時的に途切れても、以後は固定周期snapshotでcell ageを進められる。
+        # timer自体は最初のTF付きdepth処理が終わるまでは抑止する。
+        self.has_fused_depth = True
+        if self.diagnostic_callback_timing:
+            self.diagnostic_processed_frames_total += 1
 
-        # 高価なmessage生成と局所平面featureはdebug処理なので、depth fusion rateとは独立して
-        # 実行する。
-        if (
-            stamp_ns - self.last_debug_ns >= self.debug_period_ns
-            or self.last_debug_ns < 0
-        ):
-            debug_started = time.perf_counter()
-            self.publish_debug(message.header.stamp)
-            self.debug_times_ms.append(
-                (time.perf_counter() - debug_started) * 1000.0
-            )
-            self.window_debug_cycles += 1
-            self.last_debug_ns = stamp_ns
+        # Hazard計算・debug message生成はdepth callbackに直結させず、2 Hz timerへ委譲する。
+        # timerはmap変更通知を待たず、融合処理と同じexecutor内で最新gridを周期評価する。
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         self.processing_times_ms.append(elapsed_ms)
         now = time.monotonic()
@@ -581,12 +738,71 @@ class DepthElevationMapper(Node):
             feature_values = np.asarray(self.feature_times_ms)
             debug_values = np.asarray(self.debug_times_ms)
             window_duration = max(now - self.last_performance_log, 1e-3)
+            diagnostic_suffix = ""
+            if self.diagnostic_callback_timing:
+                tf_stats = self.tf_listener.take_diagnostics()
+                dynamic_occupancy = (
+                    100.0 * tf_stats["dynamic_time_ms"]
+                    / (window_duration * 1000.0)
+                )
+                static_occupancy = (
+                    100.0 * tf_stats["static_time_ms"]
+                    / (window_duration * 1000.0)
+                )
+                retry_occupancy = (
+                    100.0 * self.diagnostic_retry_time_ms
+                    / (window_duration * 1000.0)
+                )
+                diagnostic_suffix = (
+                    "; diag depth_header_dt=[%s], depth_arrival_dt=[%s], "
+                    "depth_age=[%s], depth_callback=[%s]; "
+                    "tf=%d msg/%.1f s, %d transform/%.1f s, "
+                    "cb=%.3f ms mean/%.3f ms max/%.1f%% one-core; "
+                    "tf_static=%d msg/%.1f s, %d transform/%.1f s, "
+                    "cb=%.3f ms mean/%.3f ms max/%.1f%% one-core; "
+                    "retry_timer=%.1f call/s, %.1f fused frame/s, "
+                    "cb=%.3f ms mean/%.3f ms max/%.1f%% one-core"
+                    % (
+                        self._diagnostic_sample_summary(
+                            self.diagnostic_depth_header_intervals_ms
+                        ),
+                        self._diagnostic_sample_summary(
+                            self.diagnostic_depth_arrival_intervals_ms
+                        ),
+                        self._diagnostic_sample_summary(self.diagnostic_depth_age_ms),
+                        self._diagnostic_sample_summary(
+                            self.diagnostic_depth_callback_ms
+                        ),
+                        tf_stats["dynamic_calls"],
+                        tf_stats["dynamic_calls"] / window_duration,
+                        tf_stats["dynamic_transforms"],
+                        tf_stats["dynamic_transforms"] / window_duration,
+                        tf_stats["dynamic_time_ms"]
+                        / max(tf_stats["dynamic_calls"], 1),
+                        tf_stats["dynamic_max_ms"],
+                        dynamic_occupancy,
+                        tf_stats["static_calls"],
+                        tf_stats["static_calls"] / window_duration,
+                        tf_stats["static_transforms"],
+                        tf_stats["static_transforms"] / window_duration,
+                        tf_stats["static_time_ms"]
+                        / max(tf_stats["static_calls"], 1),
+                        tf_stats["static_max_ms"],
+                        static_occupancy,
+                        self.diagnostic_retry_calls / window_duration,
+                        self.diagnostic_retry_fused_frames / window_duration,
+                        self.diagnostic_retry_time_ms
+                        / max(self.diagnostic_retry_calls, 1),
+                        self.diagnostic_retry_max_ms,
+                        retry_occupancy,
+                    )
+                )
             self.get_logger().info(
                 "terrain %.1f s window: depth_cb=%.2f Hz, fusion=%.2f Hz, "
                 "snapshot=%.2f Hz, drops(rate/tf/queue/info)="
                 "%d/%d/%d/%d; "
                 "frame %.2f ms mean / %.2f ms max, feature %.2f ms mean, "
-                "debug %.2f ms mean / %.2f ms max, sampled=%d, cells=%d"
+                "debug %.2f ms mean / %.2f ms max, sampled=%d, cells=%d%s"
                 % (
                     window_duration,
                     self.window_depth_received / window_duration,
@@ -601,6 +817,7 @@ class DepthElevationMapper(Node):
                     float(debug_values.mean()) if debug_values.size else 0.0,
                     float(debug_values.max()) if debug_values.size else 0.0,
                     points_camera.shape[0], observed_cells,
+                    diagnostic_suffix,
                 )
             )
             self.last_performance_log = now
@@ -611,6 +828,15 @@ class DepthElevationMapper(Node):
             self.window_dropped_rate = 0
             self.window_dropped_queue = 0
             self.window_dropped_camera_info = 0
+            if self.diagnostic_callback_timing:
+                self.diagnostic_depth_header_intervals_ms.clear()
+                self.diagnostic_depth_arrival_intervals_ms.clear()
+                self.diagnostic_depth_age_ms.clear()
+                self.diagnostic_depth_callback_ms.clear()
+                self.diagnostic_retry_calls = 0
+                self.diagnostic_retry_fused_frames = 0
+                self.diagnostic_retry_time_ms = 0.0
+                self.diagnostic_retry_max_ms = 0.0
 
     @staticmethod
     def forensic_event_fields():
@@ -972,6 +1198,26 @@ class DepthElevationMapper(Node):
         # 2 Hzのpublish単位でflushし、bag再生が中断しても診断結果を残す。
         self.forensic_cells_file.flush()
         self.forensic_support_file.flush()
+
+    def debug_timer_callback(self):
+        """最初のfusion後、timer周期でterrain/Hazard snapshotを作る。
+
+        callback内で重いfeature計算を行うとdepth画像headerのjitterがsnapshot頻度へ伝播する。
+        ROS timerで周期を決め、timer時刻でlayer ageとdebug message stampを評価する。新しいdepth
+        fusionがないtickも省略しない。欠測中にobservation ageだけ進みfeatureがunknownになる状態も
+        publishでき、古いHazard mapが更新されないまま残ることを防ぐ。
+        executorは通常single-threadedなので、grid更新処理とsnapshot読み出しは直列に保たれる。
+        """
+        if not self.has_fused_depth:
+            return
+
+        stamp = self.get_clock().now().to_msg()
+        debug_started = time.perf_counter()
+        self.publish_debug(stamp)
+        self.debug_times_ms.append(
+            (time.perf_counter() - debug_started) * 1000.0
+        )
+        self.window_debug_cycles += 1
 
     def publish_debug(self, stamp):
         """一貫したgrid snapshotから低rateの検査layerをpublishする。"""

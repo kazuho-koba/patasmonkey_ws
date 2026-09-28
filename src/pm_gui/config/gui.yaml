@@ -11,17 +11,34 @@ operator_console:
       stale_timeout_sec: 2.0
       odometry: /odometry/global
       joy: /pm/joy
-      cmd_vel: /cmd_vel_joy
       gnss_fix: /fix
       navpvt: /navpvt
     joystick:
-      enable_button: 4
-      turbo_button: 1
+      config_package: pm_teleop
+      teleop_config: config/teleop_twist_joy.yaml
+      joy_config: config/joy_params.yaml
+      # 試験時の左入力に表示を合わせるため、GUI上のX符号だけ反転する。
+      axis_display_sign:
+        x: -1.0
+        y: 1.0
     camera:
       topic: /oak/color/image_raw
+    attitude:
+      urdf_path: ""
+      pixels_per_meter: 240.0
+    map:
+      online_tiles_enabled: true
+      tile_url_template: https://tile.openstreetmap.org/{z}/{x}/{y}.png
+      user_agent: PatasmonkeyOperatorConsole/0.1
+      tile_cache_dir: ~/.cache/pm_gui/osm
+      offline_tiles_dir: /workspaces/patasmonkey_ws/maps/xyz
+      attribution: © OpenStreetMap contributors
+      zoom: 17
+      gnss_history_points: 2000
     ui:
       refresh_hz: 4.0
       window_size: [1120, 780]
+      fixed_window_size: false
       window_title: Patasmonkey UGV Operator Console
     recording:
       output_directory: /workspaces/patasmonkey_ws/bags/gui

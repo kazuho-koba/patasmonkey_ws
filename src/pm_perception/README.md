@@ -320,7 +320,7 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 | `min_depth/max_depth` | 0.4/4.0 m | 使用depth |
 | `nominal_camera_height_above_ground` | 0.40 m | 暫定カメラ対地高さ。Stage 2の`relative_elevation`基準。静的TFやodom-zは変更しない |
 | `pixel_stride` | 4 | 4x4 sampling |
-| `max_processing_rate` | 12 Hz | frame rate上限（現行10 Hz入力をjitterで間引かない） |
+| `max_processing_rate` | 25 Hz | depth画像header stamp間隔の上限。10 Hz入力に含まれる約50 msの短い間隔を落とさず、40 ms未満のburstは抑える |
 | `tf_wait_timeout` | 0.25 s | exact timestamp TF待ち |
 | `ground_merge_threshold` | 0.20 m | ground仮説へ融合するz差 |
 | `measurement_variance` | 0.0025 m² | 簡易観測分散floor |
@@ -329,10 +329,11 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 | `obstacle_min_height` | 0.20 m | 1 frame内の垂直extentをobstacle候補として蓄積し始める最小高さ |
 | `obstacle_confidence_min` | 0.15 | obstacle debug表示の最小confidence |
 | `publish_debug_occupancy` | true | 高さ色表示をpublish |
-| `debug_publish_rate` | 2.0 Hz | Stage 2/3 debug snapshotのstamp-based上限。独立timerではなく、処理できたdepth frame上で評価する |
+| `debug_publish_rate` | 2.0 Hz | 初回fusion後のROS timer周期でStage 2/3 debugとHazardを評価・publishする。新しいdepth fusionがないtickも省略せず、観測ageによるfeatureのunknown化を反映する |
 | `publish_stage2_debug_layers` | true | relative / variance / count / age / obstacleのdebug topicをpublish |
 | `publish_stage3_debug_layers` | true | slope / roughness / step / provisional hazardのdebug topicをpublish |
 | `performance_log_period` | 5.0 s | callback/fusion/snapshot件数と処理時間をログする間隔 |
+| `diagnostic_callback_timing` | false | callback間隔・depth stamp age・TF callback占有時間を性能ログへ追加する診断用設定 |
 | `feature_max_observation_age` | 3.0 s | これより古いセルはStage 3 featureをunknownにする |
 | `feature_neighborhood_radius_cells` | 1 | feature近傍半径（既定は3x3） |
 | `feature_min_neighbors` | 5 | roughness/stepを計算する最低fresh観測数 |
@@ -343,6 +344,29 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 | `hazard_obstacle_height_limit` | 0.20 m | 暫定hazard=1となるobstacle heightの目安 |
 | `publish_hazard_cause_markers` | false | 最大寄与cueをRVizで色分けしたcubeとして出力。Jetson負荷を避け既定OFF |
 | `hazard_marker_max_points` | 2500 | 色分けmarkerの最大cube数。超過時は均等間引き |
+
+### callback競合の診断
+
+CPU/DDS/executor競合の調査時は、通常のbag記録launchに
+`mapper_callback_diagnostics:=true`を追加します。既定は`false`で、通常運用ではcallbackごとの
+時計取得や診断統計の蓄積を行いません。
+
+5秒ごとの`terrain ...`ログに、次の診断値が追加されます。
+
+- `depth_header_dt`: depth header timestampの間隔。bag上の入力周期と受信欠落の候補を示す。
+- `depth_arrival_dt`: mapper executorがdepth callbackを開始した時刻の間隔。
+- `depth_age`: callback開始時点のROS clockとdepth header timestampとの差。use_sim_timeが有効ならbag clock基準。
+- `depth_callback`: subscription callback全体のwall時間。同期的なfusion処理を含む。
+- `tf` / `tf_static`: callback数・transform数の毎秒値とcallback平均/最大処理時間。
+  `one-core`は、その5秒区間のcallback処理時間合計が単一CPU coreを占めた割合の概算。
+- `retry_timer`: TF待ちqueueを確認する100 Hz timer callbackの平均/最大処理時間と、timer内で
+  fusionしたframe数。depth subscription callbackとは別経路の処理時間を表す。
+
+たとえば、bag上の`depth_header_dt`は約100 msなのに`depth_arrival_dt`が大きく間延びし、
+`depth_age`も増えるならexecutor側の滞留と整合する。一方、header間隔とarrival間隔が一致し、
+ageも小さければ、受信遅延以外（rate gateや後段処理）を調べる。これらの値だけではDDS/RMW
+queue lossを断定できない。FoxyのPython subscriptionには一般的なmessage-lost event counterが
+ないため、bag記録数・header stamp列・callback統計を合わせて解釈する。
 | `publish_debug_pointcloud` | false | 1点/cellのdebug cloud |
 | `forensic_output_dir` | 空 | 非空の場合だけoffline forensic CSVを保存。通常runtimeでは指定しない |
 
@@ -355,8 +379,10 @@ debug snapshot完了Hz、drop件数（rate / TF timeout / queue overflow / Camer
 debug layer生成・message化・publishまでの同期所要時間です。frame/feature/snapshotのmean/maxは
 直近最大100標本の移動値ですが、Hzとdrop件数はログ間隔内の値です。
 
-snapshotはdepth処理callback内で同期実行されます。そのため、RVizやbag記録用に多数のdebug layerを
-有効化した状態では、snapshot時間が次のdepth callback処理へ影響する可能性があります。CPU負荷評価では、
+snapshotはdepth callbackと別のROS timer callbackで実行されます。通常のsingle-threaded executorでは
+depth callback等と直列ですが、深度画像timestampの間隔揺れがsnapshot周期へ直接伝播しない構成です。
+RVizやbag記録用に多数のdebug layerを有効化した状態では、snapshot時間が後続callbackを遅らせる
+可能性があります。CPU負荷評価では、
 depth topicのbag Hzだけでfusionが維持できたと判断せず、このログの`depth_cb`・`fusion`・`snapshot`
 を同じ区間で確認してください。
 

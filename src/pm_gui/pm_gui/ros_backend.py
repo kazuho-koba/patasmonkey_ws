@@ -8,10 +8,10 @@ import signal
 import subprocess
 import threading
 import time
+from collections import deque
 from datetime import datetime
 
 import rclpy
-from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
@@ -60,6 +60,9 @@ class RosBackend(Node):
         self._service_names = {self.start_service_name, self.stop_service_name,
                                self.get_status_service_name}
         self._telemetry = {}
+        map_config = config.get('map', {})
+        path_limit = max(10, int(map_config.get('gnss_history_points', 2000)))
+        self._gnss_path = deque(maxlen=path_limit)
         self._camera_enabled = False
         self._camera_config = config.get('camera', {})
         self._camera_subscription = None
@@ -83,8 +86,6 @@ class RosBackend(Node):
         self._telemetry_subscriptions = []
         self._add_subscription(Odometry, topics.get('odometry', '/odometry/global'),
                                self._odometry_callback)
-        self._add_subscription(Twist, topics.get('cmd_vel', '/cmd_vel_joy'),
-                               self._twist_callback)
         self._add_subscription(Joy, topics.get('joy', '/pm/joy'), self._joy_callback)
         self._add_subscription(NavSatFix, topics.get('gnss_fix', '/fix'),
                                self._fix_callback)
@@ -126,17 +127,30 @@ class RosBackend(Node):
             'child_frame_id': message.child_frame_id,
         })
 
-    def _twist_callback(self, message):
-        self._store('twist', {'linear_x': message.linear.x, 'angular_z': message.angular.z})
-
     def _joy_callback(self, message):
         self._store('joy', {'buttons': list(message.buttons), 'axes': list(message.axes)})
 
     def _fix_callback(self, message):
+        latitude, longitude = float(message.latitude), float(message.longitude)
         self._store('fix', {
-            'status': message.status.status, 'latitude': message.latitude,
-            'longitude': message.longitude, 'altitude': message.altitude,
+            'status': int(message.status.status), 'latitude': latitude,
+            'longitude': longitude, 'altitude': float(message.altitude),
         })
+        # Web地図の軌跡にはstatusが有効で範囲内のWGS84 fixだけを蓄積する。
+        if (int(message.status.status) < 0 or not math.isfinite(latitude)
+                or not math.isfinite(longitude) or abs(latitude) > 90.0
+                or abs(longitude) > 180.0):
+            return
+        with self._lock:
+            if self._gnss_path:
+                previous_lat, previous_lon = self._gnss_path[-1]
+                mean_lat = math.radians((previous_lat + latitude) * 0.5)
+                east_m = math.radians(longitude - previous_lon) * math.cos(mean_lat) * 6371000.0
+                north_m = math.radians(latitude - previous_lat) * 6371000.0
+                # GNSSの小さな揺れで同じ場所の点を増やさず、0.5 m以上の移動だけ記録する。
+                if math.hypot(east_m, north_m) < 0.5:
+                    return
+            self._gnss_path.append((latitude, longitude))
 
     def _navpvt_callback(self, message):
         # u-blox carrier phase flags distinguish RTK FLOAT/FIX; NavSatFix status alone cannot.
@@ -368,6 +382,7 @@ class RosBackend(Node):
             last_heartbeat, state = self._last_heartbeat, self._state
             error, unit, response = self._error, self._unit, self._last_response
             telemetry = dict(self._telemetry)
+            gnss_path = list(self._gnss_path)
             image, image_stamp = self._camera_image, self._camera_stamp
             image_received_stamp = self._camera_received_stamp
             camera_enabled, camera_error = self._camera_enabled, self._camera_error
@@ -407,6 +422,7 @@ class RosBackend(Node):
         return {
             'connection': connection, 'core_state': state, 'error': error, 'unit': unit,
             'heartbeat_age_sec': age, 'last_response': response, 'telemetry': data,
+            'gnss_path': gnss_path,
             'camera': {
                 'enabled': camera_enabled,
                 'subscribed': camera_subscription_active,
