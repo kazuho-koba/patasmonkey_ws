@@ -399,6 +399,13 @@ class DepthElevationMapper(Node):
         self.pending = deque()
         self.camera_info = None
         self.last_processed_stamp_ns = -1
+        if self.diagnostic_callback_timing:
+            # launch overrideが実効化したことをruntime logで確認できるようにする。
+            # 計測値は5秒周期でまとめ、通常運用では追加ログ・時刻計測を行わない。
+            self.get_logger().info(
+                "mapper callback timing diagnostics ENABLED; "
+                "per-frame queue wait and callback timings will be logged"
+            )
         self.debug_period_sec = 1.0 / max(float(value("debug_publish_rate")), 0.001)
         # 最初のTF付きdepth処理が完了するまでは空mapを出さない。その後は新規fusionがなくても
         # 固定周期で評価し、観測ageに応じたfeatureのunknown化を止めない。
@@ -406,12 +413,13 @@ class DepthElevationMapper(Node):
         self.processing_times_ms = deque(maxlen=100)
         self.feature_times_ms = deque(maxlen=100)
         self.debug_times_ms = deque(maxlen=100)
-        # 有効化された場合だけ、受信間隔・stamp間隔・受信時age・callback占有時間を
-        # 最大200件保持する。5秒ごとのログ後に消去し、bag全長に比例したmemory増加を防ぐ。
+        # 有効化された場合だけ、受信間隔・stamp間隔・受信時age・callback占有時間と
+        # queue滞留時間を最大200件保持する。5秒ごとに消去し、bag全長に比例する増加を防ぐ。
         self.diagnostic_depth_header_intervals_ms = deque(maxlen=200)
         self.diagnostic_depth_arrival_intervals_ms = deque(maxlen=200)
         self.diagnostic_depth_age_ms = deque(maxlen=200)
         self.diagnostic_depth_callback_ms = deque(maxlen=200)
+        self.diagnostic_depth_queue_wait_ms = deque(maxlen=200)
         self.diagnostic_last_depth_stamp_ns = None
         self.diagnostic_last_depth_arrival_sec = None
         self.diagnostic_processed_frames_total = 0
@@ -643,6 +651,13 @@ class DepthElevationMapper(Node):
                 )
                 continue
             self.pending.popleft()
+            if self.diagnostic_callback_timing:
+                # enqueueからCameraInfo/exact TFが揃い、frame処理を開始できるまでの時間。
+                # callback内ですぐ処理された場合は短く、TF待ちtimerで再試行された場合は
+                # その待ち時間とFIFO先行frameによる滞留も含む。
+                self.diagnostic_depth_queue_wait_ms.append(
+                    (time.monotonic() - arrival) * 1000.0
+                )
             self.process_frame(message, intrinsics, camera_tf, base_tf)
 
     def process_frame(self, message, intrinsics, camera_tf, base_tf):
@@ -755,7 +770,7 @@ class DepthElevationMapper(Node):
                 )
                 diagnostic_suffix = (
                     "; diag depth_header_dt=[%s], depth_arrival_dt=[%s], "
-                    "depth_age=[%s], depth_callback=[%s]; "
+                    "depth_age=[%s], depth_callback=[%s], depth_queue_wait=[%s]; "
                     "tf=%d msg/%.1f s, %d transform/%.1f s, "
                     "cb=%.3f ms mean/%.3f ms max/%.1f%% one-core; "
                     "tf_static=%d msg/%.1f s, %d transform/%.1f s, "
@@ -772,6 +787,9 @@ class DepthElevationMapper(Node):
                         self._diagnostic_sample_summary(self.diagnostic_depth_age_ms),
                         self._diagnostic_sample_summary(
                             self.diagnostic_depth_callback_ms
+                        ),
+                        self._diagnostic_sample_summary(
+                            self.diagnostic_depth_queue_wait_ms
                         ),
                         tf_stats["dynamic_calls"],
                         tf_stats["dynamic_calls"] / window_duration,
@@ -833,6 +851,7 @@ class DepthElevationMapper(Node):
                 self.diagnostic_depth_arrival_intervals_ms.clear()
                 self.diagnostic_depth_age_ms.clear()
                 self.diagnostic_depth_callback_ms.clear()
+                self.diagnostic_depth_queue_wait_ms.clear()
                 self.diagnostic_retry_calls = 0
                 self.diagnostic_retry_fused_frames = 0
                 self.diagnostic_retry_time_ms = 0.0

@@ -350,20 +350,28 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 CPU/DDS/executor競合の調査時は、通常のbag記録launchに
 `mapper_callback_diagnostics:=true`を追加します。既定は`false`で、通常運用ではcallbackごとの
 時計取得や診断統計の蓄積を行いません。
+`pm_bag_global_localization.launch.py`の既存記録topicには`/rosout`が含まれるため、起動確認ログと
+5秒周期の診断ログもbag内に保存されます。
 
-5秒ごとの`terrain ...`ログに、次の診断値が追加されます。
+有効化時は起動ログに`mapper callback timing diagnostics ENABLED`が出ます。
+5秒ごとの`terrain ...`ログには、次の診断値が追加されます（各値は直近区間のmean/max/min）。
 
 - `depth_header_dt`: depth header timestampの間隔。bag上の入力周期と受信欠落の候補を示す。
 - `depth_arrival_dt`: mapper executorがdepth callbackを開始した時刻の間隔。
 - `depth_age`: callback開始時点のROS clockとdepth header timestampとの差。use_sim_timeが有効ならbag clock基準。
 - `depth_callback`: subscription callback全体のwall時間。同期的なfusion処理を含む。
+- `depth_queue_wait`: depthをpending queueへ入れてから、CameraInfoと撮像timestampのTFが揃い、frame処理を開始するまでの時間。TF待ちとFIFO先行frameによる滞留を含むが、frame処理時間そのものは含まない。
+- `frame mean/max`: exact TF取得後からdepth fusion完了までのframe処理時間。`depth_callback`の中で即時処理されたframeではcallback時間にも含まれるが、retry timerから処理されたframeではcallback時間には含まれない。
 - `tf` / `tf_static`: callback数・transform数の毎秒値とcallback平均/最大処理時間。
   `one-core`は、その5秒区間のcallback処理時間合計が単一CPU coreを占めた割合の概算。
 - `retry_timer`: TF待ちqueueを確認する100 Hz timer callbackの平均/最大処理時間と、timer内で
   fusionしたframe数。depth subscription callbackとは別経路の処理時間を表す。
 
 たとえば、bag上の`depth_header_dt`は約100 msなのに`depth_arrival_dt`が大きく間延びし、
-`depth_age`も増えるならexecutor側の滞留と整合する。一方、header間隔とarrival間隔が一致し、
+`depth_age`も増えるならexecutor側の滞留と整合する。`depth_queue_wait`が大きければ、受信後に
+CameraInfo/exact TF待ち、または先行frameによるqueue滞留が生じている。`frame mean/max`が大きければ
+TF取得後の投影・融合処理が重い。`depth_callback`が長くても`depth_queue_wait`と`frame`が短い場合は、
+callback内の別処理や実行資源の待ちをさらに調べる。一方、header間隔とarrival間隔が一致し、
 ageも小さければ、受信遅延以外（rate gateや後段処理）を調べる。これらの値だけではDDS/RMW
 queue lossを断定できない。FoxyのPython subscriptionには一般的なmessage-lost event counterが
 ないため、bag記録数・header stamp列・callback統計を合わせて解釈する。
