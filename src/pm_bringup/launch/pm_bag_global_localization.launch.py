@@ -372,8 +372,10 @@ def generate_launch_description():
         name="depth_elevation_mapper",
         output="screen",
         parameters=[
-            str(terrain_mapper_config_file),
             {
+                # Foxyは重複parameterを含む複数params-fileで先に指定された値を優先する。
+                # 試験用launch overrideをmapper既定YAMLより先に渡し、queue深度や
+                # 診断parameterが設定ファイルの既定値に潰されないようにする。
                 "diagnostic_callback_timing": ParameterValue(
                     mapper_callback_diagnostics, value_type=bool
                 ),
@@ -389,6 +391,7 @@ def generate_launch_description():
                     mapper_executor_diagnostics_csv, value_type=str
                 ),
             },
+            str(terrain_mapper_config_file),
         ],
         condition=IfCondition(use_oakd),
     )
