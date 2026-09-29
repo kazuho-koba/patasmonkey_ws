@@ -31,6 +31,15 @@ def generate_launch_description():
     mapper_callback_diagnostics = LaunchConfiguration(
         "mapper_callback_diagnostics"
     )
+    mapper_depth_subscription_queue_depth = LaunchConfiguration(
+        "mapper_depth_subscription_queue_depth"
+    )
+    mapper_executor_diagnostics = LaunchConfiguration(
+        "mapper_executor_diagnostics"
+    )
+    mapper_executor_diagnostics_csv = LaunchConfiguration(
+        "mapper_executor_diagnostics_csv"
+    )
     # rosbagを記録するかどうか
     record_bag = LaunchConfiguration("record_bag")
     bag_name = LaunchConfiguration("bag_name")
@@ -367,7 +376,18 @@ def generate_launch_description():
             {
                 "diagnostic_callback_timing": ParameterValue(
                     mapper_callback_diagnostics, value_type=bool
-                )
+                ),
+                # QoS履歴深度だけを変える試験用override。既定値5では従来どおり。
+                "depth_subscription_queue_depth": ParameterValue(
+                    mapper_depth_subscription_queue_depth, value_type=int
+                ),
+                # callbackごとの計測を行うFoxy executor wrapper。通常は無効。
+                "diagnostic_executor_timing": ParameterValue(
+                    mapper_executor_diagnostics, value_type=bool
+                ),
+                "diagnostic_executor_csv_path": ParameterValue(
+                    mapper_executor_diagnostics_csv, value_type=str
+                ),
             },
         ],
         condition=IfCondition(use_oakd),
@@ -708,6 +728,29 @@ def generate_launch_description():
             description=(
                 "mapperのdepth/TF callback間隔・age・処理時間をログする。"
                 "負荷測定時のみtrueにする"
+            ),
+        ),
+        DeclareLaunchArgument(
+            "mapper_depth_subscription_queue_depth",
+            default_value="5",
+            description=(
+                "mapperのdepth subscriber KEEP_LAST履歴深度。既定5はsensor-data QoS。"
+                "queue診断比較時のみ変更する"
+            ),
+        ),
+        DeclareLaunchArgument(
+            "mapper_executor_diagnostics",
+            default_value="false",
+            description=(
+                "mapper SingleThreadedExecutorのready entity、dispatch gap、"
+                "callback wall/CPU時間をCSV記録する診断専用override"
+            ),
+        ),
+        DeclareLaunchArgument(
+            "mapper_executor_diagnostics_csv",
+            default_value="",
+            description=(
+                "executor診断CSVの出力先。空ならmapperが一意な/tmp名を作る"
             ),
         ),
         DeclareLaunchArgument(

@@ -8,6 +8,7 @@ stampでlookupする。debug mapと任意cloudは低rateで生成し、可視化
 
 from collections import deque
 import csv
+import os
 from pathlib import Path
 import time
 
@@ -17,7 +18,7 @@ from nav_msgs.msg import OccupancyGrid
 from geometry_msgs.msg import Point
 from rclpy.duration import Duration
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import QoSProfile, qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField
 from tf2_ros import Buffer, TransformException, TransformListener
@@ -120,6 +121,9 @@ class DepthElevationMapper(Node):
         defaults = {
             "depth_topic": "/oak/depth/image_raw",
             "camera_info_topic": "/oak/depth/camera_info",
+            # Foxyのsensor-data QoSはKEEP_LAST depth 5。試験時にreader履歴だけを
+            # 変えられるようparameter化し、reliability等ほかの方針は変えない。
+            "depth_subscription_queue_depth": 5,
             "map_frame": "odom",
             "base_frame": "base_link",
             "camera_frame_override": "",
@@ -181,6 +185,11 @@ class DepthElevationMapper(Node):
             "performance_log_period": 5.0,
             # CPU/DDS/executor切り分け用。通常runtimeではcallback毎の時計取得を行わない。
             "diagnostic_callback_timing": False,
+            # Foxy executorが選んだentityと処理時間を取る追加診断。通常runtimeでは無効。
+            "diagnostic_executor_timing": False,
+            # 空ならmain()がPIDと時刻を含む一意な/tmp CSV名を作る。
+            "diagnostic_executor_csv_path": "",
+            "diagnostic_executor_flush_period_sec": 1.0,
             # 空文字列なら診断配列・CSVを作らない。bag forensic専用の明示opt-in。
             "forensic_output_dir": "",
             "forensic_roi_forward_min_m": 0.25,
@@ -200,6 +209,11 @@ class DepthElevationMapper(Node):
 
         self.depth_topic = str(value("depth_topic"))
         self.camera_info_topic = str(value("camera_info_topic"))
+        self.depth_subscription_queue_depth = int(
+            value("depth_subscription_queue_depth")
+        )
+        if self.depth_subscription_queue_depth < 1:
+            raise ValueError("depth_subscription_queue_depth must be >= 1")
         self.map_frame = str(value("map_frame"))
         self.base_frame = str(value("base_frame"))
         self.camera_frame_override = str(value("camera_frame_override"))
@@ -282,6 +296,17 @@ class DepthElevationMapper(Node):
         self.diagnostic_callback_timing = bool(
             value("diagnostic_callback_timing")
         )
+        self.diagnostic_executor_timing = bool(
+            value("diagnostic_executor_timing")
+        )
+        self.diagnostic_executor_csv_path = str(
+            value("diagnostic_executor_csv_path")
+        ).strip()
+        self.diagnostic_executor_flush_period_sec = float(
+            value("diagnostic_executor_flush_period_sec")
+        )
+        if self.diagnostic_executor_flush_period_sec <= 0.0:
+            raise ValueError("diagnostic_executor_flush_period_sec must be > 0")
         self.forensic_output_dir = str(value("forensic_output_dir")).strip()
         self.forensic_roi_forward_min_m = float(value("forensic_roi_forward_min_m"))
         self.forensic_roi_forward_max_m = float(value("forensic_roi_forward_max_m"))
@@ -292,7 +317,9 @@ class DepthElevationMapper(Node):
             value("forensic_frame_neighbor_radius_cells")
         )
         self.forensic_enabled = bool(self.forensic_output_dir)
-        if self.forensic_frame_events and not (self.forensic_enabled and self.forensic_targets_csv):
+        if self.forensic_frame_events and not (
+            self.forensic_enabled and self.forensic_targets_csv
+        ):
             raise ValueError("forensic_frame_events requires output_dir and targets_csv")
         if not 0 <= self.forensic_frame_neighbor_radius_cells <= 2:
             raise ValueError("forensic_frame_neighbor_radius_cells must be 0..2")
@@ -446,8 +473,24 @@ class DepthElevationMapper(Node):
         self.create_subscription(
             CameraInfo, self.camera_info_topic, self.camera_info_callback, 1
         )
+        # 比較試験では履歴深度だけを変える。Foxy標準sensor-data profileの
+        # best-effort/volatileなど、深度以外のQoS値はそのまま複製する。
+        sensor_qos = qos_profile_sensor_data
+        depth_subscription_qos = QoSProfile(
+            history=sensor_qos.history,
+            depth=self.depth_subscription_queue_depth,
+            reliability=sensor_qos.reliability,
+            durability=sensor_qos.durability,
+            deadline=sensor_qos.deadline,
+            lifespan=sensor_qos.lifespan,
+            liveliness=sensor_qos.liveliness,
+            liveliness_lease_duration=sensor_qos.liveliness_lease_duration,
+            avoid_ros_namespace_conventions=(
+                sensor_qos.avoid_ros_namespace_conventions
+            ),
+        )
         self.create_subscription(
-            Image, self.depth_topic, self.depth_callback, qos_profile_sensor_data
+            Image, self.depth_topic, self.depth_callback, depth_subscription_qos
         )
         # 通常時は元のcallbackを直接timerへ登録する。診断時だけwrapperを通して、TF待ちqueueを
         # 100 Hzで確認するtimerがexecutorを占有する時間も測る。
@@ -502,8 +545,12 @@ class DepthElevationMapper(Node):
         )
         self.get_logger().info(
             "depth-to-elevation mapper ready; all TF lookups use depth stamps; "
-            "nominal camera height above ground=%.2f m (Stage 2 reference)"
-            % self.nominal_camera_height_above_ground
+            "nominal camera height above ground=%.2f m (Stage 2 reference); "
+            "depth QoS KEEP_LAST depth=%d"
+            % (
+                self.nominal_camera_height_above_ground,
+                self.depth_subscription_queue_depth,
+            )
         )
 
     def camera_info_callback(self, message):
@@ -1444,11 +1491,36 @@ class DepthElevationMapper(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = DepthElevationMapper()
+    executor = None
     try:
-        rclpy.spin(node)
+        if node.diagnostic_executor_timing:
+            # 標準executorのSingleThreaded動作は維持し、計測したい試験でだけ
+            # callback dispatch前後を記録する同順序のwrapperへ切り替える。
+            from pm_perception.executor_diagnostics import (
+                MeasuredSingleThreadedExecutor,
+            )
+
+            output_path = node.diagnostic_executor_csv_path
+            if not output_path:
+                output_path = "/tmp/pm_mapper_executor_%s_%d.csv" % (
+                    time.strftime("%Y%m%d_%H%M%S"), os.getpid()
+                )
+            executor = MeasuredSingleThreadedExecutor(
+                node,
+                output_path,
+                node.diagnostic_executor_flush_period_sec,
+            )
+            executor.add_node(node)
+            executor.spin()
+        else:
+            rclpy.spin(node)
     except KeyboardInterrupt:
         pass
     finally:
+        if executor is not None:
+            executor.remove_node(node)
+            executor.shutdown()
+            executor.close()
         node.destroy_node()
         rclpy.shutdown()
 

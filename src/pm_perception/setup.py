@@ -25,6 +25,8 @@ setup(
         "console_scripts": [
             "depth_elevation_mapper_node = "
             "pm_perception.depth_elevation_mapper_node:main",
+            "mapper_executor_diagnostics = "
+            "pm_perception.executor_diagnostics:main",
         ],
     },
 )

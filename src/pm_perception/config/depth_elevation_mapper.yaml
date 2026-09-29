@@ -2,6 +2,8 @@ depth_elevation_mapper:
   ros__parameters:
     depth_topic: /oak/depth/image_raw
     camera_info_topic: /oak/depth/camera_info
+    # Foxy sensor-data QoSの既定値。queue試験ではlaunch引数で5/20を切り替える。
+    depth_subscription_queue_depth: 5
     map_frame: odom
     base_frame: base_link
     camera_frame_override: ""
@@ -93,3 +95,8 @@ depth_elevation_mapper:
     performance_log_period: 5.0
     # CPU/DDS/executor切り分け時だけ有効化する。受信頻度・stamp age・TF callback時間をログへ追加する。
     diagnostic_callback_timing: false
+    # executor診断はentityごとの選択・dispatch・wall/CPU時間をCSVへ記録する。
+    diagnostic_executor_timing: false
+    # 空ならPIDと時刻を含む一意な/tmp CSVファイルをmapperが作成する。
+    diagnostic_executor_csv_path: ""
+    diagnostic_executor_flush_period_sec: 1.0

@@ -344,6 +344,11 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 | `hazard_obstacle_height_limit` | 0.20 m | 暫定hazard=1となるobstacle heightの目安 |
 | `publish_hazard_cause_markers` | false | 最大寄与cueをRVizで色分けしたcubeとして出力。Jetson負荷を避け既定OFF |
 | `hazard_marker_max_points` | 2500 | 色分けmarkerの最大cube数。超過時は均等間引き |
+| `publish_debug_pointcloud` | false | 1点/cellのdebug cloud |
+| `forensic_output_dir` | 空 | 非空の場合だけoffline forensic CSVを保存。通常runtimeでは指定しない |
+| `diagnostic_executor_timing` | false | 診断時だけ測定用SingleThreadedExecutorを使い、entityごとの時間をCSVへ記録 |
+| `diagnostic_executor_csv_path` | 空 | executor診断CSVの出力先。空なら一意な`/tmp`ファイル名を使う |
+| `diagnostic_executor_flush_period_sec` | 1.0 s | executor診断CSVのbuffer flush間隔 |
 
 ### callback競合の診断
 
@@ -375,8 +380,63 @@ callback内の別処理や実行資源の待ちをさらに調べる。一方、
 ageも小さければ、受信遅延以外（rate gateや後段処理）を調べる。これらの値だけではDDS/RMW
 queue lossを断定できない。FoxyのPython subscriptionには一般的なmessage-lost event counterが
 ないため、bag記録数・header stamp列・callback統計を合わせて解釈する。
-| `publish_debug_pointcloud` | false | 1点/cellのdebug cloud |
-| `forensic_output_dir` | 空 | 非空の場合だけoffline forensic CSVを保存。通常runtimeでは指定しない |
+
+executor内部のcallback競合とOS scheduler待ちをより細かく見る場合は、診断用の
+`mapper_executor_diagnostics:=true`も有効化します。これは診断時だけFoxyの
+`SingleThreadedExecutor`を薄くwrapし、executorが選んだentity（`/tf`、timer名、depth topic等）、
+ready entityを返してからhandlerを呼ぶまでの短いgap、handlerのwall時間・executor thread CPU時間を
+CSVへ記録します。通常動作は従来の`rclpy.spin(node)`のままです。CSVは既存ファイルを上書きせず、
+空の出力先ならmapperがPIDと時刻を含む`/tmp/pm_mapper_executor_*.csv`を作ります。
+`executor_wait_ms`はready entityが返るまでexecutorが待った時間で、主にwait-set待ち時間を表し、
+messageの到着からcallback開始までの遅延ではありません。`ready_to_dispatch_ms`はready entityが返ってから
+handlerを呼ぶ直前までです。
+
+同時にLinux schedulerがthreadをrunnable状態で待たせているかを測るには、次のlaunchをterminal Aで起動し、
+VO初期化と必要なjerkの後にterminal Bでmonitorを開始します。mapper executor CSVはnode起動時から記録
+されますが、後述のsummaryはschedstat CSVのmonotonic時間窓へ自動で切り出すため、初期化・jerk前のcallbackは
+集計から外れます。起動直後も含める場合は、monitorをlaunch前に開始してください。
+
+launchは同一負荷条件で診断付きにします。安全な実機試験ではteleopとvehicle interfaceを無効にし、bag名・
+CSV名は毎回新しく指定してください。`mapper_callback_diagnostics`は既存のdepth/TF統計、
+`mapper_executor_diagnostics`はentityごとのexecutor計測です。
+
+```bash
+ros2 launch pm_bringup pm_bag_global_localization.launch.py \
+  use_teleop:=false use_vehicle_interface:=false \
+  mapper_callback_diagnostics:=true \
+  mapper_executor_diagnostics:=true \
+  mapper_executor_diagnostics_csv:=/tmp/mapper_executor_20260929_120000.csv \
+  bag_name:=rosbag2_<試験日時>_mapper_executor_diag
+```
+
+VO初期化と必要なjerkが終わって比較窓に入ったら、terminal Bでmonitorを起動します。下記例は開始後60秒間、
+1秒周期で全threadの`/proc/<pid>/task/<tid>/schedstat`差分を記録します。起動直後も含める場合は、
+monitorをlaunch前に開始してください（mapper processが起動するまで最大180秒待ちます）。
+
+```bash
+ros2 run pm_perception mapper_executor_diagnostics monitor \
+  --output /tmp/mapper_executor_schedstat_20260929_120000.csv \
+  --process-match depth_elevation_mapper_node \
+  --interval-sec 1.0 --duration-sec 60 --wait-timeout-sec 180
+```
+
+recorderとlaunchを通常どおり停止し、bagの完了（`metadata.yaml`と`ros2 bag info`）を確認した後、CSVを要約します。
+
+```bash
+ros2 run pm_perception mapper_executor_diagnostics summarize \
+  --executor-csv /tmp/mapper_executor_20260929_120000.csv \
+  --schedstat-csv /tmp/mapper_executor_schedstat_20260929_120000.csv
+```
+
+entity別handler時間がexecutor threadの占有時間を説明し、特定TF/timer等の長い処理がdepth callbackを
+直列に待たせているかを見ます。handler wall時間とthread CPU時間の差が大きく、かつexecutor TIDの
+`runqueue wait`も大きければOS scheduler競合と整合します。差は大きいがrunqueue waitが小さければ、
+blocking・待ち・計測外処理等を追加調査します。`ready_to_dispatch_ms`はrclpyがready entityを返した後の
+dispatch区間であって、DDS publishからcallback開始までの時間ではありません。summaryは異なる試行の
+CSVを誤って混ぜないようPIDも照合します。executor測定と既存の
+`depth_header_dt` / `depth_arrival_dt` / `depth_age`、bag内depth stamp列を同じ計測窓で照合します。
+この診断でもRMW内部でsampleがreadyになった正確な時刻やmessage-lost counterは得られないため、
+履歴深度比較はsample保持への寄与をみる補助試験として解釈します。
 
 ### 処理率診断ログ
 
