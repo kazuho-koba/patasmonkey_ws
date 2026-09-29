@@ -1,4 +1,6 @@
-depth_elevation_mapper:
+# この設定ファイルはmapper nodeだけに渡すため、launchの辞書overrideと同じwildcard scopeにする。
+# node名を明示するとFoxyでwildcardのlaunch overrideより優先され、queue／診断値が切り替わらない。
+/**:
   ros__parameters:
     depth_topic: /oak/depth/image_raw
     camera_info_topic: /oak/depth/camera_info
