@@ -365,8 +365,14 @@ def plot_offline_overlay(out, comparison, replay_tag, fit_start_s, fit_end_s):
         ax.set_title(title);fig.tight_layout();fig.savefig(out/('offline_vio_overlay_'+name+'.png'),dpi=160);plt.close(fig)
 
 
-def replay_startup(bag, out, config, freeze, duration, rate, replay_tag=None):
-    """Controlled counterfactual with current source/config; not historical reproduction."""
+def replay_startup(bag, out, config, freeze, duration, rate, replay_tag=None,
+                   initialization_mode='config'):
+    """現行OpenVINSで起動区間を再計算し、初期化条件の比較結果を保存する。
+
+    initialization_modeはYAMLのまま、jerk待ち、停止中＋起動時ZUPTを選べる。
+    入力は同じ画像/IMUだけを再送し、ROSパラメータで初期化方式だけを上書きする。
+    過去に実機で動作した設定・バイナリの完全な再現とは区別して扱う。
+    """
     import os
     import subprocess
     import signal
@@ -385,7 +391,12 @@ def replay_startup(bag, out, config, freeze, duration, rate, replay_tag=None):
     if run.exists(): raise RuntimeError('Use new output directory for a new replay: '+str(run))
     run.mkdir(parents=True)
     run=run.resolve()
-    meta=json.loads((out/'metadata.json').read_text());t0=meta['starting_time']['nanoseconds_since_epoch']*1e-9
+    # 画像品質CSVを先に抽出しなくても、bagのmetadataから再生開始時刻を取得する。
+    if (out/'metadata.json').exists():
+        meta=json.loads((out/'metadata.json').read_text())
+    else:
+        meta=yaml.safe_load((bag/'metadata.yaml').read_text())['rosbag2_bagfile_information']
+    t0=meta['starting_time']['nanoseconds_since_epoch']*1e-9
     topics=IMAGES[:2]+[IMUS[0]];events=[];types={}
     for path in find_mcap_files(bag):
         done=False
@@ -409,10 +420,17 @@ def replay_startup(bag, out, config, freeze, duration, rate, replay_tag=None):
          '-p','use_sim_time:=true','-p','verbosity:=DEBUG','-p','save_total_state:=true',
          '-p','filepath_est:='+str(run/'state_estimate.txt'),'-p','filepath_std:='+str(run/'state_std.txt'),
          '-p','record_timing_information:=true','-p','record_timing_filepath:='+str(run/'timing.txt')]
+    # 初期化方式を比較するときは動的初期化を無効にし、静的方式間の差に限定する。
+    # ZUPT有効時はjerk待ちが解除される。通常VIO更新へ移行後の再拘束を避ける。
+    if initialization_mode != 'config':
+        use_zupt = 'true' if initialization_mode == 'static_zupt' else 'false'
+        cmd += ['-p', 'try_zupt:='+use_zupt,
+                '-p', 'zupt_only_at_beginning:=true', '-p', 'init_dyn_use:=false']
     if freeze:
         for k in ['calib_cam_extrinsics','calib_cam_intrinsics','calib_cam_timeoffset','calib_imu_intrinsics','calib_imu_g_sensitivity']:
             cmd+=['-p',k+':=false']
     (run/'run.json').write_text(json.dumps({'command':cmd,'duration_from_bag_start':duration,'rate':rate,
+        'initialization_mode':initialization_mode,
         'warning':'Current local config and binary, not proof of historical runtime equality','bag':str(bag.resolve())},indent=2))
     log=(run/'console.log').open('w');proc=subprocess.Popen(cmd,stdout=log,stderr=log)
     try:
@@ -460,6 +478,8 @@ def main():
     p.add_argument('--replay-duration',type=float,default=45)
     p.add_argument('--rate',type=float,default=.5)
     p.add_argument('--replay-tag',help='Reusable output tag, e.g. full_frozen_calibration')
+    p.add_argument('--initialization-mode', choices=['config', 'jerk', 'static_zupt'],
+                   default='config', help='初期化方式: YAMLのまま/jerk待ち/停止中＋起動時ZUPT')
     args=p.parse_args()
     for bag in args.bag:
         out=args.output/bag.name
@@ -471,7 +491,8 @@ def main():
             plot_replays(out)
             continue
         if args.replay_startup:
-            replay_startup(bag,out,args.config,args.freeze_calibration,args.replay_duration,args.rate,args.replay_tag)
+            replay_startup(bag,out,args.config,args.freeze_calibration,args.replay_duration,args.rate,
+                           args.replay_tag,args.initialization_mode)
             continue
         if args.startup_only:
             startup_detail(bag,out)
