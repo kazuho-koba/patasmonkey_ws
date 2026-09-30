@@ -322,6 +322,7 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 | `pixel_stride` | 4 | 4x4 sampling |
 | `max_processing_rate` | 25 Hz | depth画像header stamp間隔の上限。10 Hz入力に含まれる約50 msの短い間隔を落とさず、40 ms未満のburstは抑える |
 | `tf_wait_timeout` | 0.25 s | exact timestamp TF待ち |
+| `tf_retry_rate_hz` | 100 Hz | exact timestamp TFが未着のdepth queueを再確認する周期。`mapper_tf_retry_rate_hz` launch引数から独立に比較可能 |
 | `ground_merge_threshold` | 0.20 m | ground仮説へ融合するz差 |
 | `measurement_variance` | 0.0025 m² | 簡易観測分散floor |
 | `depth_variance_per_meter_sq` | 0.0004 m²/m² | 遠距離sampleの分散増分。`floor + coefficient × range²` |
@@ -350,6 +351,51 @@ groundが接近後も`observation_age_debug`で残ること、岩や草でobstac
 | `diagnostic_executor_csv_path` | 空 | executor診断CSVの出力先。空なら一意な`/tmp`ファイル名を使う |
 | `diagnostic_executor_flush_period_sec` | 1.0 s | executor診断CSVのbuffer flush間隔 |
 
+### debug出力とTF retry周期の独立A/B
+
+次の二つの比較は独立した変数にします。いずれも`mapper_callback_diagnostics:=true`を共通で有効化し、
+`depth_cb`（callback開始Hz）、`fusion`（融合完了Hz）、`depth_queue_wait`、
+`drops(rate/tf/queue/info)`を同じ5秒区間ログから比較できます。timer比較中は
+`mapper_publish_stage2_debug_layers:=true`、Stage 2出力比較中は
+`mapper_tf_retry_rate_hz:=100.0`を固定し、OpenVINS・センサ・bag記録・他のmapper parameterも揃えます。
+
+1. Hazardの計算とsnapshotを2 Hzのままにして、Stage 2の5 layer出力だけをON/OFFします。
+   変更するのは`mapper_publish_stage2_debug_layers`だけです。
+
+   ```bash
+   ros2 launch pm_bringup pm_bag_global_localization.launch.py \
+     use_teleop:=false use_vehicle_interface:=false \
+     mapper_callback_diagnostics:=true \
+     mapper_depth_subscription_queue_depth:=5 \
+     mapper_tf_retry_rate_hz:=100.0 mapper_debug_publish_rate:=2.0 \
+     mapper_publish_stage2_debug_layers:=true bag_name:=stage2_layers_on
+   ```
+
+   同じ条件のOFF試験では、最後の引数だけを
+   `mapper_publish_stage2_debug_layers:=false`へ替え、試行ごとに未使用のbag名を指定します。
+   ElevationとStage 3のslope/roughness/step/hazard/causeは出力・計算され続けます。
+   `stage2_debug_publish`診断値は、5個のStage 2 OccupancyGridを生成してpublishする区間の
+   所要時間です。OFFでは`n=0`になります。Stage 2 snapshot配列はhazard計算にも使うため、
+   このA/Bではその配列計算自体は止めず、message生成・publish区間の効果を測ります。
+
+2. Stage 2出力とHazard 2 Hzを固定したまま、TF retry周期だけを比較します。
+   以下の共通引数に対して`mapper_tf_retry_rate_hz`を100.0、30.0、20.0とした3回を実施し、
+   毎回bag名を変えます。
+
+   ```bash
+   ros2 launch pm_bringup pm_bag_global_localization.launch.py \
+     use_teleop:=false use_vehicle_interface:=false \
+     mapper_callback_diagnostics:=true \
+     mapper_depth_subscription_queue_depth:=5 \
+     mapper_publish_stage2_debug_layers:=true mapper_debug_publish_rate:=2.0 \
+     mapper_tf_retry_rate_hz:=30.0 bag_name:=tf_retry_30hz
+   ```
+
+   30.0を100.0、20.0へ置き換えて同条件で再実行します。起動時の
+   `mapper experiment settings`で実効値を確認でき、5秒ごとの`retry_timer`ログには実際の呼出率、
+   timer処理時間、timer内でfusionしたframe率が出ます。`debug_publish_rate`とStage 3計算は
+   変更しません。queue waitやTF dropが悪化しないことも合わせて確認します。
+
 ### callback競合の診断
 
 CPU/DDS/executor競合の調査時は、通常のbag記録launchに
@@ -369,7 +415,9 @@ CPU/DDS/executor競合の調査時は、通常のbag記録launchに
 - `frame mean/max`: exact TF取得後からdepth fusion完了までのframe処理時間。`depth_callback`の中で即時処理されたframeではcallback時間にも含まれるが、retry timerから処理されたframeではcallback時間には含まれない。
 - `tf` / `tf_static`: callback数・transform数の毎秒値とcallback平均/最大処理時間。
   `one-core`は、その5秒区間のcallback処理時間合計が単一CPU coreを占めた割合の概算。
-- `retry_timer`: TF待ちqueueを確認する100 Hz timer callbackの平均/最大処理時間と、timer内で
+- `stage2_debug_publish`: Stage 2の5 OccupancyGridを生成してpublishする区間の所要時間。
+  OFF条件は`n=0`になり、Stage 2 snapshot配列やhazard計算時間とは分けて比較できる。
+- `retry_timer`: 設定周波数のTF待ちqueue再確認timerの実呼出率、平均/最大処理時間、timer内で
   fusionしたframe数。depth subscription callbackとは別経路の処理時間を表す。
 
 たとえば、bag上の`depth_header_dt`は約100 msなのに`depth_arrival_dt`が大きく間延びし、

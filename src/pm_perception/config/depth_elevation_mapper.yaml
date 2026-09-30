@@ -28,6 +28,8 @@
     # available. Expired frames are dropped; latest TF is never substituted.
     pending_queue_size: 5
     tf_wait_timeout: 0.25
+    # 撮像stampのTFが未着のときだけqueueを再確認する周期。A/B試験では100/30/20 Hz。
+    tf_retry_rate_hz: 100.0
 
     ground_merge_threshold: 0.20
     obstacle_min_height: 0.20

@@ -34,6 +34,11 @@ def generate_launch_description():
     mapper_depth_subscription_queue_depth = LaunchConfiguration(
         "mapper_depth_subscription_queue_depth"
     )
+    mapper_publish_stage2_debug_layers = LaunchConfiguration(
+        "mapper_publish_stage2_debug_layers"
+    )
+    mapper_tf_retry_rate_hz = LaunchConfiguration("mapper_tf_retry_rate_hz")
+    mapper_debug_publish_rate = LaunchConfiguration("mapper_debug_publish_rate")
     mapper_executor_diagnostics = LaunchConfiguration(
         "mapper_executor_diagnostics"
     )
@@ -113,7 +118,7 @@ def generate_launch_description():
     )
 
     def validate_trial_directory(context, runtime_actions):
-        """node起動前にbag出力先とlegacy EKF設定を検証する。"""
+        """node起動前にbag出力先とlegacy EKF設定を検証する."""
         resolved_name = LaunchConfiguration("bag_name").perform(context)
         if not resolved_name or Path(resolved_name).name != resolved_name:
             raise RuntimeError(
@@ -382,6 +387,18 @@ def generate_launch_description():
                 # QoS履歴深度だけを変える試験用override。既定値5では従来どおり。
                 "depth_subscription_queue_depth": ParameterValue(
                     mapper_depth_subscription_queue_depth, value_type=int
+                ),
+                # Stage 2 layerの出力だけを個別比較し、hazard計算は維持する。
+                "publish_stage2_debug_layers": ParameterValue(
+                    mapper_publish_stage2_debug_layers, value_type=bool
+                ),
+                # TF待ちqueueの再試行周期だけを独立して変更する。
+                "tf_retry_rate_hz": ParameterValue(
+                    mapper_tf_retry_rate_hz, value_type=float
+                ),
+                # Stage 2出力比較ではhazard評価周期を2 Hzに固定できる。
+                "debug_publish_rate": ParameterValue(
+                    mapper_debug_publish_rate, value_type=float
                 ),
                 # callbackごとの計測を行うFoxy executor wrapper。通常は無効。
                 "diagnostic_executor_timing": ParameterValue(
@@ -738,6 +755,29 @@ def generate_launch_description():
             description=(
                 "mapperのdepth subscriber KEEP_LAST履歴深度。既定5はsensor-data QoS。"
                 "queue診断比較時のみ変更する"
+            ),
+        ),
+        DeclareLaunchArgument(
+            "mapper_publish_stage2_debug_layers",
+            default_value="true",
+            description=(
+                "relative/variance/count/age/obstacleの5 debug layer出力。"
+                "比較時はこの値だけをfalseへ切り替える"
+            ),
+        ),
+        DeclareLaunchArgument(
+            "mapper_tf_retry_rate_hz",
+            default_value="100.0",
+            description=(
+                "撮像timestampのTF待ちqueueを再確認する周期。"
+                "A/B比較値は100/30/20 Hz"
+            ),
+        ),
+        DeclareLaunchArgument(
+            "mapper_debug_publish_rate",
+            default_value="2.0",
+            description=(
+                "hazard評価・debug snapshotの周期。Stage 2出力比較では2 Hz固定"
             ),
         ),
         DeclareLaunchArgument(

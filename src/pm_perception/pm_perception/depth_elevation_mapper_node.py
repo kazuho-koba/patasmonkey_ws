@@ -35,6 +35,14 @@ def stamp_to_ns(stamp):
     return int(stamp.sec) * 1_000_000_000 + int(stamp.nanosec)
 
 
+def retry_period_from_rate_hz(rate_hz):
+    """正のTF retry周波数をrclpy timer用の秒周期に変換する。"""
+    rate_hz = float(rate_hz)
+    if not np.isfinite(rate_hz) or rate_hz <= 0.0:
+        raise ValueError("tf_retry_rate_hz must be a finite value > 0")
+    return 1.0 / rate_hz
+
+
 def yaw_from_quaternion(quaternion):
     """TF geometry helperを使わず、平面robot headingを返す。"""
     return float(np.arctan2(
@@ -139,6 +147,9 @@ class DepthElevationMapper(Node):
             "max_processing_rate": 25.0,
             "pending_queue_size": 5,
             "tf_wait_timeout": 0.25,
+            # exact timestamp TFが未着のdepthだけを再確認するtimer周期。
+            # 既定100 Hzは従来動作を保ち、負荷比較では30/20 Hzへ変更する。
+            "tf_retry_rate_hz": 100.0,
             "ground_merge_threshold": 0.20,
             "obstacle_min_height": 0.20,
             "measurement_variance": 0.0025,
@@ -229,6 +240,10 @@ class DepthElevationMapper(Node):
         )
         self.pending_queue_size = int(value("pending_queue_size"))
         self.tf_wait_timeout = float(value("tf_wait_timeout"))
+        self.tf_retry_rate_hz = float(value("tf_retry_rate_hz"))
+        self.tf_retry_period_sec = retry_period_from_rate_hz(
+            self.tf_retry_rate_hz
+        )
         self.ground_merge_threshold = float(value("ground_merge_threshold"))
         self.obstacle_min_height = float(value("obstacle_min_height"))
         self.measurement_variance = float(value("measurement_variance"))
@@ -447,6 +462,7 @@ class DepthElevationMapper(Node):
         self.diagnostic_depth_age_ms = deque(maxlen=200)
         self.diagnostic_depth_callback_ms = deque(maxlen=200)
         self.diagnostic_depth_queue_wait_ms = deque(maxlen=200)
+        self.diagnostic_stage2_publish_ms = deque(maxlen=200)
         self.diagnostic_last_depth_stamp_ns = None
         self.diagnostic_last_depth_arrival_sec = None
         self.diagnostic_processed_frames_total = 0
@@ -492,13 +508,15 @@ class DepthElevationMapper(Node):
         self.create_subscription(
             Image, self.depth_topic, self.depth_callback, depth_subscription_qos
         )
-        # 通常時は元のcallbackを直接timerへ登録する。診断時だけwrapperを通して、TF待ちqueueを
-        # 100 Hzで確認するtimerがexecutorを占有する時間も測る。
+        # 通常時は元のcallbackを直接timerへ登録する。診断時だけwrapperを通して、
+        # TF待ちqueueの再確認timerがexecutorを占有する時間も測る。
         retry_callback = (
             self.diagnostic_retry_timer_callback
             if self.diagnostic_callback_timing else self.process_pending
         )
-        self.retry_timer = self.create_timer(0.01, retry_callback)
+        self.retry_timer = self.create_timer(
+            self.tf_retry_period_sec, retry_callback
+        )
         self.debug_timer = self.create_timer(
             self.debug_period_sec, self.debug_timer_callback
         )
@@ -550,6 +568,19 @@ class DepthElevationMapper(Node):
             % (
                 self.nominal_camera_height_above_ground,
                 self.depth_subscription_queue_depth,
+            )
+        )
+        # A/B試験時にYAMLよりlaunch overrideが優先されたことをログで確認する。
+        # hazard評価周期はStage 2 debug出力の比較中も2 Hzに固定する。
+        self.get_logger().info(
+            "mapper experiment settings: tf_retry_rate_hz=%.1f, "
+            "debug_publish_rate=%.2f, publish_stage2_debug_layers=%s, "
+            "pending_queue_size=%d"
+            % (
+                self.tf_retry_rate_hz,
+                1.0 / max(self.debug_period_sec, 1e-9),
+                self.publish_stage2_debug_layers,
+                self.pending_queue_size,
             )
         )
 
@@ -626,7 +657,7 @@ class DepthElevationMapper(Node):
         )
 
     def diagnostic_retry_timer_callback(self):
-        """100 Hz TF-wait timerからのqueue処理時間を診断区間内で集計する。"""
+        """設定周波数のTF-wait retry timerからの処理時間を集計する。"""
         started = time.perf_counter()
         frames_before = self.diagnostic_processed_frames_total
         try:
@@ -817,7 +848,8 @@ class DepthElevationMapper(Node):
                 )
                 diagnostic_suffix = (
                     "; diag depth_header_dt=[%s], depth_arrival_dt=[%s], "
-                    "depth_age=[%s], depth_callback=[%s], depth_queue_wait=[%s]; "
+                    "depth_age=[%s], depth_callback=[%s], depth_queue_wait=[%s], "
+                    "stage2_debug_publish=[%s]; "
                     "tf=%d msg/%.1f s, %d transform/%.1f s, "
                     "cb=%.3f ms mean/%.3f ms max/%.1f%% one-core; "
                     "tf_static=%d msg/%.1f s, %d transform/%.1f s, "
@@ -837,6 +869,9 @@ class DepthElevationMapper(Node):
                         ),
                         self._diagnostic_sample_summary(
                             self.diagnostic_depth_queue_wait_ms
+                        ),
+                        self._diagnostic_sample_summary(
+                            self.diagnostic_stage2_publish_ms
                         ),
                         tf_stats["dynamic_calls"],
                         tf_stats["dynamic_calls"] / window_duration,
@@ -899,6 +934,7 @@ class DepthElevationMapper(Node):
                 self.diagnostic_depth_age_ms.clear()
                 self.diagnostic_depth_callback_ms.clear()
                 self.diagnostic_depth_queue_wait_ms.clear()
+                self.diagnostic_stage2_publish_ms.clear()
                 self.diagnostic_retry_calls = 0
                 self.diagnostic_retry_fused_frames = 0
                 self.diagnostic_retry_time_ms = 0.0
@@ -1302,28 +1338,41 @@ class DepthElevationMapper(Node):
                 self.debug_elevation_max,
             ))
             if self.publish_stage2_debug_layers:
-                self.relative_elevation_publisher.publish(self.make_debug_grid(
-                    stamp, layers["relative_elevation"], valid,
-                    self.debug_relative_elevation_min,
-                    self.debug_relative_elevation_max,
-                ))
-                self.variance_publisher.publish(self.make_debug_grid(
-                    stamp, layers["variance"], valid, 0.0,
-                    self.debug_variance_max,
-                ))
-                self.count_publisher.publish(self.make_debug_grid(
-                    stamp, layers["count"].astype(np.float32), valid, 0.0,
-                    float(max(1, self.debug_count_saturation)),
-                ))
-                self.age_publisher.publish(self.make_debug_grid(
-                    stamp, layers["age_seconds"], valid, 0.0,
-                    self.debug_age_max,
-                ))
-                obstacle_valid = np.isfinite(layers["obstacle_height"])
-                self.obstacle_publisher.publish(self.make_debug_grid(
-                    stamp, layers["obstacle_height"], obstacle_valid, 0.0,
-                    self.debug_obstacle_height_max,
-                ))
+                # Stage 2 snapshot配列はhazard計算でも利用するため共通で取得済み。
+                # この区間は5個のOccupancyGrid生成とpublish呼び出しだけを計測し、
+                # A/Bでlayer出力を止めた効果をfeature計算時間と分けて見る。
+                stage2_started = (
+                    time.perf_counter()
+                    if self.diagnostic_callback_timing else None
+                )
+                try:
+                    self.relative_elevation_publisher.publish(self.make_debug_grid(
+                        stamp, layers["relative_elevation"], valid,
+                        self.debug_relative_elevation_min,
+                        self.debug_relative_elevation_max,
+                    ))
+                    self.variance_publisher.publish(self.make_debug_grid(
+                        stamp, layers["variance"], valid, 0.0,
+                        self.debug_variance_max,
+                    ))
+                    self.count_publisher.publish(self.make_debug_grid(
+                        stamp, layers["count"].astype(np.float32), valid, 0.0,
+                        float(max(1, self.debug_count_saturation)),
+                    ))
+                    self.age_publisher.publish(self.make_debug_grid(
+                        stamp, layers["age_seconds"], valid, 0.0,
+                        self.debug_age_max,
+                    ))
+                    obstacle_valid = np.isfinite(layers["obstacle_height"])
+                    self.obstacle_publisher.publish(self.make_debug_grid(
+                        stamp, layers["obstacle_height"], obstacle_valid, 0.0,
+                        self.debug_obstacle_height_max,
+                    ))
+                finally:
+                    if stage2_started is not None:
+                        self.diagnostic_stage2_publish_ms.append(
+                            (time.perf_counter() - stage2_started) * 1000.0
+                        )
             if self.publish_stage3_debug_layers:
                 # featureにはrelative elevationを使い、common-mode odom-z offsetがterrain
                 # shapeに見えることを抑える。局所平面supportが不足してもobstacle evidenceは
