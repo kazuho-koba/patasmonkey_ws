@@ -4,8 +4,8 @@
   ros__parameters:
     depth_topic: /oak/depth/image_raw
     camera_info_topic: /oak/depth/camera_info
-    # Foxy sensor-data QoSの既定値。queue試験ではlaunch引数で5/20を切り替える。
-    depth_subscription_queue_depth: 5
+    # 実機比較後の暫定history深度。reliabilityやTF待ちpending queueとは独立。
+    depth_subscription_queue_depth: 3
     map_frame: odom
     base_frame: base_link
     camera_frame_override: ""

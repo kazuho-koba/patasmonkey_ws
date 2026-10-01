@@ -45,6 +45,9 @@ def generate_launch_description():
     mapper_executor_diagnostics_csv = LaunchConfiguration(
         "mapper_executor_diagnostics_csv"
     )
+    mapper_tf_listener_dedicated_thread = LaunchConfiguration(
+        "mapper_tf_listener_dedicated_thread"
+    )
     # rosbagを記録するかどうか
     record_bag = LaunchConfiguration("record_bag")
     bag_name = LaunchConfiguration("bag_name")
@@ -351,7 +354,15 @@ def generate_launch_description():
         executable="hwt905_imu_node",
         name="hwt905_imu_node",
         output="screen",
-        parameters=[str(imu_config_file)],
+        # 診断を有効化した試行だけ、終了時に同じbagディレクトリへCSVを保存する。
+        # poll_hzや通信設定は既存configのまま保持する。
+        parameters=[str(imu_config_file), {
+            "timing_diagnostics": LaunchConfiguration("wit_timing_diagnostics"),
+            "timing_csv": PathJoinSubstitution([
+                str(bag_output_directory), bag_name, "wit_timing.csv",
+            ]),
+            "timing_max_samples": LaunchConfiguration("wit_timing_max_samples"),
+        }],
     )
     wheel_odometry_node = Node(
         package="pm_localization",
@@ -388,6 +399,9 @@ def generate_launch_description():
                 "depth_subscription_queue_depth": ParameterValue(
                     mapper_depth_subscription_queue_depth, value_type=int
                 ),
+                "depth_subscription_reliability": ParameterValue(
+                    LaunchConfiguration("mapper_depth_subscription_reliability"), value_type=str
+                ),
                 # Stage 2 layerの出力だけを個別比較し、hazard計算は維持する。
                 "publish_stage2_debug_layers": ParameterValue(
                     mapper_publish_stage2_debug_layers, value_type=bool
@@ -406,6 +420,9 @@ def generate_launch_description():
                 ),
                 "diagnostic_executor_csv_path": ParameterValue(
                     mapper_executor_diagnostics_csv, value_type=str
+                ),
+                "tf_listener_dedicated_thread": ParameterValue(
+                    mapper_tf_listener_dedicated_thread, value_type=bool
                 ),
             },
         ],
@@ -712,6 +729,14 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument(
+            "wit_timing_diagnostics", default_value="false",
+            description="Witの読み取り・publish・周期遅延を終了時にCSV保存する",
+        ),
+        DeclareLaunchArgument(
+            "wit_timing_max_samples", default_value="60000",
+            description="Wit周期診断の保持件数。超過時は古い記録を破棄する",
+        ),
+        DeclareLaunchArgument(
             "use_gnss",
             default_value="true",
             description="Start GNSS, navsat_transform, and global EKF",
@@ -751,11 +776,15 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "mapper_depth_subscription_queue_depth",
-            default_value="5",
+            default_value="3",
             description=(
-                "mapperのdepth subscriber KEEP_LAST履歴深度。既定5はsensor-data QoS。"
-                "queue診断比較時のみ変更する"
+                "mapperのdepth subscriber KEEP_LAST履歴深度。実機比較後の暫定既定3。"
+                "TF待ちpending queueとは独立"
             ),
+        ),
+        DeclareLaunchArgument(
+            "mapper_depth_subscription_reliability", default_value="best_effort",
+            description="depth受信の比較用QoS: best_effort / reliable。既定は従来どおり",
         ),
         DeclareLaunchArgument(
             "mapper_publish_stage2_debug_layers",
@@ -799,6 +828,11 @@ def generate_launch_description():
             "record_bag",
             default_value="true",
             description="Record all ROS 2 topics to an MCAP rosbag",
+        ),
+        DeclareLaunchArgument(
+            "mapper_tf_listener_dedicated_thread",
+            default_value="false",
+            description="TF受信だけを専用node/threadへ分離する比較用設定。撮像時刻TFは維持",
         ),
         DeclareLaunchArgument(
             "bag_name",

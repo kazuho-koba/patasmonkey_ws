@@ -7,6 +7,7 @@ import time
 from types import SimpleNamespace
 
 import rclpy
+from sensor_msgs.msg import Image
 from rclpy.context import Context
 from rclpy.node import Node
 
@@ -135,3 +136,49 @@ def test_summary_rejects_executor_and_schedstat_from_different_processes(tmp_pat
         assert "PID" in str(error)
     else:
         raise AssertionError("異なるPIDのCSVを誤って受理しました")
+
+
+def test_depth_take_is_joined_to_executor_row(tmp_path):
+    """実subscriptionでheader stamp・take・callback境界が同じCSV行へ入る。"""
+    context = Context()
+    rclpy.init(context=context)
+    node = Node("depth_take_probe", context=context)
+    node.depth_topic = "/pm_test/depth_take_probe"
+    node.diagnostic_processed_frames_total = 0
+    seen = []
+    def callback(msg):
+        seen.append(msg.header.stamp.nanosec)
+        # 合成callback内のcounter更新を、実mapperと同じ差分経路で検証する。
+        node.diagnostic_processed_frames_total += 2
+    node.create_subscription(Image, node.depth_topic, callback, 5)
+    publisher = node.create_publisher(Image, node.depth_topic, 5)
+    path = tmp_path / "take.csv"
+    executor = MeasuredSingleThreadedExecutor(node, str(path))
+    executor.add_node(node)
+    message = Image()
+    message.header.stamp.sec = 123
+    message.header.stamp.nanosec = 456
+    message.header.frame_id = "camera_optical"
+    message.height, message.width, message.step = 1, 1, 2
+    message.encoding = "16UC1"
+    message.data = b"\x01\x00"
+    try:
+        deadline = time.monotonic() + 3.0
+        while not seen and time.monotonic() < deadline:
+            publisher.publish(message)
+            executor.spin_once(timeout_sec=0.05)
+        assert seen
+    finally:
+        executor.shutdown()
+        executor.close()
+        node.destroy_node()
+        rclpy.shutdown(context=context)
+    rows = list(csv.DictReader(path.open()))
+    row = next(row for row in rows if row.get("message_stamp_ns"))
+    assert int(row["message_stamp_ns"]) == 123000000456
+    assert row["take_success"] == "1"
+    assert row["fused_frames_delta"] == "2"
+    assert int(row["callback_start_monotonic_ns"]) >= int(row["take_end_monotonic_ns"])
+    assert int(row["callback_end_monotonic_ns"]) >= int(row["callback_start_monotonic_ns"])
+    assert float(row["take_wall_ms"]) >= 0
+    print("RMW timestamps:", row["rmw_source_timestamp_ns"], row["rmw_received_timestamp_ns"])

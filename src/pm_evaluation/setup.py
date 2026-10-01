@@ -37,6 +37,7 @@ setup(
         "console_scripts": [
             "compare_odometry_sources = pm_evaluation.cli.compare_odometry_sources:main",
             "analyze_bag_frequencies = pm_evaluation.cli.analyze_bag_frequencies:main",
+            "analyze_mapper_depth_delivery = pm_evaluation.cli.analyze_mapper_depth_delivery:main",
             "analyze_oak_bag_diagnostics = pm_evaluation.cli.analyze_oak_bag_diagnostics:main",
             "plot_bag_trajectories = pm_evaluation.cli.plot_bag_trajectories:main",
             "plot_bag_trajectories_old = pm_evaluation.cli.plot_bag_trajectories_old:main",

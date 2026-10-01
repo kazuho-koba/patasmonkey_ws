@@ -106,3 +106,33 @@ DepthAI 2.30の画像APIは露光時間とISO感度を提供するが、独立�
 提供しない。このため診断messageでは `sensitivity_iso` を保存する。device timestampは
 OAK起動後のmonotonic durationであり、Unix時刻ではない。ROS header stamp、DepthAIの
 host同期済みtimestamp、host受信時刻も併記し、時計変換と転送遅延を区別できるようにする。
+# Wit IMUの周期診断
+
+`pm_bag_global_localization.launch.py`に`wit_timing_diagnostics:=true`を付けると、
+Witドライバの読み取り・変換・publish時間、起床遅延、期限超過を計測します。
+既定はfalseです。poll_hzや周期制御の変更は行いません。
+終了時に試行ディレクトリの`wit_timing.csv`へ保存します。
+`wit_timing_max_samples`は既定60000件で、超過すると古い行を破棄します。
+SIGKILL・電源断では保存されないため、SIGINTで正常終了させてください。
+
+```bash
+ros2 launch pm_bringup pm_bag_global_localization.launch.py use_vehicle_interface:=false use_teleop:=false wit_timing_diagnostics:=true
+python3 ~/ros2_ws/src/hwt905_rs485_driver/tools/analyze_imu_timing.py ~/patasmonkey_ws/bags/<試行名>/wit_timing.csv
+```
+
+診断対応の`hwt905_rs485_driver`を先にビルド・sourceしてください。
+詳細なCSV項目・制約は同パッケージのREADMEを参照してください。
+
+起動直後の空白を反復検証する場合は、同パッケージの試験runnerを使えます。
+既存service/launchを停止し、IMUの二重接続を避けてから実行してください。
+以下は40秒を3回記録し、操縦・モータ系を無効にして比較します。
+画像bagも保存するため空き容量を確認し、SSH制御接続は最後まで維持してください。
+
+```bash
+python3 ~/ros2_ws/src/hwt905_rs485_driver/tools/run_imu_startup_trials.py --mode bringup --output /tmp/wit_startup_bringup
+```
+
+出力先は未作成のディレクトリを指定します。各bagの`wit_timing.csv`と
+`wit_timing.json`に起動節目・取得時間を残し、出力先の`comparison.json`へ
+0〜5秒、5〜10秒、10〜20秒、20秒以降の周波数・長い間隔・エラーをまとめます。
+時刻基準はPython node初期化開始です。センサ内部の測定時刻ではありません。

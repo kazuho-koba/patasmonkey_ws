@@ -483,8 +483,98 @@ blocking・待ち・計測外処理等を追加調査します。`ready_to_dispa
 dispatch区間であって、DDS publishからcallback開始までの時間ではありません。summaryは異なる試行の
 CSVを誤って混ぜないようPIDも照合します。executor測定と既存の
 `depth_header_dt` / `depth_arrival_dt` / `depth_age`、bag内depth stamp列を同じ計測窓で照合します。
-この診断でもRMW内部でsampleがreadyになった正確な時刻やmessage-lost counterは得られないため、
-履歴深度比較はsample保持への寄与をみる補助試験として解釈します。
+画像の各行には`message_stamp_ns`と`message_frame_id`、`rclpy_take`前後・callback入口/出口、
+RMWが提供する`source_timestamp` / `received_timestamp`も記録します。takeはFoxy標準と同じ呼出を
+1回だけ行い、画像配列の追加copyはしません。未対応のRMW時刻（0等）は空欄です。
+`fused_frames_delta`はそのhandler中の融合完了counter増分で、callback受信件数とは別に合算します。
+
+時刻の読み方は次のとおりです。
+
+- source→received：取得できたsampleのDDS送信→受信の時刻差。camera撮像→DDS送信ではありません。
+- received→take完了：reader受信後の実行待ちとtake/deserializeを含みます。純粋なDDS処理時間ではありません。
+- take完了→callback入口：take後のPython dispatch区間です。
+- callback入口→出口：queue登録や即時fusion等、実際にcallback内で実行した時間です。
+- `depth_queue_wait`：callbackでenqueueした後、撮像時刻TFを取得できるまで。上記受信待ちとは別です。
+
+bag内depth stampと照合するには、計測を停止してから次を実行します。起動中に重いbag解析を重ねると
+CPU・disk負荷が変わり、比較条件が崩れるため避けてください。
+
+```bash
+ros2 run pm_evaluation analyze_mapper_depth_delivery \
+  --bag /path/to/rosbag_directory \
+  --executor-csv /tmp/trial/executor.csv \
+  --schedstat-csv /tmp/trial/schedstat.csv \
+  --output-dir /tmp/trial/delivery_analysis
+```
+
+出力は`summary.json`と`stamp_differences.csv`です。bagにはあるがtakeされなかった画像を
+`missing_at_take`として列挙します。受信できた画像の遅延が短くても、欠落画像の受信時刻は得られないため、
+DDS配送損失・reader履歴上書き・executor待ちのいずれかを単独では確定できません。履歴深度比較も
+sample保持への寄与をみる補助試験として解釈します。異なるclock domainらしい負の時刻差や極端な値は
+遅延集計から除外します。
+
+### TF受信を別threadへ分離する比較
+
+depth reader自体のreliabilityを比較する場合は
+`mapper_depth_subscription_reliability:=best_effort`（既定）または`reliable`を指定します。
+node parameterは`depth_subscription_reliability`です。履歴深度、durability、TF同期、samplingは
+変更せず、指定したreliabilityだけを切り替えます。runtime中の変更ではなくnode再起動時に適用します。
+RELIABLEでは配送回復と引き換えに、再送・画像滞留・publisher負荷が増える可能性があるため、
+fusion率だけでなく画像age、TF drop、CPUを確認して採用判断してください。
+RELIABLE受信にはpublisher側もRELIABLE対応が必要です。BEST_EFFORT publisherのみのbag再生等では
+QoS不一致で受信できなくなるため、常用の既定値を無条件に置き換えないでください。
+
+以下のrunnerの6番目の引数でも指定できます。TF別thread・追加raw receiverはOFFにしたまま、
+BEST_EFFORT→RELIABLE→BEST_EFFORTの各60秒比較を行う例です。各試行の停止・bag確定後に次を起動します。
+
+```bash
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh be_a false 60 false false best_effort
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh reliable_b false 60 false false reliable
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh be_a2 false 60 false false best_effort
+```
+
+`mapper_tf_listener_dedicated_thread:=true`は、TF listenerだけを専用node/executor/threadへ移す
+比較用設定です（既定false）。同じnodeを2つのexecutorへ登録せず、grid更新とhazard計算は従来の
+main threadに残します。撮像時刻TF・QoS・TFの内容は変更しません。Python GIL競合は残るため、
+性能が改善するとは限りません。診断ONの場合、専用threadは`executor.tf.csv`にも記録します。
+
+Jetson上の試験runnerは以下です。両条件で全topic bag負荷を揃え、hazard 2 Hz、retry 100 Hz、
+履歴5、Stage 2出力ON、Wit timing診断OFFを固定します。teleop/vehicle interfaceは起動しません。
+VO初期化とfusion成立後に60秒計測し、SIGINT停止、recorder終了、metadata/bag infoの確認まで待ちます。
+
+```bash
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh baseline false 60
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh tf_worker true 60
+```
+
+2回目は1回目の停止完了後に実行します。SSHで起動した場合も制御sessionを維持してください。
+CSV・parameter実効値・Wit診断OFF確認・CPU/thread schedulerログは`/tmp/mapper_tf_contention_*`へ保存します。
+
+補助試験として4番目の引数を`true`にすると、TF等を処理しない独立したraw画像受信processを追加します。
+このprobeもmapperと同じBEST_EFFORT / KEEP_LAST 5です。Image本文をdeserializeせずheader stampだけ
+`raw_probe.csv`へ記録します。追加DDS readerの負荷があるため、主A/Bへ混ぜず別試行にします。
+別processでは10 Hz受信できても、mapperのreader内部の欠落原因を直接確定できるわけではありません。
+
+```bash
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh raw_receiver_probe false 60 true
+```
+
+4番目を`toggle`、計測時間を180秒にすると、同じstackを再起動せず、60秒ずつprobe OFF→ON→OFFと
+切り替えます。`network_*.txt`の先頭はphase境界のmonotonic時刻で、続けてUDP kernel counterを保存します。
+これらは設定変更ではなく読み取り専用の診断です。追加readerのdiscovery・停止直後は過渡状態なので、
+評価時は境界付近を除外してください。
+
+```bash
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh raw_toggle false 180 toggle
+```
+
+5番目を`true`にするとprobe側にRELIABLE履歴5のraw受信も追加し、同じprocess/executor内で
+BEST_EFFORTとの配送差を比較できます。CSVの`qos_label`で両者を分けます。mapper本体のQoSは
+変更しません。追加readerがDDS配送やpublisher負荷へ影響する可能性も含めて解釈してください。
+
+```bash
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh raw_qos_comparison false 60 true true
+```
 
 ### 処理率診断ログ
 
@@ -614,3 +704,53 @@ Stage 3.1では、局所平面残差roughness、heading support付きstep、最�
 (1)ground候補へのrobust estimator、(2)vertical bandsまたはnegative-obstacle cue、
 (3)明示的な軽量terrain map message、(4)検証済みのcost変換、の順が妥当です。Nav2
 pluginはその後にします。
+
+## RELIABLE固定：QoS history depth 5 / 3 / 2 の性能比較
+
+通常起動のhistory depth既定値は暫定で3です（node/YAML/launch/runner共通）。
+reliabilityの既定値は変更していません。下記比較では明示的にRELIABLEを指定します。
+
+`depth_subscription_queue_depth`はDDS readerのKEEP_LAST履歴であり、
+`pending_queue_size`（受信後のexact TF待ちqueue）とは別です。
+後者は5のまま、runnerの第7引数だけ変えます。起動後の実効depth/reliabilityを確認し、
+VO初期化・fusion成立後に共通の計測窓で比較します。
+
+```bash
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh reliable_q5 false 60 false false reliable 5
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh reliable_q3 false 60 false false reliable 3
+bash src/pm_evaluation/tools/run_mapper_tf_contention_trial.sh reliable_q2 false 60 false false reliable 2
+```
+
+runnerはJetsonホスト用です。既存liveプロセスがあると開始せず、motor/teleopはOFF、
+Wit診断OFF、TF retry 100 Hz、hazard 2 Hz、Stage 2出力ON、標準bag記録を固定します。
+launch/recorderはSIGINTで停止し、metadataとbag infoを確認します。
+
+取得項目と読み方：
+
+- `executor.csv`のcallback行：全depth受信のstamp・callback開始、RMW/take/実行時間。
+- 新しい`record_type=fusion`行：同じ画像のgrid更新完了時刻、撮像stamp→完了、
+  callback開始→完了、enqueue→融合処理開始のqueue待ち、融合処理そのもののwall時間。
+  callback開始はdepth callback実処理入口であり、executor handler開始とは別です。
+  callback→完了にはTF待ち・実行待ちが含まれ、純粋な演算時間ではありません。
+- `launch.log`の5秒窓：受信/fusion率、rate/TF/queue/info drop、queue待ちの要約。
+- `schedstat.csv`：mapperプロセス/各threadのCPU時間とscheduler実行待ち。
+- `top.log`：mapper・driver・recorder等のCPU（1コア=100%）。
+- `tegrastats.log`：各CPU coreのbusy、周波数、温度、RAM。全体CPUは8 core平均で比較。
+
+初期化を含むbag全期間と、初期化後の計測窓を混ぜないでください。
+窓を指定して既存CLIで解析します（`RUN_DIR`と`BAG_DIR`は各runの実パス）：
+
+```bash
+ros2 run pm_evaluation analyze_mapper_depth_delivery \
+  --bag "$BAG_DIR" --executor-csv "$RUN_DIR/executor.csv" \
+  --schedstat-csv "$RUN_DIR/schedstat.csv" --output-dir "$RUN_DIR/delivery_analysis"
+ros2 run pm_perception mapper_executor_diagnostics summarize \
+  --executor-csv "$RUN_DIR/executor.csv" --schedstat-csv "$RUN_DIR/schedstat.csv"
+```
+
+`summary.json`の`fusion_latency_ms`に平均・中央値・p95・p99・最大・負値数を保存します。
+header→callbackは全受信画像、残りはfusion成功画像が母集団です。
+Header.stampとホストwall時計の補正誤差は残るため負値を隠しません。
+callback以降の差はmonotonic時計を使います。旧CSVのfusion時刻欠測は0でなくnullです。
+fusion行はexecutor診断ON時のみ生成し、既存CSVのbatch保存を使います。
+通常runtimeのROS message・full PointCloudを増やす変更はありません。

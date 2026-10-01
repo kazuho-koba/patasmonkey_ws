@@ -21,6 +21,7 @@ from rclpy.executors import (
     SingleThreadedExecutor,
     TimeoutException,
 )
+from rclpy.impl.implementation_singleton import rclpy_implementation as _rclpy
 
 
 EXECUTOR_FIELDS = [
@@ -36,6 +37,17 @@ EXECUTOR_FIELDS = [
     "handler_wall_ms",
     "handler_thread_cpu_ms",
     "handler_non_cpu_ms",
+    # 同じ行に画像識別子とtake/callback境界を保存し、bagとexecutorをstampで結合する。
+    "message_stamp_ns", "message_frame_id", "take_success",
+    "take_start_monotonic_ns", "take_end_monotonic_ns", "take_wall_time_ns",
+    "take_wall_ms", "take_thread_cpu_ms", "callback_start_monotonic_ns",
+    "callback_end_monotonic_ns", "rmw_source_timestamp_ns",
+    "rmw_received_timestamp_ns",
+    "fused_frames_delta",
+    # fusion専用行：同一画像の受信開始・TF待ち・grid更新完了を明示的に結合する。
+    "fusion_end_monotonic_ns", "fusion_end_wall_time_ns",
+    "header_to_callback_ms", "header_to_fusion_ms", "callback_to_fusion_ms",
+    "queue_wait_ms", "fusion_processing_ms",
 ]
 
 SCHEDSTAT_FIELDS = [
@@ -100,12 +112,16 @@ class MeasuredSingleThreadedExecutor(SingleThreadedExecutor):
         # 前にcontextを渡さないと、独立Contextでのsmoke testや複数context環境で失敗する。
         super().__init__(context=node.context)
         self._node_name = str(node.get_name())
+        self._diagnostic_node = node
         self._flush_period_sec = max(float(flush_period_sec), 0.1)
         self._pending_rows = []
         self._last_flush_ns = time.monotonic_ns()
         self._thread_cpu_clock = getattr(time, "thread_time_ns", None)
         self._stream = None
         self._writer = None
+        self._subscription_trace = {}
+        self._depth_topic = getattr(node, "depth_topic", "/oak/depth/image_raw")
+        self._metadata_written = False
 
         path = Path(output_path).expanduser()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,16 +129,9 @@ class MeasuredSingleThreadedExecutor(SingleThreadedExecutor):
         self._stream = path.open("x", encoding="utf-8", newline="", buffering=262144)
         self._writer = csv.DictWriter(self._stream, fieldnames=EXECUTOR_FIELDS)
         self._writer.writeheader()
-        self._writer.writerow({
-            "record_type": "metadata",
-            "monotonic_ns": time.monotonic_ns(),
-            "thread_id": threading.get_native_id(),
-            "pid": os.getpid(),
-            "node_name": self._node_name,
-        })
         self._stream.flush()
         node.get_logger().warning(
-            "executor timing diagnostics ENABLED; csv=%s pid=%d tid=%d; "
+            "executor timing diagnostics ENABLED; csv=%s pid=%d creating_tid=%d; "
             "diagnostic-only SingleThreadedExecutor wrapper"
             % (str(path), os.getpid(), threading.get_native_id())
         )
@@ -144,6 +153,16 @@ class MeasuredSingleThreadedExecutor(SingleThreadedExecutor):
 
     def spin_once(self, timeout_sec=None):
         """Foxy SingleThreadedExecutorと同じ順で1 entityを選び、処理時間を測る."""
+        if not self._metadata_written:
+            # workerはmain threadで生成されても別threadでspinする。実際のspin TIDを
+            # 最初のspinで保存し、schedstatのmain/TF threadを取り違えないようにする。
+            self._writer.writerow({
+                "record_type": "metadata", "monotonic_ns": time.monotonic_ns(),
+                "thread_id": threading.get_native_id(), "pid": os.getpid(),
+                "node_name": self._node_name,
+            })
+            self._stream.flush()
+            self._metadata_written = True
         wait_started_ns = time.monotonic_ns()
         try:
             handler, entity, node = self.wait_for_ready_callbacks(
@@ -162,6 +181,10 @@ class MeasuredSingleThreadedExecutor(SingleThreadedExecutor):
         cpu_start_ns = (
             self._thread_cpu_clock() if self._thread_cpu_clock is not None else None
         )
+        self._subscription_trace = {}
+        # callback受信とfusion完了を混同しない。mapper既存累積counterの差だけを
+        # 読み、timer内で複数画像を処理した場合も正確な完了件数を同じ行へ保存する。
+        fused_before = getattr(self._diagnostic_node, "diagnostic_processed_frames_total", None)
         try:
             handler()
         finally:
@@ -175,7 +198,7 @@ class MeasuredSingleThreadedExecutor(SingleThreadedExecutor):
                 max(cpu_end_ns - cpu_start_ns, 0)
                 if cpu_start_ns is not None and cpu_end_ns is not None else None
             )
-            self._append_event({
+            row = {
                 "record_type": "callback",
                 "monotonic_ns": dispatch_start_ns,
                 "thread_id": threading.get_native_id(),
@@ -190,10 +213,63 @@ class MeasuredSingleThreadedExecutor(SingleThreadedExecutor):
                 "handler_non_cpu_ms": (
                     "" if cpu_ns is None else max(wall_ns - cpu_ns, 0) / 1e6
                 ),
-            }, handler_end_ns)
+            }
+            row.update(self._subscription_trace)
+            fused_after = getattr(self._diagnostic_node, "diagnostic_processed_frames_total", None)
+            if fused_before is not None and fused_after is not None:
+                row["fused_frames_delta"] = fused_after - fused_before
+            self._append_event(row, handler_end_ns)
+            # 通常executorにはこの処理はない。診断時のみnodeが蓄積した完了行を
+            # 同じCSVへ流し、retryで融合した画像も受信stampと対応付ける。
+            events = getattr(self._diagnostic_node, "diagnostic_fusion_events", None)
+            while events:
+                self._append_event(events.popleft(), handler_end_ns)
 
         if handler.exception() is not None:
             raise handler.exception()
+
+    def _take_subscription(self, sub):
+        """Foxy標準と同じtakeを行い、deserializeを含む時間と任意RMW時刻を残す。
+
+        Foxy標準はrclpy_takeの戻り値(message, info)のinfoを捨てる。その同じ呼出を
+        診断時だけ計測する。画像dataは参照・複製せずheaderだけ読む。RMW時刻が0または
+        欠落なら未対応として空欄にし、DDS待ちが0だったという意味にはしない。
+        """
+        started_ns = time.monotonic_ns()
+        cpu_started_ns = time.thread_time_ns()
+        with sub.handle as capsule:
+            result = _rclpy.rclpy_take(capsule, sub.msg_type, sub.raw)
+        ended_ns = time.monotonic_ns()
+        trace = {
+            "take_success": int(result is not None),
+            "take_start_monotonic_ns": started_ns,
+            "take_end_monotonic_ns": ended_ns,
+            "take_wall_time_ns": time.time_ns(),
+            "take_wall_ms": (ended_ns - started_ns) / 1e6,
+            "take_thread_cpu_ms": (time.thread_time_ns() - cpu_started_ns) / 1e6,
+        }
+        if result is not None:
+            message, info = result
+            if isinstance(info, dict):
+                for field in ("source_timestamp", "received_timestamp"):
+                    value = info.get(field, 0)
+                    if isinstance(value, int) and value > 0:
+                        trace["rmw_" + field + "_ns"] = value
+            if sub.topic_name == self._depth_topic and hasattr(message, "header"):
+                stamp = message.header.stamp
+                trace["message_stamp_ns"] = int(stamp.sec) * 1000000000 + int(stamp.nanosec)
+                trace["message_frame_id"] = message.header.frame_id
+        self._subscription_trace = trace
+        return result[0] if result is not None else None
+
+    async def _execute_subscription(self, sub, message):
+        """take後のcallback入口・出口を同じexecutor行に紐付ける。"""
+        if message:
+            self._subscription_trace["callback_start_monotonic_ns"] = time.monotonic_ns()
+            try:
+                await super()._execute_subscription(sub, message)
+            finally:
+                self._subscription_trace["callback_end_monotonic_ns"] = time.monotonic_ns()
 
     def close(self):
         """終了時に残りの計測行をflushし、ファイルを閉じる."""

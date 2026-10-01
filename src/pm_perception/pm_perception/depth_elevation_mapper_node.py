@@ -11,6 +11,7 @@ import csv
 import os
 from pathlib import Path
 import time
+import threading
 
 import numpy as np
 import rclpy
@@ -18,7 +19,7 @@ from nav_msgs.msg import OccupancyGrid
 from geometry_msgs.msg import Point
 from rclpy.duration import Duration
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, qos_profile_sensor_data
+from rclpy.qos import QoSProfile, qos_profile_sensor_data, ReliabilityPolicy
 from rclpy.time import Time
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField
 from tf2_ros import Buffer, TransformException, TransformListener
@@ -56,12 +57,14 @@ class _MeasuredTransformListener(TransformListener):
 
     TFの受信・Buffer登録は親クラスへそのまま委譲する。計測有効時だけwall timeと
     callback内のtransform数を数え、5秒周期の性能ログで集計値を取り出す。
-    mapperがSingleThreadedExecutorで動く通常構成を前提に、追加lockやmessage複製は行わない。
+    専用TF thread比較時も統計の更新・回収を保護する。TF登録自体はlock外で親へ委譲し、
+    BufferCore内部の同期を使用する。画像やTF messageの複製は行わない。
     """
 
     def __init__(self, buffer, node, diagnostics_enabled=False):
         self.diagnostics_enabled = bool(diagnostics_enabled)
         self._diagnostic_counters = self._empty_counters()
+        self._diagnostic_lock = threading.Lock()
         super().__init__(buffer, node)
 
     @staticmethod
@@ -87,13 +90,12 @@ class _MeasuredTransformListener(TransformListener):
             return super().callback(data)
         finally:
             elapsed_ms = (time.perf_counter() - started) * 1000.0
-            counters = self._diagnostic_counters
-            counters["dynamic_calls"] += 1
-            counters["dynamic_transforms"] += len(data.transforms)
-            counters["dynamic_time_ms"] += elapsed_ms
-            counters["dynamic_max_ms"] = max(
-                counters["dynamic_max_ms"], elapsed_ms
-            )
+            with self._diagnostic_lock:
+                counters = self._diagnostic_counters
+                counters["dynamic_calls"] += 1
+                counters["dynamic_transforms"] += len(data.transforms)
+                counters["dynamic_time_ms"] += elapsed_ms
+                counters["dynamic_max_ms"] = max(counters["dynamic_max_ms"], elapsed_ms)
 
     def static_callback(self, data):
         """`/tf_static` callbackも同じ方法で測る（TF登録自体は変更しない）。"""
@@ -104,17 +106,19 @@ class _MeasuredTransformListener(TransformListener):
             return super().static_callback(data)
         finally:
             elapsed_ms = (time.perf_counter() - started) * 1000.0
-            counters = self._diagnostic_counters
-            counters["static_calls"] += 1
-            counters["static_transforms"] += len(data.transforms)
-            counters["static_time_ms"] += elapsed_ms
-            counters["static_max_ms"] = max(counters["static_max_ms"], elapsed_ms)
+            with self._diagnostic_lock:
+                counters = self._diagnostic_counters
+                counters["static_calls"] += 1
+                counters["static_transforms"] += len(data.transforms)
+                counters["static_time_ms"] += elapsed_ms
+                counters["static_max_ms"] = max(counters["static_max_ms"], elapsed_ms)
 
     def take_diagnostics(self):
         """直近log区間のTF callback統計を返し、次の区間用にゼロクリアする。"""
-        counters = self._diagnostic_counters
-        self._diagnostic_counters = self._empty_counters()
-        return counters
+        with self._diagnostic_lock:
+            counters = self._diagnostic_counters
+            self._diagnostic_counters = self._empty_counters()
+            return counters
 
 
 class DepthElevationMapper(Node):
@@ -129,9 +133,9 @@ class DepthElevationMapper(Node):
         defaults = {
             "depth_topic": "/oak/depth/image_raw",
             "camera_info_topic": "/oak/depth/camera_info",
-            # Foxyのsensor-data QoSはKEEP_LAST depth 5。試験時にreader履歴だけを
-            # 変えられるようparameter化し、reliability等ほかの方針は変えない。
-            "depth_subscription_queue_depth": 5,
+            # historyは暫定3。reliabilityは独立に設定し、既定BEST_EFFORTを維持する。
+            "depth_subscription_queue_depth": 3,
+            "depth_subscription_reliability": "best_effort",
             "map_frame": "odom",
             "base_frame": "base_link",
             "camera_frame_override": "",
@@ -201,6 +205,8 @@ class DepthElevationMapper(Node):
             # 空ならmain()がPIDと時刻を含む一意な/tmp CSV名を作る。
             "diagnostic_executor_csv_path": "",
             "diagnostic_executor_flush_period_sec": 1.0,
+            # 通常は同じexecutorでTFを受信。比較時のみ専用node/threadへ移す。
+            "tf_listener_dedicated_thread": False,
             # 空文字列なら診断配列・CSVを作らない。bag forensic専用の明示opt-in。
             "forensic_output_dir": "",
             "forensic_roi_forward_min_m": 0.25,
@@ -225,6 +231,9 @@ class DepthElevationMapper(Node):
         )
         if self.depth_subscription_queue_depth < 1:
             raise ValueError("depth_subscription_queue_depth must be >= 1")
+        self.depth_subscription_reliability = str(value("depth_subscription_reliability"))
+        if self.depth_subscription_reliability not in ("best_effort", "reliable"):
+            raise ValueError("depth_subscription_reliability must be best_effort or reliable")
         self.map_frame = str(value("map_frame"))
         self.base_frame = str(value("base_frame"))
         self.camera_frame_override = str(value("camera_frame_override"))
@@ -320,6 +329,9 @@ class DepthElevationMapper(Node):
         self.diagnostic_executor_flush_period_sec = float(
             value("diagnostic_executor_flush_period_sec")
         )
+        self.tf_listener_dedicated_thread = bool(value("tf_listener_dedicated_thread"))
+        self.tf_listener_node = None
+        self.tf_listener_worker = None
         if self.diagnostic_executor_flush_period_sec <= 0.0:
             raise ValueError("diagnostic_executor_flush_period_sec must be > 0")
         self.forensic_output_dir = str(value("forensic_output_dir")).strip()
@@ -430,15 +442,29 @@ class DepthElevationMapper(Node):
         # bounded FIFOはdepth stampに対応するTF/CameraInfoだけを待つ。TF欠落時にもlatencyと
         # memoryを制限できる。ここで最新transformを使うと移動中robotのmapが空間的にずれる。
         self.tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
+        tf_owner = self
+        if self.tf_listener_dedicated_thread:
+            # 同じnodeを複数executorへ入れない。global topic remapを継承しつつ、
+            # launchの__node remapだけは専用名で上書きする。TF以外の処理は登録しない。
+            self.tf_listener_node = Node(
+                "depth_elevation_mapper_tf_listener", context=self.context,
+                namespace=self.get_namespace(),
+                cli_args=["--ros-args", "-r", "__node:=depth_elevation_mapper_tf_listener"],
+                start_parameter_services=False, enable_rosout=False,
+            )
+            tf_owner = self.tf_listener_node
         if self.diagnostic_callback_timing:
             # 診断中だけlistener wrapperを使う。通常運用ではTF hot pathへ追加dispatchすら
             # 持ち込まず、Foxy標準listenerをそのまま使う。
             self.tf_listener = _MeasuredTransformListener(
-                self.tf_buffer, self, diagnostics_enabled=True
+                self.tf_buffer, tf_owner, diagnostics_enabled=True
             )
         else:
-            self.tf_listener = TransformListener(self.tf_buffer, self)
+            self.tf_listener = TransformListener(self.tf_buffer, tf_owner)
         self.pending = deque()
+        # executor診断ON時だけ画像ごとの完了イベントを保持する。CSVへの書込みは
+        # executor側の既存batch処理に委譲し、画像処理中にflushしない。
+        self.diagnostic_fusion_events = deque()
         self.camera_info = None
         self.last_processed_stamp_ns = -1
         if self.diagnostic_callback_timing:
@@ -489,13 +515,14 @@ class DepthElevationMapper(Node):
         self.create_subscription(
             CameraInfo, self.camera_info_topic, self.camera_info_callback, 1
         )
-        # 比較試験では履歴深度だけを変える。Foxy標準sensor-data profileの
-        # best-effort/volatileなど、深度以外のQoS値はそのまま複製する。
+        # 履歴深度とreliabilityだけをparameterから選ぶ。durability等はsensor-data
+        # profileのまま。RELIABLEは遅延・再送負荷を増やし得るため既定にはしない。
         sensor_qos = qos_profile_sensor_data
         depth_subscription_qos = QoSProfile(
             history=sensor_qos.history,
             depth=self.depth_subscription_queue_depth,
-            reliability=sensor_qos.reliability,
+            reliability=(ReliabilityPolicy.RELIABLE if self.depth_subscription_reliability == "reliable"
+                         else ReliabilityPolicy.BEST_EFFORT),
             durability=sensor_qos.durability,
             deadline=sensor_qos.deadline,
             lifespan=sensor_qos.lifespan,
@@ -505,7 +532,7 @@ class DepthElevationMapper(Node):
                 sensor_qos.avoid_ros_namespace_conventions
             ),
         )
-        self.create_subscription(
+        self.depth_subscription = self.create_subscription(
             Image, self.depth_topic, self.depth_callback, depth_subscription_qos
         )
         # 通常時は元のcallbackを直接timerへ登録する。診断時だけwrapperを通して、
@@ -564,10 +591,11 @@ class DepthElevationMapper(Node):
         self.get_logger().info(
             "depth-to-elevation mapper ready; all TF lookups use depth stamps; "
             "nominal camera height above ground=%.2f m (Stage 2 reference); "
-            "depth QoS KEEP_LAST depth=%d"
+            "depth QoS KEEP_LAST depth=%d reliability=%s"
             % (
                 self.nominal_camera_height_above_ground,
                 self.depth_subscription_queue_depth,
+                self.depth_subscription_reliability,
             )
         )
         # A/B試験時にYAMLよりlaunch overrideが優先されたことをログで確認する。
@@ -629,6 +657,7 @@ class DepthElevationMapper(Node):
 
     def _depth_callback_impl(self, message):
         """従来の受信・rate gate・FIFO処理。診断の有無でmap入力動作を変えない。"""
+        callback_start_ns = time.monotonic_ns() if self.diagnostic_executor_timing else None
         self.window_depth_received += 1
         stamp_ns = stamp_to_ns(message.header.stamp)
         if (
@@ -638,7 +667,7 @@ class DepthElevationMapper(Node):
             self.dropped_rate += 1
             self.window_dropped_rate += 1
             return
-        self.pending.append((time.monotonic(), message))
+        self.pending.append((time.monotonic(), message, callback_start_ns))
         while len(self.pending) > self.pending_queue_size:
             self.pending.popleft()
             self.dropped_queue += 1
@@ -698,8 +727,10 @@ class DepthElevationMapper(Node):
         queue先頭は後続frameを短時間blockする。これによりfusionの時間順を保ち、bag replay中の
         timeout方針も決定的になる。time zero（最新TF）でのlookupは許可しない。
         """
+        if self.tf_listener_worker is not None and self.tf_listener_worker.error is not None:
+            raise RuntimeError("TF worker failed") from self.tf_listener_worker.error
         while self.pending:
-            arrival, message = self.pending[0]
+            arrival, message, callback_start_ns = self.pending[0]
             intrinsics = self.intrinsics_for(message)
             if intrinsics is None:
                 if time.monotonic() - arrival <= self.tf_wait_timeout:
@@ -736,9 +767,16 @@ class DepthElevationMapper(Node):
                 self.diagnostic_depth_queue_wait_ms.append(
                     (time.monotonic() - arrival) * 1000.0
                 )
-            self.process_frame(message, intrinsics, camera_tf, base_tf)
+            # callback開始時刻をpending画像と一緒に運ぶ。retry timerで後から融合しても
+            # 別画像のcallback時刻やtimer開始時刻に置き換えない。
+            fusion_start_ns = time.monotonic_ns() if callback_start_ns is not None else None
+            self.process_frame(message, intrinsics, camera_tf, base_tf,
+                               callback_start_ns, fusion_start_ns,
+                               None if fusion_start_ns is None else
+                               (fusion_start_ns/1e9-arrival)*1000.0)
 
-    def process_frame(self, message, intrinsics, camera_tf, base_tf):
+    def process_frame(self, message, intrinsics, camera_tf, base_tf,
+                      callback_start_ns=None, fusion_start_ns=None, queue_wait_ms=None):
         """1画像をback-projectし、そのstampでtransformしてcellへfusionする。"""
         started = time.perf_counter()
         stamp_ns = stamp_to_ns(message.header.stamp)
@@ -811,6 +849,25 @@ class DepthElevationMapper(Node):
                 )
         else:
             observed_cells = 0
+
+        if callback_start_ns is not None:
+            # grid更新（診断用forensic処理を含む）が戻った境界を記録する。
+            # counter更新・性能ログ・後続hazard評価はこの完了時刻に含めない。
+            completed_ns = time.monotonic_ns()
+            completed_wall_ns = time.time_ns()
+            self.diagnostic_fusion_events.append({
+                "record_type": "fusion", "monotonic_ns": completed_ns,
+                "message_stamp_ns": stamp_to_ns(message.header.stamp),
+                "callback_start_monotonic_ns": callback_start_ns,
+                "fusion_end_monotonic_ns": completed_ns,
+                "fusion_end_wall_time_ns": completed_wall_ns,
+                "header_to_fusion_ms": (completed_wall_ns-stamp_to_ns(message.header.stamp))/1e6,
+                "header_to_callback_ms": (completed_wall_ns-completed_ns+callback_start_ns
+                                          -stamp_to_ns(message.header.stamp))/1e6,
+                "callback_to_fusion_ms": (completed_ns-callback_start_ns)/1e6,
+                "queue_wait_ms": queue_wait_ms,
+                "fusion_processing_ms": (completed_ns-fusion_start_ns)/1e6,
+            })
 
         # callback受信数と分け、TF lookupとdepth fusion完了後に数える。
         # 受信Hzとの差から、callback以降でdropした件数を確認できる。
@@ -1542,6 +1599,21 @@ def main(args=None):
     node = DepthElevationMapper()
     executor = None
     try:
+        output_path = node.diagnostic_executor_csv_path
+        if node.diagnostic_executor_timing and not output_path:
+            output_path = "/tmp/pm_mapper_executor_%s_%d.csv" % (
+                time.strftime("%Y%m%d_%H%M%S"), os.getpid()
+            )
+        if node.tf_listener_dedicated_thread:
+            from pm_perception.tf_listener_worker import TransformListenerWorker
+            # TF側も計測する場合は別CSVにし、thread別CPU/scheduler待ちを照合する。
+            tf_csv = str(Path(output_path).with_suffix(".tf.csv")) if output_path else None
+            node.tf_listener_worker = TransformListenerWorker(
+                node.tf_listener_node,
+                tf_csv if node.diagnostic_executor_timing else None,
+                node.diagnostic_executor_flush_period_sec,
+            )
+            node.get_logger().info("TF listener dedicated thread ENABLED")
         if node.diagnostic_executor_timing:
             # 標準executorのSingleThreaded動作は維持し、計測したい試験でだけ
             # callback dispatch前後を記録する同順序のwrapperへ切り替える。
@@ -1549,11 +1621,6 @@ def main(args=None):
                 MeasuredSingleThreadedExecutor,
             )
 
-            output_path = node.diagnostic_executor_csv_path
-            if not output_path:
-                output_path = "/tmp/pm_mapper_executor_%s_%d.csv" % (
-                    time.strftime("%Y%m%d_%H%M%S"), os.getpid()
-                )
             executor = MeasuredSingleThreadedExecutor(
                 node,
                 output_path,
@@ -1566,6 +1633,11 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
+        if node.tf_listener_worker is not None:
+            node.tf_listener_worker.close()
+        if node.tf_listener_node is not None:
+            node.tf_listener.unregister()
+            node.tf_listener_node.destroy_node()
         if executor is not None:
             executor.remove_node(node)
             executor.shutdown()
