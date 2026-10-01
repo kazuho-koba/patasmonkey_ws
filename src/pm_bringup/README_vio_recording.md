@@ -1,5 +1,8 @@
 # OpenVINS検証走行の記録
 
+起動系と必須/任意bagを分離する新構成は[README_recording.md](README_recording.md)を参照。
+本書の一括launchは互換用として維持している。
+
 `pm_bag_global_localization.launch.py` は、通常のセンサ・自己位置推定topicに
 加えて、OpenVINSの再現・原因調査に必要な診断情報を記録する。
 

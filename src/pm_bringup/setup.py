@@ -14,9 +14,11 @@ setup(
         ('share/' + package_name, [
             'package.xml',
             'README_vio_recording.md',
+            'README_recording.md',
         ]),
         # launch ファイルをインストール
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
+        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -33,6 +35,8 @@ setup(
         'console_scripts': [
             'capture_vio_trial_metadata = '
             'pm_bringup.capture_vio_trial_metadata:main',
+            'core_manifest = pm_bringup.core_manifest:main',
+            'record_trial = pm_bringup.record_trial:main',
         ],
     },
 )
