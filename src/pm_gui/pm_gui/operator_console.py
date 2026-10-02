@@ -208,7 +208,7 @@ class OperatorWindow(QMainWindow):
     def _stop(self):
         answer = QMessageBox.warning(
             self, 'Robot Coreを停止',
-            'Robot Coreのlaunch全体を停止します。記録中のGUI rosbagは先に正常終了します。実行しますか？',
+            'Jetson上のMission/Debug bagへ停止を依頼し、metadataとros2 bag infoの保存検証が完了してからCoreを停止します。検証に失敗した場合はCore停止を中断します。実行しますか？',
             QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
         if answer == QMessageBox.Yes:
             self.backend.request_stop()

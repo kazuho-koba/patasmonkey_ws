@@ -1,15 +1,10 @@
-"""ROS通信、テレメトリ、GUI所有rosbag processを管理するbackend。"""
+"""ROS通信とテレメトリを集約し、Jetson上のRobot Managerへ操作を依頼する。"""
 
 import json
 import math
-import os
-import shutil
-import signal
-import subprocess
 import threading
 import time
 from collections import deque
-from datetime import datetime
 
 import rclpy
 from nav_msgs.msg import Odometry
@@ -48,6 +43,17 @@ class RosBackend(Node):
         self.start_service_name = manager['start_service']
         self.stop_service_name = manager['stop_service']
         self.get_status_service_name = manager['get_status_service']
+        self._bag_service_names = {
+            profile: {
+                'start': manager.get(
+                    profile+'_bag_start_service',
+                    '/pm/robot_manager/{}_bag/start'.format(profile)),
+                'stop': manager.get(
+                    profile+'_bag_stop_service',
+                    '/pm/robot_manager/{}_bag/stop'.format(profile)),
+            }
+            for profile in ('mission', 'debug')
+        }
         self.stale_timeout = float(manager.get('stale_timeout_sec', 3.0))
         topics = config.get('topics', {})
         self.topic_timeout = float(topics.get('stale_timeout_sec', 2.0))
@@ -57,8 +63,12 @@ class RosBackend(Node):
         self._unit = ''
         self._last_heartbeat = None
         self._last_response = ''
-        self._service_names = {self.start_service_name, self.stop_service_name,
-                               self.get_status_service_name}
+        self._service_names = {
+            self.start_service_name, self.stop_service_name,
+            self.get_status_service_name,
+        }
+        for services in self._bag_service_names.values():
+            self._service_names.update(services.values())
         self._telemetry = {}
         map_config = config.get('map', {})
         path_limit = max(10, int(map_config.get('gnss_history_points', 2000)))
@@ -74,15 +84,26 @@ class RosBackend(Node):
         self._camera_receive_count = 0
         self._camera_converted_count = 0
         self._camera_conversion_error_count = 0
-        self._recordings = {}
-        self._recording_config = config.get('recording', {})
-        self._recording_stop_pending = False
-
+        self._recordings = {
+            profile: {
+                'state': 'UNKNOWN', 'output': '', 'started_at_unix_sec': None,
+                'elapsed_sec': 0.0, 'verified': None, 'error': '',
+                'manager_error': '', 'free_bytes': None,
+            }
+            for profile in ('mission', 'debug')
+        }
         self._status_subscription = self.create_subscription(
             String, self.status_topic, self._status_callback, 10)
         self._start_client = self.create_client(Trigger, self.start_service_name)
         self._stop_client = self.create_client(Trigger, self.stop_service_name)
         self._status_client = self.create_client(Trigger, self.get_status_service_name)
+        self._bag_clients = {
+            profile: {
+                operation: self.create_client(Trigger, service_name)
+                for operation, service_name in services.items()
+            }
+            for profile, services in self._bag_service_names.items()
+        }
         self._telemetry_subscriptions = []
         self._add_subscription(Odometry, topics.get('odometry', '/odometry/global'),
                                self._odometry_callback)
@@ -98,10 +119,23 @@ class RosBackend(Node):
             self._mock_state = 'STOPPED'
             self._mock_deadline = None
             self._mock_target = None
+            self._mock_bag_deadlines = {profile: None for profile in ('mission', 'debug')}
+            self._mock_bag_targets = {profile: None for profile in ('mission', 'debug')}
             self._mock_error_mode = False
+            for item in self._recordings.values():
+                item['state'] = 'STOPPED'
             self.create_service(Trigger, self.start_service_name, self._mock_start)
             self.create_service(Trigger, self.stop_service_name, self._mock_stop)
             self.create_service(Trigger, self.get_status_service_name, self._mock_get_status)
+            for profile, services in self._bag_service_names.items():
+                self.create_service(
+                    Trigger, services['start'],
+                    lambda request, response, bag=profile:
+                        self._mock_start_bag(bag, request, response))
+                self.create_service(
+                    Trigger, services['stop'],
+                    lambda request, response, bag=profile:
+                        self._mock_stop_bag(bag, request, response))
             self.create_service(Trigger, '/pm/gui/mock_error', self._mock_error_request)
             self._mock_error_client = self.create_client(Trigger, '/pm/gui/mock_error')
             self.create_timer(0.25, self._mock_tick)
@@ -183,9 +217,6 @@ class RosBackend(Node):
                 self._camera_image = None
                 self._camera_stamp = None
                 self._camera_error = ''
-            stopping = self._recording_stop_pending
-        if stopping:
-            self._finish_core_stop_after_recordings()
 
     def _image_callback(self, message):
         with self._lock:
@@ -226,100 +257,21 @@ class RosBackend(Node):
             self._camera_enabled = bool(enabled)
 
     def start_recording(self, profile):
-        settings = self._recording_config
-        profiles = settings.get('profiles', {})
-        selected = profiles.get(profile)
-        if not selected:
-            return False, '記録topic profileが未設定です'
-        topics = list(dict.fromkeys(selected.get('topics', [])))
-        if not topics:
-            return False, '記録topicが空です'
-        with self._lock:
-            existing = self._recordings.get(profile)
-            if existing and existing['state'] in ('RECORDING', 'STOPPING'):
-                return False, 'このprofileは記録中または停止処理中です'
-        output_root = os.path.expanduser(settings.get('output_directory', '~/patasmonkey_ws/bags/gui'))
-        os.makedirs(output_root, exist_ok=True)
-        label = profile.lower()
-        output = os.path.join(output_root, '{}_{}'.format(
-            label, datetime.now().strftime('%Y%m%d_%H%M%S')))
-        command = ['ros2', 'bag', 'record', '-s', settings.get('storage_id', 'mcap'),
-                   '-o', output]
-        compression_mode = settings.get('compression_mode', 'none')
-        if compression_mode != 'none':
-            command.extend(['--compression-mode', str(compression_mode),
-                            '--compression-format', str(settings.get('compression_format', 'zstd'))])
-        max_size = int(settings.get('max_bag_size_bytes', 0))
-        if max_size > 0:
-            command.extend(['--max-bag-size', str(max_size)])
-        command.extend(topics)
-        try:
-            process = subprocess.Popen(command, stdout=subprocess.DEVNULL,
-                                       stderr=subprocess.DEVNULL, start_new_session=True)
-        except OSError as exc:
-            return False, 'ros2 bagを起動できません: {}'.format(exc)
-        with self._lock:
-            self._recordings[profile] = {
-                'process': process, 'output': output, 'started': time.monotonic(),
-                'state': 'RECORDING', 'error': '',
-            }
-        return True, output
+        if profile not in self._bag_clients:
+            return False, '未対応のbag profileです: {}'.format(profile)
+        ok = self._request(self._bag_clients[profile]['start'])
+        return ok, 'Jetson上の{} bag開始を要求しました'.format(profile)
 
     def stop_recording(self, profile):
-        with self._lock:
-            item = self._recordings.get(profile)
-            if not item or item['state'] != 'RECORDING':
-                return False
-            item['state'] = 'STOPPING'
-        threading.Thread(target=self._stop_process, args=(profile,), daemon=True).start()
-        return True
-
-    def _stop_process(self, profile):
-        with self._lock:
-            item = self._recordings.get(profile)
-        if not item:
-            return
-        process = item['process']
-        try:
-            if process.poll() is None:
-                os.killpg(process.pid, signal.SIGINT)
-                process.wait(timeout=float(self._recording_config.get('stop_timeout_sec', 12.0)))
-        except subprocess.TimeoutExpired:
-            try:
-                os.killpg(process.pid, signal.SIGTERM)
-                process.wait(timeout=3.0)
-            except (ProcessLookupError, subprocess.TimeoutExpired):
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-        except ProcessLookupError:
-            pass
-        with self._lock:
-            if profile in self._recordings:
-                self._recordings[profile]['state'] = 'STOPPED'
-
-    def _finish_core_stop_after_recordings(self):
-        with self._lock:
-            if any(item['state'] in ('RECORDING', 'STOPPING') for item in self._recordings.values()):
-                return
-            self._recording_stop_pending = False
-        self._request(self._stop_client)
+        if profile not in self._bag_clients:
+            return False
+        return self._request(self._bag_clients[profile]['stop'])
 
     def request_start(self):
         return self._request(self._start_client)
 
     def request_stop(self):
-        """GUI所有bagを閉じてからmanagerへCore STOPを依頼する。"""
-        with self._lock:
-            active = [name for name, item in self._recordings.items()
-                      if item['state'] in ('RECORDING', 'STOPPING')]
-            if active:
-                self._recording_stop_pending = True
-        if active:
-            for name in active:
-                self.stop_recording(name)
-            return True
+        """Jetson managerへCore停止を依頼し、bagの保存確認はmanagerに任せる。"""
         return self._request(self._stop_client)
 
     def _request(self, client):
@@ -341,6 +293,12 @@ class RosBackend(Node):
                 self._state = state
                 self._error = str(data.get('error', ''))
                 self._unit = str(data.get('unit', ''))
+                remote_recordings = data.get('recordings', {})
+                if isinstance(remote_recordings, dict):
+                    for profile in ('mission', 'debug'):
+                        item = remote_recordings.get(profile)
+                        if isinstance(item, dict):
+                            self._recordings[profile] = dict(item)
                 self._last_heartbeat = time.monotonic()
         except (TypeError, ValueError):
             self.get_logger().warning('Robot Manager status JSONを解釈できません')
@@ -366,18 +324,16 @@ class RosBackend(Node):
                 self._last_response = str(exc)
 
     def snapshot(self):
-        # rosbagが異常終了した場合も画面の状態をRECORDINGのまま残さない。
-        with self._lock:
-            for item in self._recordings.values():
-                if item['state'] == 'RECORDING' and item['process'].poll() is not None:
-                    item['state'] = 'STOPPED'
-                    item['error'] = 'rosbag processが終了しました (exit={})'.format(
-                        item['process'].returncode)
         services = {name for name, _types in self.get_service_names_and_types()}
         service_seen = bool(services.intersection(self._service_names))
+        bag_services_ready = all(
+            client.service_is_ready()
+            for clients in self._bag_clients.values()
+            for client in clients.values())
         service_ready = (self._start_client.service_is_ready()
                          and self._stop_client.service_is_ready()
-                         and self._status_client.service_is_ready())
+                         and self._status_client.service_is_ready()
+                         and bag_services_ready)
         with self._lock:
             last_heartbeat, state = self._last_heartbeat, self._state
             error, unit, response = self._error, self._unit, self._last_response
@@ -400,25 +356,15 @@ class RosBackend(Node):
         for key, (value, stamp) in telemetry.items():
             data[key] = {'value': value, 'age': now - stamp,
                          'fresh': now - stamp <= self.topic_timeout}
-        external = False
-        external_name = self._recording_config.get('external_recorder_node_name', 'rosbag2_recorder')
-        try:
-            external = any(name == external_name for name in self.get_node_names())
-        except Exception:
-            pass
-        disk_path = os.path.expanduser(self._recording_config.get(
-            'output_directory', '/workspaces/patasmonkey_ws/bags/gui'))
-        try:
-            existing_path = disk_path
-            while not os.path.exists(existing_path):
-                parent = os.path.dirname(existing_path)
-                if parent == existing_path:
-                    existing_path = '.'
-                    break
-                existing_path = parent
-            free_bytes = shutil.disk_usage(existing_path).free
-        except OSError:
-            free_bytes = None
+        active_records = [item for item in records.values()
+                          if item.get('state') in ('RUNNING', 'STARTING', 'STOPPING')]
+        external = bool(active_records)
+        outputs = [str(item.get('output')) for item in records.values()
+                   if item.get('output')]
+        disk_path = ', '.join(outputs) if outputs else 'Jetson bag output: 未取得'
+        free_values = [item.get('free_bytes') for item in records.values()
+                       if item.get('free_bytes') is not None]
+        free_bytes = min(free_values) if free_values else None
         return {
             'connection': connection, 'core_state': state, 'error': error, 'unit': unit,
             'heartbeat_age_sec': age, 'last_response': response, 'telemetry': data,
@@ -442,9 +388,26 @@ class RosBackend(Node):
         }
 
     def _mock_status_json(self):
-        return json.dumps({'state': self._mock_state, 'error': self._error,
-                           'unit': 'mock://robot-core', 'stamp_unix_sec': time.time()},
-                          ensure_ascii=False)
+        now = time.time()
+        recordings = {}
+        for profile, item in self._recordings.items():
+            record = dict(item)
+            started = record.get('started_at_unix_sec')
+            record.update({
+                'state': record.get('state', 'STOPPED'),
+                'unit': 'mock://{}-bag'.format(profile),
+                'elapsed_sec': max(
+                    0.0, (now if record.get('state') == 'RUNNING'
+                          else float(record.get('stopped_at_unix_sec') or now))-started)
+                if started else 0.0,
+                'free_bytes': 20 * 1024 ** 3,
+            })
+            recordings[profile] = record
+        return json.dumps({
+            'state': self._mock_state, 'error': self._error,
+            'unit': 'mock://robot-core', 'recordings': recordings,
+            'stamp_unix_sec': now,
+        }, ensure_ascii=False)
 
     def _mock_publish(self):
         message = String()
@@ -459,6 +422,18 @@ class RosBackend(Node):
     def _mock_tick(self):
         if self._mock_deadline is not None and time.monotonic() >= self._mock_deadline:
             self._mock_state, self._mock_deadline, self._mock_target = self._mock_target, None, None
+        now = time.monotonic()
+        for profile, deadline in self._mock_bag_deadlines.items():
+            if deadline is not None and now >= deadline:
+                target = self._mock_bag_targets[profile]
+                item = self._recordings[profile]
+                item['state'] = target
+                item['verified'] = target == 'STOPPED'
+                item['error'] = ''
+                if target == 'STOPPED':
+                    item['stopped_at_unix_sec'] = time.time()
+                self._mock_bag_deadlines[profile] = None
+                self._mock_bag_targets[profile] = None
         self._mock_publish()
 
     def _mock_start(self, _request, response):
@@ -469,6 +444,7 @@ class RosBackend(Node):
         else:
             self._mock_state, self._mock_target = 'STARTING', 'RUNNING'
             self._mock_deadline = time.monotonic() + 1.5
+            # GUIからのCore起動ではbagを変更せず、独立したSTART操作を待つ。
             response.success, response.message = True, 'mock START accepted'
         self._mock_publish()
         return response
@@ -481,7 +457,49 @@ class RosBackend(Node):
         else:
             self._mock_state, self._mock_target = 'STOPPING', 'STOPPED'
             self._mock_deadline = time.monotonic() + 1.5
+            for profile, item in self._recordings.items():
+                if item.get('state') in ('RUNNING', 'STARTING', 'STOPPING'):
+                    item['state'] = 'STOPPING'
+                    self._mock_bag_targets[profile] = 'STOPPED'
+                    self._mock_bag_deadlines[profile] = time.monotonic() + 1.0
             response.success, response.message = True, 'mock STOP accepted'
+        self._mock_publish()
+        return response
+
+    def _mock_start_bag(self, profile, _request, response):
+        item = self._recordings[profile]
+        if self._mock_state != 'RUNNING':
+            response.success, response.message = False, 'Robot CoreがSTOPPEDです'
+        elif item.get('state') == 'RUNNING':
+            response.success, response.message = True, '既にRECORDINGです'
+        elif item.get('state') in ('STARTING', 'STOPPING'):
+            response.success, response.message = False, 'bag遷移中です'
+        else:
+            item.update({
+                'state': 'STARTING',
+                'output': 'mock://jetson/bags/{}/{}_mock'.format(profile, profile),
+                'started_at_unix_sec': time.time(),
+                'stopped_at_unix_sec': None,
+                'verified': None,
+                'error': '',
+            })
+            self._mock_bag_targets[profile] = 'RUNNING'
+            self._mock_bag_deadlines[profile] = time.monotonic() + 1.0
+            response.success, response.message = True, 'mock bag START accepted'
+        self._mock_publish()
+        return response
+
+    def _mock_stop_bag(self, profile, _request, response):
+        item = self._recordings[profile]
+        if item.get('state') == 'STOPPED':
+            response.success, response.message = True, 'bagは既にSTOPPEDです'
+        elif item.get('state') in ('STARTING', 'STOPPING'):
+            response.success, response.message = False, 'bag遷移中です'
+        else:
+            item['state'] = 'STOPPING'
+            self._mock_bag_targets[profile] = 'STOPPED'
+            self._mock_bag_deadlines[profile] = time.monotonic() + 1.0
+            response.success, response.message = True, 'mock bag STOP accepted'
         self._mock_publish()
         return response
 
@@ -503,16 +521,5 @@ class RosBackend(Node):
         return response
 
     def stop_recordings_for_exit(self):
-        """GUI終了時に所有bagへSIGINTを送り、metadataを閉じてから復帰する。"""
-        with self._lock:
-            active = [name for name, item in self._recordings.items()
-                      if item['state'] in ('RECORDING', 'STOPPING')]
-        for name in active:
-            self.stop_recording(name)
-        deadline = time.monotonic() + float(self._recording_config.get('stop_timeout_sec', 12.0)) + 4.0
-        while time.monotonic() < deadline:
-            with self._lock:
-                if not any(item['state'] in ('RECORDING', 'STOPPING')
-                           for item in self._recordings.values()):
-                    break
-            time.sleep(0.1)
+        """GUI終了時もJetson上のCoreとbagは継続させる。"""
+        return

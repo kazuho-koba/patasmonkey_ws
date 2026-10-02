@@ -59,9 +59,11 @@ Docker imageには`fonts-noto-cjk`を含め、Qtの標準fontにNoto Sans CJK JP
 
 ## rosbag
 
-mission/debugのtopic list、出力先、storage、最大bagサイズ、stop timeoutはYAMLで変更できます。各profileの大きな単一ボタンは、停止中にSTART、記録中にSTOPへ切り替わります。GUIが起動したrosbagはSTOP操作でSIGINTを送り、metadata closeを待ちます。timeout後にSIGTERM、最後にSIGKILLへ進みます。Robot Core操作も状態に応じて単一ボタンがSTART/STOPへ切り替わり、STARTING/STOPPING中は無効になります。Robot Core STOP要求時にはGUI所有bagの停止完了後にmanagerへSTOPを送ります。GUI終了時も所有bagへ正常終了signalを送り、既存Robot Core側の記録processにはsignalを送りません。
+mission/debugの記録開始・停止はLaptop上ではなく、JetsonのRobot Manager経由で各bag launch unitへ依頼します。Mission bagの自動開始はJetsonのboot時のみです。GUIからCoreを起動してもMission/DebugはOFFのままで、各記録ボタンから個別に開始します。状態、Jetson上の出力先、経過時間、Jetson側の空き容量をManager statusから表示します。GUIを閉じてもCoreとbagは継続します。
 
-既存bringup側のrosbag processはROS graph上の`rosbag2_recorder` nodeを検出して表示します。既存processの出力directoryや開始時刻はROS graphから取得できないため、GUI所有記録と区別して「Robot Core側 recorder検出」と表示します。
+bag停止ではManagerがrecorderの停止serviceへ要求を送り、recorderがSIGINTをrosbagへ転送します。recorderは`metadata.yaml`の存在と`ros2 bag info`の成功を`completion.json`へ記録します。Managerは保存検証の後にsystemd bag unitを停止し、Core停止要求時はMission/Debug両方の確認後にCore unitを停止します。確認できない場合はbag unitを停止せず、Core停止も中断します。systemdからbag unitを直接停止した場合も、ExecStop helperが同じsystemd invocation IDのstatus fileとcompletionを照合し、保存確認後にだけunit停止へ進みます。検証失敗時は待機を続け、`TimeoutStopSec=infinity`と`SendSIGKILL=no`でsystemdの強制killを無効にします。
+
+Robot ManagerのROS interface、systemd unitの関係、Jetsonへの配置手順は`pm_robot_manager` package内のREADMEを参照してください。
 
 ## 現段階の表示範囲
 

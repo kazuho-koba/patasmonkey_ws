@@ -939,7 +939,7 @@ class LocalizationPanel(QWidget):
 
 
 class RecordingPanel(QWidget):
-    """mission/debug rosbagの操作と状態を右下へ省スペース表示する。"""
+    """Jetson上のmission/debug recorder unitを操作・監視する。"""
 
     def __init__(self, backend, config):
         super().__init__()
@@ -948,7 +948,7 @@ class RecordingPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 2, 4, 2)
         layout.setSpacing(2)
-        title = QLabel('ROS BAG RECORDING')
+        title = QLabel('JETSON ROS BAG RECORDING')
         title.setStyleSheet('color:' + PALETTE['blue'] + '; font-size:11px; font-weight:bold;')
         layout.addWidget(title)
         self.directory = QLabel('')
@@ -1012,7 +1012,7 @@ class RecordingPanel(QWidget):
             self._start(profile)
 
     def refresh(self, snapshot):
-        self.directory.setText('Output: ' + snapshot['recording_directory'])
+        self.directory.setText('Jetson output: ' + snapshot['recording_directory'])
         self.directory.setToolTip(snapshot['recording_directory'])
         free = snapshot['free_bytes']
         if free is None:
@@ -1022,20 +1022,40 @@ class RecordingPanel(QWidget):
             free_gib = free / float(1024 ** 3)
             self.disk.setText('Disk free: {:.1f} GiB'.format(free_gib))
             low = free < int(float(self.config.get('low_disk_gib', 5.0)) * 1024 ** 3)
-        self.warning.setText('空き容量が設定値を下回っています' if low else '')
-        self.external.setText('Core bag: 検出' if snapshot['external_recording'] else 'Core bag: なし')
+        warnings = []
+        if low:
+            warnings.append('Jetsonの空き容量が設定値を下回っています')
+        if not snapshot['connection'] == 'CONNECTED':
+            self.external.setText('Robot Manager接続待ち')
+        else:
+            self.external.setText('Mission/DebugをJetson上で管理')
+        core_running = snapshot['core_state'] == 'RUNNING'
         for profile, (state, detail, toggle, _settings) in self.rows.items():
             item = snapshot['recordings'].get(profile)
-            current = item['state'] if item else 'STOPPED'
+            remote_state = item.get('state', 'UNKNOWN') if item else 'UNKNOWN'
+            current = {
+                'RUNNING': 'RECORDING', 'STOPPED': 'STOPPED',
+                'STARTING': 'STARTING', 'STOPPING': 'STOPPING',
+                'ERROR': 'ERROR',
+            }.get(remote_state, 'UNKNOWN')
             state.setText(current)
             state.setStyleSheet('font-weight:bold; color:' +
-                                (PALETTE['red'] if current == 'RECORDING' else PALETTE['muted']))
+                                (PALETTE['green'] if current == 'RECORDING' else
+                                 PALETTE['red'] if current == 'ERROR' else
+                                 PALETTE['yellow'] if current in ('STARTING', 'STOPPING') else
+                                 PALETTE['muted']))
             if current == 'STOPPED':
-                toggle_text, toggle_color, enabled = '▶  START', PALETTE['green'], True
+                toggle_text, toggle_color = '▶  START', PALETTE['green']
+                enabled = snapshot['connection'] == 'CONNECTED' and core_running
             elif current == 'RECORDING':
-                toggle_text, toggle_color, enabled = '■  STOP', PALETTE['red'], True
+                toggle_text, toggle_color = '■  STOP', PALETTE['red']
+                enabled = snapshot['connection'] == 'CONNECTED'
+            elif current == 'STARTING':
+                toggle_text, toggle_color, enabled = '…  STARTING', PALETTE['yellow'], False
             elif current == 'STOPPING':
                 toggle_text, toggle_color, enabled = '…  STOPPING', PALETTE['yellow'], False
+            elif current == 'ERROR':
+                toggle_text, toggle_color, enabled = '!  CHECK BAG', PALETTE['red'], False
             else:
                 toggle_text, toggle_color, enabled = 'STATUS UNKNOWN', PALETTE['muted'], False
             toggle.setText(toggle_text)
@@ -1045,11 +1065,16 @@ class RecordingPanel(QWidget):
                 + '; border:1px solid ' + PALETTE['muted']
                 + '; padding:5px 12px; font-size:14px; font-weight:bold;')
             if item:
-                elapsed = max(0, int(__import__('time').monotonic() - item['started']))
+                elapsed = max(0, int(float(item.get('elapsed_sec') or 0.0)))
                 detail_text = '{}  /  {:02d}:{:02d}'.format(
-                    item['output'], elapsed // 60, elapsed % 60)
+                    item.get('output') or item.get('unit', ''),
+                    elapsed // 60, elapsed % 60)
+                item_error = item.get('error') or item.get('manager_error')
+                if item_error:
+                    warnings.append('{}: {}'.format(profile, item_error))
                 detail.setText(detail_text)
-                detail.setToolTip(detail_text)
+                detail.setToolTip('\n'.join((detail_text, item_error or '')))
             else:
                 detail.setText('')
                 detail.setToolTip('')
+        self.warning.setText('\n'.join(warnings))
