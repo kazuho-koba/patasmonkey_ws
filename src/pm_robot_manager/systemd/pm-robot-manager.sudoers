@@ -1,5 +1,11 @@
-# Robot Managerから操作できるsystemd unitを既存Robot Coreだけに限定する。
+# Robot Managerから操作するunitをCoreと2種類のbag recorderに限定する。
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block start-pm.service
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl stop start-pm.service
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl is-active start-pm.service
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGTERM --kill-who=all start-pm.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block pm-mission-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl stop pm-mission-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl is-active pm-mission-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block pm-debug-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl stop pm-debug-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl is-active pm-debug-bag.service

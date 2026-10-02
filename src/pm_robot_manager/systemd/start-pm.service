@@ -1,0 +1,23 @@
+[Unit]
+Description=Patasmonkey UGV Core launch
+Wants=network-online.target pm-robot-manager.service
+After=network-online.target pm-robot-manager.service
+Before=pm-mission-bag.service
+
+[Service]
+Type=simple
+User=nvidia
+Group=nvidia
+Environment=HOME=/home/nvidia
+Environment=ROS_DOMAIN_ID=0
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec /home/nvidia/patasmonkey_ws/scripts/run_ros_launch.sh pm_bringup pm_core.launch.py'
+Restart=on-failure
+RestartSec=3
+KillMode=control-group
+KillSignal=SIGINT
+# wrapperの正常な停止signal由来の終了コードを成功として扱う。
+SuccessExitStatus=130 143
+
+[Install]
+WantedBy=multi-user.target

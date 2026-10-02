@@ -1,6 +1,6 @@
 [Unit]
 Description=Patasmonkey Robot Manager ROS 2 node
-After=network-online.target start-pm.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]

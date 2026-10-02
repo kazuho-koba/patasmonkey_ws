@@ -1,0 +1,21 @@
+[Unit]
+Description=Patasmonkey mission rosbag launch
+After=start-pm.service
+PartOf=start-pm.service
+
+[Service]
+Type=simple
+User=nvidia
+Group=nvidia
+Environment=HOME=/home/nvidia
+Environment=ROS_DOMAIN_ID=0
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec ros2 launch pm_bringup mission_bag.launch.py status_file:=/home/nvidia/.ros/pm_robot_manager/mission_bag_status.json'
+ExecStop=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec ros2 run pm_robot_manager stop_bag_wait --ros-args -p profile:=mission -p status_file:=/home/nvidia/.ros/pm_robot_manager/mission_bag_status.json'
+KillMode=control-group
+KillSignal=SIGINT
+TimeoutStopSec=infinity
+SendSIGKILL=no
+
+[Install]
+WantedBy=multi-user.target

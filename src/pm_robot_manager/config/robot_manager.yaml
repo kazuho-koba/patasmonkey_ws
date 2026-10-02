@@ -1,10 +1,22 @@
 pm_robot_manager:
   ros__parameters:
     unit_name: start-pm.service
+    mission_bag_unit_name: pm-mission-bag.service
+    debug_bag_unit_name: pm-debug-bag.service
     use_sudo: true
-    startup_timeout_sec: 45.0
-    shutdown_timeout_sec: 35.0
+    startup_timeout_sec: 60.0
+    shutdown_timeout_sec: 45.0
+    bag_stop_request_timeout_sec: 20.0
+    bag_stop_warning_sec: 120.0
     status_topic: /pm/robot_manager/status
     start_service: /pm/robot_manager/start
     stop_service: /pm/robot_manager/stop
     get_status_service: /pm/robot_manager/get_status
+    mission_bag_start_service: /pm/robot_manager/mission_bag/start
+    mission_bag_stop_service: /pm/robot_manager/mission_bag/stop
+    debug_bag_start_service: /pm/robot_manager/debug_bag/start
+    debug_bag_stop_service: /pm/robot_manager/debug_bag/stop
+    mission_bag_recorder_stop_service: /pm/robot_manager/mission_bag/request_stop
+    debug_bag_recorder_stop_service: /pm/robot_manager/debug_bag/request_stop
+    mission_bag_status_topic: /pm/robot_manager/mission_bag/status
+    debug_bag_status_topic: /pm/robot_manager/debug_bag/status
