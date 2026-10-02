@@ -139,7 +139,7 @@ def installed_inventory(destination):
     result = {}
     destination = Path(destination)
     for name in ('pm_bringup','pm_config','pm_description','pm_perception','pm_localization',
-                 'pm_vehicle_interface','depthai_driver','ov_msckf','robot_localization',
+                 'pm_control','depthai_driver','ov_msckf','robot_localization',
                  'hwt905_rs485_driver','ublox_gps','ntrip_client'):
         try:
             prefix = Path(get_package_prefix(name))

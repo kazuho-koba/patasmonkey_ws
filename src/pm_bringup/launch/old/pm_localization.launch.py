@@ -13,7 +13,7 @@ def generate_launch_description():
     # 各種パッケージのパス
     pm_teleop_share = Path(get_package_share_directory("pm_teleop"))
     pm_vehicle_share = Path(
-        get_package_share_directory("pm_vehicle_interface"))
+        get_package_share_directory("pm_control"))
     pm_description_share = Path(get_package_share_directory("pm_description"))
     pm_config_share = Path(get_package_share_directory("pm_config"))
 

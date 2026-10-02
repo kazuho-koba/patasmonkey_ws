@@ -16,9 +16,9 @@ def generate_launch_description():
         / "joy_teleop.launch.py"
     )
 
-    # pm_vehicle_interface パッケージの launch
+    # pm_control パッケージの launch
     vehicle_launch_file = (
-        Path(get_package_share_directory("pm_vehicle_interface"))
+        Path(get_package_share_directory("pm_control"))
         / "launch"
         / "vehicle_interface.launch.py"
     )

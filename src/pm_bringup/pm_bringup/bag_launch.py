@@ -11,7 +11,8 @@ def create_bag_launch(profile):
     """topic profileを選択し、出力先と再現情報の対象workspaceを明示する。"""
     def start(context):
         values = {key: LaunchConfiguration(key).perform(context) for key in (
-            'bag_directory', 'bag_name', 'workspace', 'external_workspace', 'storage', 'mission_bag')}
+            'bag_directory', 'bag_name', 'workspace', 'external_workspace', 'storage',
+            'mission_bag', 'status_file')}
         if not values['bag_name'] or Path(values['bag_name']).name != values['bag_name']:
             raise RuntimeError('bag_nameは空でない単一のディレクトリ名を指定してください')
         output = Path(values['bag_directory']).expanduser() / values['bag_name']
@@ -24,7 +25,7 @@ def create_bag_launch(profile):
             str(executable), '--profile', profile,
             '--output', str(output), '--workspace', values['workspace'],
             '--external-workspace', values['external_workspace'], '--storage', values['storage'],
-            '--mission-bag', values['mission_bag'],
+            '--mission-bag', values['mission_bag'], '--status-file', values['status_file'],
         ], output='screen', sigterm_timeout='120', sigkill_timeout='120')]
     # 既知の開発コンテナmountを優先し、Jetsonホストでは従来のhome配下へ保存する。
     workspace = (Path('/workspaces/patasmonkey_ws') if Path('/workspaces/patasmonkey_ws/src').is_dir()
@@ -42,5 +43,10 @@ def create_bag_launch(profile):
         DeclareLaunchArgument('storage', default_value='mcap'),
         DeclareLaunchArgument('mission_bag', default_value='',
                               description='debug bagと対応するmission bagの実パス（任意）'),
+        DeclareLaunchArgument(
+            'status_file',
+            default_value=str(Path.home()/'.ros'/'pm_robot_manager'/
+                              (profile+'_bag_status.json')),
+            description='systemd ExecStopと共有するbag停止状態ファイル'),
         OpaqueFunction(function=start),
     ])
