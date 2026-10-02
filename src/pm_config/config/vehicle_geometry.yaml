@@ -2,7 +2,7 @@
 # 車体ジオメトリ・駆動系定数
 #
 # 各ノード共通:
-#   - pm_vehicle_interface
+#   - pm_control
 #   - pm_localization
 #   - simulator
 #   - planner

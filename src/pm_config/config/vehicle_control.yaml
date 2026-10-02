@@ -41,7 +41,7 @@ vehicle_interface_node:
     right_motor_sign: -1.0
 
 
-        #################################################
+    #################################################
     # turn / yaw constraints
     #################################################
 
@@ -53,16 +53,23 @@ vehicle_interface_node:
     #
     min_turn_radius: 0.7
 
+    # 車体中心の速度上限 [m/s]。手動・turbo・自律指令へ共通適用する。
+    # turbo倍率2.0でもこの上限を超えない。上げる場合は走行条件に合わせて設定する。
+    max_linear_speed: 1.0
+
     # 最大ヨーレート [rad/s]
     #
     # Visual Odometryがyaw回転で破綻しにくくなるように制限する。
-    # 0.5 rad/s ≒ 28.6 deg/s
+    # 1.0 rad/s ≒ 57.3 deg/s。0でyaw上限制限と旋回速度の減速計算を無効化する。
+    # 旋回時の目標速度は曲率とこの上限から滑らかに計算する。
     #
     max_yaw_rate: 1.0
 
     # 最大ヨー加速度 [rad/s^2]
     #
-    # 急なスティック入力によるyaw rateの立ち上がりを制限する。
+    # yaw rateの立ち上がり・立ち下がりを制限する。
+    # 前後速度の変化率も、この値×min_turn_radius [m/s^2]から導く。
+    # 0は両方の変化率制限を無効化する。停止・半径/yaw上限は変化率より優先する。
     #
     max_yaw_accel: 1.0
 
@@ -80,6 +87,6 @@ vehicle_interface_node:
     # この角度以上は真横入力扱いとして停止する [deg]
     #
     # joy_max_turn_angle_deg〜joy_side_stop_angle_deg の間は、
-    # joy_max_turn_angle_deg と同じ最大旋回動作を維持する。
+    # 最大曲率を維持し、速度はyaw制約から適応的に落とす。
     #
     joy_side_stop_angle_deg: 80.0
