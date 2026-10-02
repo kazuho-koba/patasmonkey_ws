@@ -1,0 +1,112 @@
+from .odrive_utils import ODriveUtils
+from odrive.enums import (
+    AXIS_STATE_CLOSED_LOOP_CONTROL,
+    CONTROL_MODE_VELOCITY_CONTROL,
+    INPUT_MODE_PASSTHROUGH,
+    AXIS_STATE_IDLE,
+    INPUT_MODE_VEL_RAMP,
+)
+
+
+class MotorController:
+    def __init__(
+        self,
+        axis_index=0,
+        vel_ramp_rate=15.0,
+        pos_gain=20.0,
+        vel_gain=0.15,
+        vel_integrator_gain=0.5,
+        vel_integrator_limit=1.0,
+    ):
+        """
+        ODrive motor controller class.
+        :param axis_index: 0 (left motor) or 1 (right motor)
+        """
+        self.axis_index = axis_index
+        self.vel_ramp_rate = vel_ramp_rate
+        self.pos_gain = pos_gain
+        self.vel_gain = vel_gain
+        self.vel_integrator_gain = vel_integrator_gain
+        self.vel_integrator_limit = vel_integrator_limit
+        self.odrive = ODriveUtils.find_odrive()  # Find and connect to ODrive
+        ODriveUtils.clear_odrive_errors(self.odrive)  # Clear errors on startup
+        self.axis = self.select_axis()
+        self.init_motor()
+
+    def select_axis(self):
+        """Select the ODrive axis based on the index."""
+        if self.axis_index == 0:
+            return self.odrive.axis0
+        elif self.axis_index == 1:
+            return self.odrive.axis1
+        else:
+            raise ValueError("Invalid axis_index! Use 0 or 1.")
+
+    def init_motor(self):
+        """Initialize motor: closed-loop control & ramped velocity mode."""
+        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
+        self.axis.controller.config.vel_ramp_rate = self.vel_ramp_rate
+        self.axis.controller.config.input_mode = INPUT_MODE_VEL_RAMP
+        self.axis.controller.config.pos_gain = self.pos_gain
+        self.axis.controller.config.vel_gain = self.vel_gain
+        self.axis.controller.config.vel_integrator_gain = self.vel_integrator_gain
+        self.axis.controller.config.vel_integrator_limit = self.vel_integrator_limit
+        print(
+            f"Motor {self.axis_index}: Initialized in velocity control mode.",
+            flush=True,
+        )
+
+    def get_velocity(self):
+        """Get the current motor velocity [rps]."""
+        vel = self.axis.encoder.vel_estimate
+        # print(f"Motor {self.axis_index}: Current velocity = {vel:.2f} rps", flush=True)
+        return vel
+
+    def get_position(self):
+        """Get the relative position (multi-turns) where the initial position is 0"""
+        pos = self.axis.encoder.pos_estimate
+        return pos
+  
+    def get_iq_measured(self):
+        """Get measured q-axis motor current [A]."""
+        return self.axis.motor.current_control.Iq_measured
+
+    def get_iq_setpoint(self):
+        """Get q-axis motor current setpoint [A]."""
+        return self.axis.motor.current_control.Iq_setpoint
+
+    def set_velocity(self, velocity):
+        """Set target velocity [rps]."""
+        self.axis.controller.input_vel = velocity
+
+    def velfb_torque_control(self, vel_err, delta_vel, accum_vel_err):
+        pass
+
+    def stop(self):
+        """Emergency stop: Set velocity to zero."""
+        try:
+            self.set_velocity(0.0)
+            print(f"Motor {self.axis_index}: Emergency stop activated.")
+        except Exception as e:
+            print(f"Error during emergency stop: {e}")
+
+    def set_idle(self):
+        """Set the motor to idle (disable control)."""
+        try:
+            self.axis.requested_state = AXIS_STATE_IDLE
+            print(f"Motor {self.axis_index}: Set to idle mode.")
+        except Exception as e:
+            print(f"Error setting idle mode: {e}")
+
+    def check_errors(self):
+        """Check and print ODrive error status."""
+        ODriveUtils.check_odrive_errors(self.odrive)
+
+    def get_vbus_voltage(self):
+        """Get ODrive bus voltage [V]."""
+        return self.odrive.vbus_voltage
+
+    def reboot(self):
+        """Reboot the ODrive device."""
+        ODriveUtils.reboot_odrive(self.odrive)
