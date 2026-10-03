@@ -9,10 +9,11 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+from pm_perception.terrain_launch_parameters import declare_tuning_arguments, terrain_tuning_overrides
 
 
 def generate_launch_description():
@@ -34,8 +35,30 @@ def generate_launch_description():
         robot_description = urdf_stream.read()
 
     sim_time = {"use_sim_time": True}
+    def mapper_node(context):
+        # 専用reviewだけ閾値・表示スケールを上書きし、通常replayの挙動は保持する。
+        paths = [mapper_config_arg.perform(context), str(old_bag_config),
+                 LaunchConfiguration("terrain_mapper_override_config").perform(context)]
+        configs = [terrain_tuning_overrides(context, paths)] if LaunchConfiguration(
+            "terrain_tuning_enabled").perform(context).lower() == "true" else paths
+        return [Node(package="pm_perception", executable="depth_elevation_mapper_node",
+                     name="depth_elevation_mapper", output="screen", parameters=[
+                         *configs, sim_time, {
+                             "forensic_output_dir": forensic_output_dir,
+                             "forensic_roi_half_width_m": forensic_roi_half_width,
+                             "forensic_targets_csv": forensic_targets_csv,
+                             "forensic_frame_events": ParameterValue(forensic_frame_events, value_type=bool),
+                             "forensic_frame_neighbor_radius_cells": ParameterValue(forensic_frame_neighbor_radius, value_type=int),
+                         }])]
     return LaunchDescription(
         [
+            DeclareLaunchArgument("terrain_tuning_enabled", default_value="false"),
+            *declare_tuning_arguments(),
+            DeclareLaunchArgument(
+                "terrain_mapper_override_config",
+                default_value=str(old_bag_config),
+                description="比較用の追加YAML。基本設定とold bag設定の後に適用する。",
+            ),
             DeclareLaunchArgument(
                 "terrain_mapper_config",
                 default_value=str(mapper_config),
@@ -138,25 +161,6 @@ def generate_launch_description():
                     },
                 ],
             ),
-            Node(
-                package="pm_perception",
-                executable="depth_elevation_mapper_node",
-                name="depth_elevation_mapper",
-                output="screen",
-                parameters=[
-                    mapper_config_arg, str(old_bag_config),
-                    {
-                        "forensic_output_dir": forensic_output_dir,
-                        "forensic_roi_half_width_m": forensic_roi_half_width,
-                        "forensic_targets_csv": forensic_targets_csv,
-                        "forensic_frame_events": ParameterValue(
-                            forensic_frame_events, value_type=bool
-                        ),
-                        "forensic_frame_neighbor_radius_cells": ParameterValue(
-                            forensic_frame_neighbor_radius, value_type=int
-                        ),
-                    },
-                ],
-            ),
+            OpaqueFunction(function=mapper_node),
         ]
     )

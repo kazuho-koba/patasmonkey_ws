@@ -81,6 +81,10 @@ user request, save one record named:
 Use the local creation time, including seconds, in the filename. If multiple
 records are created within the same second, add a distinguishing suffix.
 
+レポートの日時付きディレクトリ名も `YYYYMMDD_HHMMSS` とする。日時付き
+ディレクトリがない場合はレポートファイル名に秒まで含める。閲覧用レポート・
+対話ログはメインworkspaceの `~/Projects/patasmonkey_ws/notes` に保存する。
+
 Include only the relevant user prompt(s), verbatim, and the exact final
 response. Do not include internal reasoning or raw tool output; do not create a
 record for an aborted request with no final response.

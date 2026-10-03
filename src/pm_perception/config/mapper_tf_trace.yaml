@@ -1,0 +1,16 @@
+# 使用TF採取専用。前回のRViz設定は変更しない。
+# 基本条件は比較baseline。10 Hz入力を処理する上限を25 Hzにし、dropはtraceで照合する。
+depth_elevation_mapper:
+  ros__parameters:
+    resolution: 0.10
+    pixel_stride: 4                  # 横・縦とも4画素おき。1なら全pixel
+    hazard_slope_limit_deg: 20.0      # slope限界[deg]
+    hazard_roughness_limit: 0.03      # 平面残差RMS限界[m]
+    hazard_step_limit: 0.07           # 前後support付き残差幅限界[m]
+    obstacle_min_height: 0.03
+    hazard_obstacle_height_limit: 0.08
+    debug_obstacle_height_max: 0.08
+    max_processing_rate: 25.0
+    depth_subscription_reliability: reliable
+    depth_subscription_queue_depth: 3
+    feature_max_accepted_ground_age: 0.0

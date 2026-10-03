@@ -1,0 +1,9 @@
+# フレーム独立診断専用。前回のterrain_obstacle_review.yamlとは別ファイル。
+# 基本設定はdepth_elevation_mapper_hazard_0p05_baseline.yamlを読み、これを上書きする。
+depth_elevation_mapper:
+  ros__parameters:
+    resolution: 0.10
+    obstacle_min_height: 0.03
+    hazard_obstacle_height_limit: 0.08
+    debug_obstacle_height_max: 0.08
+    feature_max_accepted_ground_age: 0.0

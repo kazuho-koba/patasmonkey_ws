@@ -180,6 +180,106 @@ RViz設定の`OAK color` displayは`/oak/color/image_raw`を表示します。�
 
 ## 7月bagを現在のlocalizationで再計算して可視化する
 
+### obstacle閾値・セル幅を変更する簡易確認（2ターミナル）
+
+`terrain_obstacle_review.launch.py`は、最新localization再計算・mapper・RVizを
+まとめて起動する。具体的なlocalization処理は既存の
+`terrain_mapping_latest_localization_replay.launch.py`に委譲する。
+実機センサ・モータは起動しない。比較baseline（8 m map、depth 0.4〜5 m、
+stride 4、最大融合12 Hz、hazard 2 Hz）に編集用YAMLを上書きする。
+depth購読は既定でRELIABLE・history depth=3。
+
+`review_config`のYAMLまたは同名launch引数で、次を変更できる。
+引数未指定ならYAML値を使用し、指定した引数だけが優先する。
+
+| 設定 | 既定値 | 意味・単位 |
+|---|---:|---|
+| `resolution` | 0.10 | セル幅[m] |
+| `pixel_stride` | 4 | 横・縦それぞれ4画素おき。1なら全画素 |
+| `obstacle_min_height` | 0.03 | obstacle証拠の最低高さ[m] |
+| `hazard_slope_limit_deg` | 20.0 | slopeのhazard限界[deg] |
+| `hazard_roughness_limit` | 0.03 | roughnessのhazard限界[m] |
+| `hazard_step_limit` | 0.07 | stepのhazard限界[m] |
+| `hazard_obstacle_height_limit` | 0.08 | obstacleのhazard限界[m] |
+
+```bash
+ros2 launch pm_perception terrain_obstacle_review.launch.py \
+  pixel_stride:=2 hazard_slope_limit_deg:=15.0 \
+  hazard_roughness_limit:=0.02 hazard_step_limit:=0.05
+```
+
+componentの表示スケール上限は解決後の各hazard限界へ自動追従する。
+閾値以上はcomponentも100（黒）となるが、support/confidence不足はunknown等の
+既存判定を維持する。これらは起動時設定なので、変更後はlaunchを再起動する。
+ソースYAMLを確実に読むには`review_config`へ絶対パスを指定する。
+
+最初に新launchをインストールするため、Foxyコンテナ内で一度buildする：
+
+```bash
+cd /workspaces/patasmonkey_ws
+source /opt/ros/foxy/setup.bash
+source /workspaces/ros2_ws/install/setup.bash
+colcon build --packages-select pm_perception --symlink-install
+```
+
+以下は両ターミナルともコンテナ内で実行する。各ターミナルで準備：
+
+```bash
+source /opt/ros/foxy/setup.bash
+source /workspaces/ros2_ws/install/setup.bash
+source /workspaces/patasmonkey_ws/install/setup.bash
+export ROS_DOMAIN_ID=91
+```
+
+ターミナル1（認識処理＋RViz）：
+
+```bash
+ros2 launch pm_perception terrain_obstacle_review.launch.py \
+  review_config:=/workspaces/patasmonkey_ws/src/pm_perception/config/terrain_obstacle_review.yaml
+```
+
+ターミナル2（bag＋カラー画像）：
+
+```bash
+ros2 run pm_evaluation bag_clock_player \
+  /workspaces/patasmonkey_ws/bags/rosbag2_2026_07_26-09_17_38 \
+  --rate 1.0 \
+  --topic /wheel/odometry --topic /vio/odometry --topic /wit/imu \
+  --topic /tf_static --topic /oak/depth/image_raw \
+  --topic /oak/depth/camera_info \
+  --topic /oak/color/image_raw --topic /oak/color/camera_info
+```
+
+古いbagにcamera_infoがなければfallbackを使用する。最新odomを再計算するため
+旧`/tf`・融合済みodometryは再生しない。bag開始前の`odom does not exist`は
+通常の待機状態だが、再生後も続く場合はlocalizationの入力・ログを確認する。
+
+`config/terrain_obstacle_review.yaml`の`resolution`を
+`0.05 / 0.10 / 0.15 / 0.20`にして比較する。閾値の単位はm。
+従来条件へ戻す場合は`obstacle_min_height`、`hazard_obstacle_height_limit`、
+`debug_obstacle_height_max`の3項目を全て`0.20`にする。
+表示スケールも揃えることでcomponent表示100とhazard限界が一致する。
+ソースYAMLを上の絶対パスで指定しているので、YAML編集後のbuild・sourceは不要。
+ただし起動済みノードには反映されない。**両ターミナルをCtrl+Cで止めてから、
+launch→bagの順で再起動し、空の地図から比較する。**
+
+RVizはhazard・カラー画像・原寸ロボットを既定表示する。hazardは黒=100、
+白=0、unknownは別表示であり、白が安全保証という意味ではない。
+左DisplaysでhazardをOFF、Obstacle heightをONにするとobstacleを単独確認できる。
+重ね描きで色が紛らわしくならないよう、比較するMap layerは1つずつ表示する。
+Fixed Frameはodom、視点はbase_link追従を利用する。
+
+実効設定確認（ターミナル2で再生前、または別ターミナル）：
+
+```bash
+ros2 param get /depth_elevation_mapper resolution
+ros2 param get /depth_elevation_mapper obstacle_min_height
+ros2 param get /depth_elevation_mapper hazard_obstacle_height_limit
+ros2 param get /depth_elevation_mapper depth_subscription_reliability
+ros2 param get /depth_elevation_mapper depth_subscription_queue_depth
+ros2 param get /depth_elevation_mapper use_sim_time
+```
+
 `terrain_mapping_latest_localization_replay.launch.py`は、現在の
 `separated_offroad`相当のlocalizer（horizontal EKF、VIO gate、attitude/height
 observer、composer）を起動します。このlaunchが新しい`/odometry/local`と

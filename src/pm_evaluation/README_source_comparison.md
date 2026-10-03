@@ -104,3 +104,22 @@ yawは0度である。一方、plotの+90度はドライバ処理を相殺する
 `+90度`は地理的な校正値とみなさない。正しくROS ENUへ変換済みのIMU topicなら
 plot側の理論offsetは0度である。磁気yawを真北へ合わせる場合は、さらに場所・日時の
 磁気偏角と車載磁気外乱の校正が必要になる。
+
+## Witの固定yaw補正をlocal EKFでA/B比較する
+
+`tools/compare_wit_yaw_ekf.py`は既存MCAP replayを再利用し、記録済みWit姿勢と
+世界z軸＋90度でdriver補正を取り消した姿勢を同じlocal EKFへ入力する。
+GNSS整列はせず、wheel/VIO入力と共分散を保持する。製品設定は書き換えない。
+
+Foxy環境でROSと外部overlayをsourceし、pm_evaluationをPYTHONPATHへ追加して使う。
+他のROS graphとは専用domainで分離し、出力は存在しないディレクトリを指定する。
+
+```bash
+ROS_DOMAIN_ID=97 ROS_LOCALHOST_ONLY=1 /usr/bin/python3 tools/compare_wit_yaw_ekf.py \
+  <bag-directory> <new-output-directory> \
+  --config ../pm_config/config/ekf_local_whl_imu_cam.yaml
+```
+
+CSV、比較PNG、summary.json、使用config、EKFログを保存する。XY図は開始位置の
+平行移動だけで、回転整列しない。yaw表示は360度のunwrap枝を揃える。
+真方位を判定する試験ではなく、固定補正の推定への影響を確認する試験である。

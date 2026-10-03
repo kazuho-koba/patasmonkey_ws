@@ -29,6 +29,7 @@ from std_msgs.msg import ColorRGBA
 from pm_perception.depth_projection import sampled_points, transform_points
 from pm_perception.rolling_elevation_grid import RollingElevationGrid
 from pm_perception.terrain_features import compute_terrain_features
+from pm_perception.mapper_replay_trace import MapperReplayTrace
 
 
 def stamp_to_ns(stamp):
@@ -209,6 +210,7 @@ class DepthElevationMapper(Node):
             "tf_listener_dedicated_thread": False,
             # 空文字列なら診断配列・CSVを作らない。bag forensic専用の明示opt-in。
             "forensic_output_dir": "",
+            "replay_trace_output_dir": "",
             "forensic_roi_forward_min_m": 0.25,
             "forensic_roi_forward_max_m": 4.5,
             "forensic_roi_half_width_m": 0.60,
@@ -344,6 +346,11 @@ class DepthElevationMapper(Node):
             value("forensic_frame_neighbor_radius_cells")
         )
         self.forensic_enabled = bool(self.forensic_output_dir)
+        # 空ならファイル・JSON生成なし。通常runtimeの投影・融合アルゴリズムは変更しない。
+        trace_dir = str(value("replay_trace_output_dir")).strip()
+        self.replay_trace = (MapperReplayTrace(
+            trace_dir, {name: value(name) for name in defaults}
+        ) if trace_dir else None)
         if self.forensic_frame_events and not (
             self.forensic_enabled and self.forensic_targets_csv
         ):
@@ -849,6 +856,10 @@ class DepthElevationMapper(Node):
                 )
         else:
             observed_cells = 0
+
+        if self.replay_trace is not None:
+            self.replay_trace.fusion(stamp_ns, message.header.frame_id, intrinsics,
+                                     message.width, message.height, camera_tf, base_tf)
 
         if callback_start_ns is not None:
             # grid更新（診断用forensic処理を含む）が戻った境界を記録する。
@@ -1373,6 +1384,8 @@ class DepthElevationMapper(Node):
         stamp = self.get_clock().now().to_msg()
         debug_started = time.perf_counter()
         self.publish_debug(stamp)
+        if getattr(self, "replay_trace", None) is not None:
+            self.replay_trace.snapshot(stamp_to_ns(stamp))
         self.debug_times_ms.append(
             (time.perf_counter() - debug_started) * 1000.0
         )
@@ -1494,6 +1507,8 @@ class DepthElevationMapper(Node):
 
     def destroy_node(self):
         """終了時にforensic CSVを閉じ、最後のbufferも確実にflushする。"""
+        if getattr(self, "replay_trace", None) is not None:
+            self.replay_trace.close()
         for stream in (self.forensic_cells_file, self.forensic_support_file,
                        self.forensic_events_file, self.forensic_pixels_file):
             if stream is not None and not stream.closed:
