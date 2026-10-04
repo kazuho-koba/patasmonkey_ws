@@ -1609,9 +1609,10 @@ class DepthElevationMapper(Node):
         return message
 
 
-def main(args=None):
+def main(args=None, node_factory=DepthElevationMapper):
     rclpy.init(args=args)
-    node = DepthElevationMapper()
+    # 通常運用は既存node。独立frame診断だけ同じ終了・TF処理を別gridで使う。
+    node = node_factory()
     executor = None
     try:
         output_path = node.diagnostic_executor_csv_path

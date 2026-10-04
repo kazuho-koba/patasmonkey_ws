@@ -41,7 +41,7 @@ def generate_launch_description():
                  LaunchConfiguration("terrain_mapper_override_config").perform(context)]
         configs = [terrain_tuning_overrides(context, paths)] if LaunchConfiguration(
             "terrain_tuning_enabled").perform(context).lower() == "true" else paths
-        return [Node(package="pm_perception", executable="depth_elevation_mapper_node",
+        return [Node(package="pm_perception", executable=LaunchConfiguration("terrain_mapper_executable"),
                      name="depth_elevation_mapper", output="screen", parameters=[
                          *configs, sim_time, {
                              "forensic_output_dir": forensic_output_dir,
@@ -52,6 +52,8 @@ def generate_launch_description():
                          }])]
     return LaunchDescription(
         [
+            # 通常mapperが既定。独立画像の可視化launchだけ専用実行形式を選ぶ。
+            DeclareLaunchArgument("terrain_mapper_executable", default_value="depth_elevation_mapper_node"),
             DeclareLaunchArgument("terrain_tuning_enabled", default_value="false"),
             *declare_tuning_arguments(),
             DeclareLaunchArgument(

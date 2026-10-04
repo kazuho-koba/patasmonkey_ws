@@ -23,6 +23,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
+            "single_frame_mapper_node = pm_perception.single_frame_mapper_node:run",
             "depth_elevation_mapper_node = "
             "pm_perception.depth_elevation_mapper_node:main",
             "mapper_executor_diagnostics = "

@@ -1,0 +1,26 @@
+# 独立フレームRViz専用。既存の融合用・offline解析用YAMLは変更しない。
+# baseline → old bag設定 → このYAML → 非空launch引数の順で上書きする。
+depth_elevation_mapper:
+  ros__parameters:
+    single_frame_obstacle: true  # offlineの--single-frame-obstacleに対応。falseでconfidence待ち
+    pixel_stride: 1             # 横・縦の間引き幅。1は全pixel
+    map_size_x: 8.0             # m。表示領域であり、FOV外まで観測した意味ではない
+    map_size_y: 8.0
+    resolution: 0.10           # m/cell
+    min_depth: 0.4             # m
+    max_depth: 5.0
+    max_processing_rate: 25.0  # Hz上限。10 Hz画像の短い間隔による間引きを減らす
+    depth_subscription_reliability: reliable
+    depth_subscription_queue_depth: 3
+    debug_publish_rate: 2.0    # Hz。最新の独立画像だけを表示、全frameは毎回投影する
+    nominal_camera_height_above_ground: 0.4
+    obstacle_min_height: 0.03  # m。セル内max−minの記録閾値
+    hazard_slope_limit_deg: 20.0
+    hazard_roughness_limit: 0.03 # m
+    hazard_step_limit: 0.07      # m
+    hazard_obstacle_height_limit: 0.08 # m
+    feature_max_accepted_ground_age: 0.0
+    publish_stage2_debug_layers: true
+    publish_stage3_debug_layers: true
+    publish_debug_occupancy: true
+    publish_debug_pointcloud: true # RViz確認用。負荷を抑える場合はfalse

@@ -5,12 +5,12 @@ depth_elevation_mapper:
   ros__parameters:
     resolution: 0.10                 # セル幅[m]。0.05 / 0.10 / 0.15 / 0.20で比較
     pixel_stride: 4                  # 横・縦とも4画素おき。1なら間引きなし
-    hazard_slope_limit_deg: 20.0      # slopeによるhazard限界[deg]（傾斜の大きさ）
-    hazard_roughness_limit: 0.03      # 平面残差RMSのhazard限界[m]
-    hazard_step_limit: 0.07           # 前後support付き平面残差幅のhazard限界[m]
-    obstacle_min_height: 0.03         # 障害物証拠として記録する最低高さ[m]
-    hazard_obstacle_height_limit: 0.08 # obstacleによるhazard限界[m]
-    debug_obstacle_height_max: 0.08    # 表示100とhazard限界を一致させる[m]
+    hazard_slope_limit_deg: 50.0      # slopeによるhazard限界[deg]（傾斜の大きさ）
+    hazard_roughness_limit: 0.5      # 平面残差RMSのhazard限界[m]
+    hazard_step_limit: 0.7           # 前後support付き平面残差幅のhazard限界[m]
+    obstacle_min_height: 0.3         # 障害物証拠として記録する最低高さ[m]
+    hazard_obstacle_height_limit: 0.50 # obstacleによるhazard限界[m]
+    debug_obstacle_height_max: 0.50    # 表示100とhazard限界を一致させる[m]
     depth_subscription_reliability: reliable
     depth_subscription_queue_depth: 3 # DDS受信履歴。pending TF queueとは別
     feature_max_accepted_ground_age: 0.0 # 追加のground受理時間窓は使用しない

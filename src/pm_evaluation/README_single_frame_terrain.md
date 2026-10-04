@@ -6,6 +6,69 @@
 
 ## 何を分離するか
 
+### bag連続再生とRViz表示（独立フレーム専用）
+
+`single_frame_terrain_review.launch.py`を使う。具体的なlocalization・robot model・TF構成は
+`terrain_mapping_latest_localization_replay.launch.py`へ委譲し、専用nodeのgridだけを
+画像ごとにresetする。通常fusion用launch/YAMLやCSV解析用設定は上書きしない。
+
+初回はFoxyコンテナ内で追加実行形式をbuildする：
+
+```bash
+cd /workspaces/patasmonkey_ws
+source /opt/ros/foxy/setup.bash
+source /workspaces/ros2_ws/install/setup.bash
+colcon build --packages-select pm_perception --symlink-install
+source install/setup.bash
+```
+
+以下はFoxyコンテナ内の2ターミナル。両方で上記のruntime overlayをsourceする。
+以前のmapper・localization・RViz・playerを停止し、同じROS_DOMAIN_IDを使う。
+
+ターミナル1：
+
+```bash
+ros2 launch pm_perception single_frame_terrain_review.launch.py \
+  review_config:=/workspaces/patasmonkey_ws/src/pm_perception/config/single_frame_terrain_review.yaml
+```
+
+ターミナル2（通常fusionのreviewと同じbag player・入力topic）：
+
+```bash
+ros2 run pm_evaluation bag_clock_player \
+  /workspaces/patasmonkey_ws/bags/rosbag2_2026_07_26-09_17_38 \
+  --rate 1.0 \
+  --topic /wheel/odometry --topic /vio/odometry --topic /wit/imu \
+  --topic /tf_static --topic /oak/depth/image_raw --topic /oak/depth/camera_info \
+  --topic /oak/color/image_raw --topic /oak/color/camera_info
+```
+
+元bagの`/tf`・旧filtered odometryは再生しない。最新localizationがodom→base_linkを
+再計算し、mapperはdepth撮像stampのTFで投影する。camera_info未記録の旧bagでは
+既存old-bagのintrinsics fallbackを利用する。bagにないtopicからは何も発行されない。
+bag開始前はodom未存在の警告が出ることがある。センサ・モータは起動しない。
+
+編集対象は`single_frame_terrain_review.yaml`。source側絶対パスを渡しているため
+YAML編集だけなら再build不要だが、launchを停止して起動し直す。既定値は
+stride=1、セル0.1 m、領域8×8 m、depth 0.4〜5 m、hazard限界20°/3 cm/7 cm/8 cm。
+`single_frame_obstacle: true`がofflineの`--single-frame-obstacle`に対応する。
+画像内セルmax−minが`obstacle_min_height`以上ならconfidence待ちなしで使う。
+falseでは通常のconfidence gateを使うため、独立画像ではobstacle unknownが増え得る。
+このオプションは「障害物を実証する分類器」ではなく高さ幅cueの診断である。
+
+7つのtuning引数は通常reviewと同じく使用できる。例えば`pixel_stride:=4
+hazard_step_limit:=0.07`をlaunch末尾に追加する。その他のnode設定もYAMLへ追記可能。
+launch引数を指定した項目はYAMLより優先し、componentの表示上限はhazard限界に揃う。
+
+RVizのelevation・点群・hazard・カラー画像・robot modelは既存review設定を共用する。
+hazardは白=0、黒=100、unknownは未評価。各mapは最後に処理した1画像だけで、
+FOV外の過去地形は残らない。既定では投影上限25 Hz、入力約10 Hz、表示/評価2 Hz。
+画像全てのhazardを表示・計算したい場合はYAMLの`debug_publish_rate: 10.0`を候補に
+できるが、timerで最新画像を表示する方式なので各画像1対1の出力は保証しない。
+全frameの網羅的統計は既存offline評価ツールを使用する。
+連続RViz用TFはその再生で得たもの。過去解析の保存mapper traceと数値完全一致する
+ことを保証する表示ではない。TF待ち・rate gate・bag速度による差もあり得る。
+
 ### unknownと地形support不足の追加診断
 
 `--footprint-cell-diagnostics`を指定すると、frame/経路CSVへfootprint内の各セルの

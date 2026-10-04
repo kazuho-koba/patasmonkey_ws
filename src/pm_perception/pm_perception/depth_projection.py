@@ -15,7 +15,8 @@ def sampled_points(
 
     OAKの`16UC1`値はoptical-z方向のmm値である。`frombuffer`はROS payloadを全画像
     copyなしにviewし、sampling後のfloat配列だけを作業用に確保する。`stride`は両pixel
-    軸に適用するため、4なら画像の約1/16を評価する。
+    軸に適用するため、4なら4×4区画につき最大1点を投影する。左上が無効なら
+    区画内を行優先順に探索し、最初の有効画素を使う。全画素無効の区画は返さない。
     """
     if depth_message.encoding not in ("16UC1", "mono16"):
         raise ValueError("expected 16UC1/mono16 depth, got " + depth_message.encoding)
@@ -33,7 +34,37 @@ def sampled_points(
     # range判定の前にmmをmへ変換し、使用可能なdepthだけを残す。0 depthは特別扱いせず
     # min_depth判定で除外される。
     sampled = depth[::stride, ::stride].astype(np.float32) * 0.001
-    valid = np.isfinite(sampled) & (sampled >= min_depth) & (sampled <= max_depth)
+    valid = (sampled > 0) & (sampled >= min_depth) & (sampled <= max_depth)
+    u, v = np.meshgrid(cols, rows)
+    # 代表が無効の区画だけ追加探索する。全画像のfloat変換や16倍の3D点生成はしない。
+    # 実際に選んだ画素座標を保存し、左上の座標へdepth値だけを移す誤投影を避ける。
+    if stride > 1:
+        pending_rows, pending_cols = np.nonzero(~valid)
+        for dy in range(stride):
+            for dx in range(stride):
+                if not pending_rows.size:
+                    break
+                if dy == 0 and dx == 0:
+                    continue
+                candidate_v = rows[pending_rows] + dy
+                candidate_u = cols[pending_cols] + dx
+                # 画像右端・下端の部分区画では、paddingや隣区画を探索しない。
+                inside = ((candidate_v < depth_message.height) &
+                          (candidate_u < depth_message.width))
+                indices = np.flatnonzero(inside)
+                depths = depth[candidate_v[inside], candidate_u[inside]].astype(np.float32) * 0.001
+                accepted = (depths > 0) & (depths >= min_depth) & (depths <= max_depth)
+                chosen = indices[accepted]
+                rr, cc = pending_rows[chosen], pending_cols[chosen]
+                sampled[rr, cc] = depths[accepted]
+                u[rr, cc], v[rr, cc] = candidate_u[chosen], candidate_v[chosen]
+                valid[rr, cc] = True
+                # 採用済み区画は後の候補で上書きせず、残った区画だけ次のoffsetで調べる。
+                remaining = np.ones(pending_rows.size, dtype=bool)
+                remaining[chosen] = False
+                pending_rows, pending_cols = pending_rows[remaining], pending_cols[remaining]
+            if not pending_rows.size:
+                break
     if not np.any(valid):
         empty_points = np.empty((0, 3), dtype=np.float32)
         if return_pixels:
@@ -43,7 +74,6 @@ def sampled_points(
         return empty_points
     # pinhole back-projection。zは観測したaxial depth、x/yはprincipal pointからの
     # pixel距離に対応する横方向offsetである。
-    u, v = np.meshgrid(cols, rows)
     optical_z = sampled[valid]
     optical_x = (u[valid] - cx) * optical_z / fx
     optical_y = (v[valid] - cy) * optical_z / fy
@@ -55,8 +85,7 @@ def sampled_points(
 
     # forensic時だけ、各3D sampleを作った元画素とaxial depthも返す。通常経路では
     # この追加配列を確保しないため、Jetsonの通常実行コストを増やさない。
-    pixel_u, pixel_v = np.meshgrid(cols, rows)
-    return points, pixel_u[valid], pixel_v[valid], optical_z
+    return points, u[valid], v[valid], optical_z
 
 
 def quaternion_matrix(quaternion):

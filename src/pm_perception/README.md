@@ -35,7 +35,9 @@ robot-centric rolling 2.5D gridへ融合する最小実装です。Stage 3では
 ## 処理とデータ構造
 
 1. CameraInfo（旧bagでは明示したEEPROM fallback）を取得。
-2. `pixel_stride`間隔でNumPy viewを取り、0値とdepth範囲外を除去。
+2. `pixel_stride`×`pixel_stride`区画から最大1画素を選ぶ。左上が0値・depth範囲外なら
+   区画内を行優先順（左から右、上から下）に探して最初の有効画素を使う。
+   全画素無効なら未観測。代替画素の実際のpixel座標で投影し、区画を塗りつぶさない。
 3. pinhole modelでoptical frameへ一括back-project。
 4. depth headerの**撮像時刻**でcamera→odomとbase_link→odomをlookup。TFがまだ
    到着していないframeは短いbounded queueで待ち、timeout後はdropします。
