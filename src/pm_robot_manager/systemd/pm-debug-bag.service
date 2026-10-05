@@ -1,6 +1,7 @@
 [Unit]
 Description=Patasmonkey debug rosbag launch
-After=start-pm.service
+Wants=systemd-timesyncd.service
+After=start-pm.service systemd-timesyncd.service
 PartOf=start-pm.service
 
 [Service]
@@ -10,6 +11,12 @@ Group=nvidia
 Environment=HOME=/home/nvidia
 Environment=ROS_DOMAIN_ID=0
 Environment=PYTHONUNBUFFERED=1
+# Coreを遅延させず、bagのみ時刻復元とNTP同期を確認する。
+Environment=PM_BAG_CLOCK_WAIT_SEC=45
+Environment=PM_BAG_CLOCK_MIN_YEAR=2020
+TimeoutStartSec=55
+# console scriptのpackage解決にはinstall overlayのPYTHONPATHが必要。
+ExecStartPre=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec /home/nvidia/patasmonkey_ws/install/pm_robot_manager/lib/pm_robot_manager/wait_bag_clock'
 ExecStart=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec ros2 launch pm_bringup debug_bag.launch.py status_file:=/home/nvidia/.ros/pm_robot_manager/debug_bag_status.json'
 ExecStop=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec ros2 run pm_robot_manager stop_bag_wait --ros-args -p profile:=debug -p status_file:=/home/nvidia/.ros/pm_robot_manager/debug_bag_status.json'
 KillMode=control-group

@@ -27,6 +27,7 @@ setup(
     entry_points={
         'console_scripts': [
             'robot_manager = pm_robot_manager.robot_manager:main',
+            'wait_bag_clock = pm_robot_manager.wait_bag_clock:main',
             'stop_bag_wait = pm_robot_manager.stop_bag_wait:main',
         ],
     },

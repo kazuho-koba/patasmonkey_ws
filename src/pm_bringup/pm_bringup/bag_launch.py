@@ -13,6 +13,9 @@ def create_bag_launch(profile):
         values = {key: LaunchConfiguration(key).perform(context) for key in (
             'bag_directory', 'bag_name', 'workspace', 'external_workspace', 'storage',
             'mission_bag', 'status_file')}
+        # 時刻確認後の実行段階で命名し、launch定義の生成時刻を固定しない。
+        if not values['bag_name']:
+            values['bag_name'] = 'rosbag2_'+datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
         if not values['bag_name'] or Path(values['bag_name']).name != values['bag_name']:
             raise RuntimeError('bag_nameは空でない単一のディレクトリ名を指定してください')
         output = Path(values['bag_directory']).expanduser() / values['bag_name']
@@ -37,7 +40,8 @@ def create_bag_launch(profile):
         root = root / 'debug'
     return LaunchDescription([
         DeclareLaunchArgument('bag_directory', default_value=str(root)),
-        DeclareLaunchArgument('bag_name', default_value='rosbag2_'+datetime.now().strftime('%Y_%m_%d-%H_%M_%S')),
+        DeclareLaunchArgument('bag_name', default_value='',
+                              description='空なら録画開始時のシステム時刻で自動命名'),
         DeclareLaunchArgument('workspace', default_value=str(workspace)),
         DeclareLaunchArgument('external_workspace', default_value=str(external)),
         DeclareLaunchArgument('storage', default_value='mcap'),

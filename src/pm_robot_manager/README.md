@@ -48,3 +48,19 @@ sudo systemctl enable start-pm.service pm-robot-manager.service pm-mission-bag.s
 boot時はmulti-user.targetからManager、Core、Mission bagを開始します。Mission bagにはAfter=start-pm.serviceを指定してCoreの後に起動します。GUIからCoreだけを開始してもMission bagはOFFのままです。Mission/Debugは各記録ボタンで独立して開始します。GUIを閉じても管理対象のlaunchは継続します。Core unitはSIGINTで正常停止し、wrapperのsignal由来の終了コード130/143をSuccessExitStatusとして扱うため、正常停止をfailedと表示しません。
 
 初回配置やunit更新はJetson上で別途実施します。このrepository内のunit template変更だけでは稼働中Jetsonへ反映されません。
+
+### boot時のbag時刻
+
+Mission/Debug unitは`systemd-timesyncd.service`による保存時計の復元後に、
+`wait_bag_clock`をExecStartPreで実行します。NTP同期を最大45秒待ち、未同期でも
+2020年以降なら復元時計を使用して警告を記録します。2000年など未復元の時計では
+録画開始を失敗させます。CoreとManagerはこの待機に依存しません。
+`PM_BAG_CLOCK_WAIT_SEC`と`PM_BAG_CLOCK_MIN_YEAR`はunitの環境変数で変更できます。
+ネットなしで復元時計そのものが不正な場合、正しい日付は保証できません。
+自動bag名はlaunch定義作成時ではなく録画開始段階で生成します。
+既存の誤った名前やbag内timestampは変更しません。
+
+ExecStartPreでもROS overlayをsourceしてからconsole scriptを実行します。
+boot後に時刻確認処理のpackage解決エラーが出た場合、CoreとManagerを停止せず
+`sudo bash ~/patasmonkey_ws/scripts/update_bag_clock_systemd.sh`でbag unitだけ
+更新してMission記録を復旧できます。Mission/Debug録画が停止中であることが前提です。
