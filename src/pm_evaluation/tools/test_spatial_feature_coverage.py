@@ -1,6 +1,7 @@
 """前方半円・停止中の保持・unknown非消去・同一frame組保持のテスト。"""
 import numpy as np
 import json
+import pytest
 from types import SimpleNamespace
 import evaluate_spatial_feature_coverage as tool
 from evaluate_spatial_feature_coverage import front_cells, SpatialFeatureStore
@@ -34,7 +35,8 @@ def test_coherent_triplet_and_unobserved_cells():
     assert np.isnan(store.query([(1,1)], 10, None)).all()
 
 
-def test_main_passage_query_is_before_same_stamp_image(monkeypatch, tmp_path):
+@pytest.mark.parametrize("max_depth", [None, 10.0])
+def test_main_passage_query_is_before_same_stamp_image(monkeypatch, tmp_path, max_depth):
     """bag走査からCSV/NPZ出力までを合成入力で確認し、通過時future混入を拒否する。"""
     frames = {}
     for stamp, x in ((10, 0), (20, 1)):
@@ -50,20 +52,65 @@ def test_main_passage_query_is_before_same_stamp_image(monkeypatch, tmp_path):
                                width=1,height=1) for t in frames]
     monkeypatch.setattr(tool, "messages", lambda *args: [(None,None,SimpleNamespace(data=r)) for r in records])
     monkeypatch.setattr(tool, "deserialize_message", lambda r, cls: r)
-    monkeypatch.setattr(tool, "sampled_points", lambda *args: np.array([[0,0,1.]]))
+    depths_used = []
+    def sampled(*args):
+        depths_used.append(args[-1])
+        return np.array([[0,0,1.]])
+    monkeypatch.setattr(tool, "sampled_points", sampled)
     arrays = dict(origin=np.array([-4,-4]), resolution=np.array(.1))
-    for name in ("hazard",)+tool.CUES+("support_count","step_support_forward","step_support_rear","pixel_count","cell_min","cell_max"):
+    for name in ("hazard",)+tool.CUES+("relative_elevation","support_count","step_support_forward","step_support_rear","pixel_count","cell_min","cell_max"):
         arrays[name] = np.full((80,80), .01)
     monkeypatch.setattr(tool, "evaluate_points", lambda *args, **kwargs: arrays)
     trace = tmp_path/"trace.jsonl"; trace.write_text("synthetic")
     output = tmp_path/"result"
-    monkeypatch.setattr("sys.argv", ["tool", "fakebag", "--mapper-trace", str(trace), "--output", str(output)])
+    argv = ["tool", "fakebag", "--mapper-trace", str(trace), "--output", str(output)]
+    if max_depth is not None:
+        argv += ["--max-depth", str(max_depth)]
+    monkeypatch.setattr("sys.argv", argv)
     tool.main()
     summary = json.loads((output/"summary.json").read_text())
     assert summary["adopted_frames"] == 2
     assert summary["path"]["before_passage"]["completely_unknown"] == 1
     assert summary["path"]["before_passage"]["known_footprints"] == 1
     assert (output/"retained_features.npz").exists()
+    expected_depth = 5 if max_depth is None else max_depth
+    assert depths_used == [expected_depth]*2
+    assert summary["parameters"]["max_depth"] == expected_depth
+    assert params["max_depth"] == 5  # traceの元設定は変更しない。
+    assert summary['near_observation_priority']['enabled']
+
+
+def test_near_priority_accepts_first_far_then_rejects_supported_far_update():
+    """遠方の初回も受理し、近距離受理後だけ点数付きで遠方更新を拒否する。"""
+    store = SpatialFeatureStore()
+    cells = [(0,0)]; support = np.ones((1,4))
+    def update(distance, points, value, stamp):
+        store.observation_quality = {(0,0):(distance, np.full(4, points))}
+        store.update(cells, np.full((1,4),value), stamp, support)
+    update(8, 5, .1, 10)
+    assert (store.query(cells, 10, None) == .1).all()
+    update(2, 10, .02, 20)
+    update(4, 10, .1, 30)
+    assert (store.query(cells, 30, None) == .02).all()
+    assert (store.data[(0,0)][1] == 20).all()
+    update(4, 11, .1, 40)  # 近距離の点数が不足なら遠方更新を許可。
+    assert (store.query(cells, 40, None) == .1).all()
+    update(4.02, 5, .01, 50)  # 同等距離は新しい観測を受理。
+    assert (store.query(cells, 50, None) == .01).all()
+
+
+def test_latest_override_and_patch_point_count():
+    store = SpatialFeatureStore(prefer_near=False)
+    cells = [(0,0)]
+    for stamp,distance,value in ((10,1,.01),(20,5,.1)):
+        store.observation_quality = {(0,0):(distance,np.ones(4))}
+        store.update(cells,np.full((1,4),value),stamp,np.ones((1,4)))
+    assert (store.query(cells,20,None) == .1).all()
+    arrays = dict(relative_elevation=np.zeros((3,3)),pixel_count=np.ones((3,3))*2,
+                  origin=np.array([0.,0.]),resolution=np.array(1.))
+    quality = tool.observation_quality(arrays,[(1,1)],[1.5,1.5])
+    assert quality[(1,1)][0] == 0
+    assert np.array_equal(quality[(1,1)][1], [18,18,18,2])
 
 
 def test_low_span_clears_only_supported_observation():

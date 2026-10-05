@@ -22,6 +22,10 @@ python3 src/pm_evaluation/tools/evaluate_spatial_feature_coverage.py \
 出力先は存在しない新規directoryを指定する。別bagにはそのbagのmapper traceが必要。
 半径5 mを比較する場合は`--projection-map-size 12`等で投影領域を確保し、
 半径2 m側にも同じ値を指定する。trace TF・セル幅は変えず、offlineの一時gridだけを広げる。
+depth上限も変更する場合は`--max-depth 10`等を指定する。半径だけではdepth filterは
+変更されない。半径2／5／10 mにdepth上限も揃える比較では`--max-depth`へ同じ値を
+渡し、投影領域を全条件`--projection-map-size 22`で統一する。深度はoptical-z[m]で、
+地上水平距離と厳密には一致しない。bagに元から存在しない／無効な深度は復元しない。
 traceの設定・intrinsics・camera→odom・base poseを再利用し、採用stamp・画像寸法・frameを
 確認する。最新オドメトリはtrace採取時に再計算済みで、ここでは再計算しない。
 
@@ -68,6 +72,26 @@ hazard既知・地形3cue完全・4cue完全を分ける。黒率は1セル以�
 NPZのcue stampから元traceのframe pose・TFへ対応できる。supportはplane近傍数、stepの
 前後supportの小さい方、obstacleのpixel数。pixel数は独立観測confidenceを保証しない。
 将来のtime/freshness/pose訂正判定用に`SpatialFeatureStore.eligible`を分離した。
+
+## 近距離観測優先（既定ON）
+
+有効な観測が既に保持されていて、新観測の水平距離が最後に受理した観測より
+0.05 m超遠く、かつ旧観測の点数が新観測以上の場合だけ更新を拒否する。
+terrain三指標は同一frame組で保持し、点数は有効elevationの3×3patch合計。
+obstacleは対象cell点数。実際の近傍幅はfeature_neighborhood_radius_cellsに従う。
+
+**まだ近傍観測がなくても、遠方の初回観測は受理する。** 絶対距離による拒否ではない。
+旧観測に点数不足がある場合は遠方の新観測を受理し、近い観測・同程度距離の新観測も
+受理する。unknownで過去値を消さず、拒否時はstamp・距離・点数も更新しない。
+obstacle解除にも同じ条件が適用され、過去の危険が残りやすくなる可能性がある。
+
+- `--near-distance-margin 0.05`：遠距離化と判定する水平距離差[m]。
+- `--latest-observation-wins`：比較用に近距離優先をOFFにし、従来の最新有効値更新へ戻す。
+- `summary.json`の`near_observation_priority`：実効設定と指標別拒否更新数。
+
+適用先はこの**独立frame指標を空間保持するオフライン評価**。通常mapperの高さ融合や
+ROS launchの既定は変更しない。品質診断・方式E診断は旧baselineを維持するため、
+それぞれの専用入口では距離優先を無効にしている。既存の比較レポートも変更しない。
 現在はfuture禁止だけで、未実装の動的物体解除・pose補正を実施したと見なさない。
 
 ## 制約

@@ -57,11 +57,40 @@ def front_cells(pose, resolution, radius):
     return list(zip(xx[valid].tolist(), yy[valid].tolist()))
 
 
+def observation_quality(arrays, cells, camera_xy, radius=1):
+    """同frameの点数と水平観測距離をcell別に求める。時間方向に累積しない。
+
+    terrainは有効elevationを持つ近傍patchの点数、obstacleは中心cell点数。
+    積分画像でpatch合計を求め、cellごとの3×3 Python走査を避ける。
+    """
+    pixels = np.where(np.isfinite(arrays['relative_elevation']), arrays['pixel_count'], 0)
+    integral = np.pad(pixels, ((1, 0), (1, 0))).cumsum(0).cumsum(1)
+    resolution = float(arrays['resolution'])
+    origin = np.rint(arrays['origin']/resolution).astype(int)
+    h, w = pixels.shape; result = {}
+    for cell in cells:
+        x, y = cell[0]-origin[0], cell[1]-origin[1]
+        if not (0 <= x < w and 0 <= y < h):
+            continue
+        x0, x1 = max(0, x-radius), min(w, x+radius+1)
+        y0, y1 = max(0, y-radius), min(h, y+radius+1)
+        count = integral[y1,x1]-integral[y0,x1]-integral[y1,x0]+integral[y0,x0]
+        distance = np.hypot((cell[0]+.5)*resolution-camera_xy[0],
+                            (cell[1]+.5)*resolution-camera_xy[1])
+        result[cell] = (distance, np.array([count]*3+[arrays['pixel_count'][y,x]], dtype=float))
+    return result
+
+
 class SpatialFeatureStore:
     """観測済みcellを無期限保持。将来の鮮度・pose整合性はeligibleで拡張できる。"""
 
-    def __init__(self):
+    def __init__(self, prefer_near=True, distance_margin=.05):
         self.data = {}
+        self.prefer_near = prefer_near
+        self.distance_margin = distance_margin
+        self.observation_quality = {}
+        self.accepted_quality = {}
+        self.rejected_updates = np.zeros(4, dtype=np.int64)
 
     def update(self, cells, values, stamp, support, coherent=True):
         """有効cueだけ更新し、unknownを過去の値の消去に使わない。"""
@@ -69,6 +98,19 @@ class SpatialFeatureStore:
             valid = np.isfinite(row)
             if coherent and not valid[:3].all():
                 valid[:3] = False
+            current = self.observation_quality.get(cell)
+            if self.prefer_near and current is not None and cell in self.accepted_quality:
+                distances, counts = self.accepted_quality[cell]
+                distance, new_counts = current
+                # 初回や品質未記録のcueには拒否条件を適用しない。遠方の初回観測
+                # も必ず利用する。拒否時は値だけでなく比較基準の旧品質も保持する。
+                rejected = (valid & np.isfinite(distances) & np.isfinite(counts)
+                            & np.isfinite(distance) & np.isfinite(new_counts)
+                            & (distance > distances+self.distance_margin) & (counts >= new_counts))
+                if coherent and rejected[:3].any():
+                    rejected[:3] = valid[:3]
+                self.rejected_updates += rejected
+                valid &= ~rejected
             if not valid.any():
                 continue
             if cell not in self.data:
@@ -76,6 +118,11 @@ class SpatialFeatureStore:
                                    np.full(4, np.nan))
             kept, stamps, supports = self.data[cell]
             kept[valid], stamps[valid], supports[valid] = row[valid], stamp, quality[valid]
+            if current is not None:
+                if cell not in self.accepted_quality:
+                    self.accepted_quality[cell] = (np.full(4, np.nan), np.full(4, np.nan))
+                distances, counts = self.accepted_quality[cell]
+                distances[valid], counts[valid] = current[0], current[1][valid]
 
     def eligible(self, values, stamps, now, pose):
         """現在はfuture禁止のみ。時間経過・距離・通過済みを理由に失効しない。
@@ -130,6 +177,8 @@ def main():
     parser.add_argument("--projection-map-size", type=float,
                         help="offlineだけの正方形投影領域[m]。半径比較では両条件を同じサイズにする")
     parser.add_argument("--stride", type=int, default=1)
+    parser.add_argument("--max-depth", type=float,
+                        help="オフラインのoptical-z深度上限[m]。省略時はtrace設定を使用")
     parser.add_argument("--path-spacing", type=float, default=.25)
     parser.add_argument("--width", type=float, default=.45)
     parser.add_argument("--length", type=float, default=.55)
@@ -139,6 +188,10 @@ def main():
     parser.add_argument("--obstacle-clear-min-pixels", type=int, default=2,
                         help="低い高さ幅でobstacleを0に更新するための最低画素数（既定2）")
     parser.add_argument("--cue-wise", action="store_true", help="地形3cueの同一frame組保持ではなくcue別更新")
+    parser.add_argument('--latest-observation-wins', action='store_true',
+                        help='比較用：近距離優先を無効にして従来の最新有効観測で更新する')
+    parser.add_argument('--near-distance-margin', type=float, default=.05,
+                        help='近距離優先で遠距離化とみなす水平距離差[m]。既定0.05')
     parser.add_argument("--compare-age-seconds", type=float,
                         help="無期限方式は維持し、同一履歴に時間期限を付けた診断参照を追加")
     args = parser.parse_args()
@@ -148,9 +201,17 @@ def main():
         parser.error("参照期限は正の秒数")
     if args.obstacle_clear_min_pixels < 2:
         parser.error("解除の最低画素数は2以上")
+    if not np.isfinite(args.near_distance_margin) or args.near_distance_margin < 0:
+        parser.error('距離許容幅は非負の有限値')
     output = Path(args.output); output.mkdir(parents=True, exist_ok=False)
     meta, fusions, _ = load_mapper_trace(args.mapper_trace)
     params = meta["parameters"]
+    if args.max_depth is not None:
+        if not np.isfinite(args.max_depth) or args.max_depth <= params["min_depth"]:
+            parser.error("depth上限は有限値かつmin_depthより大きい値")
+        # bagの深度値を再読込してsampling前の範囲filterを変更する。TF・採用stamp
+        # は再利用し、通常mapperやカメラdriverの設定を変更しない。
+        params = dict(params, max_depth=args.max_depth)
     if args.projection_map_size is not None:
         if not np.isfinite(args.projection_map_size) or args.projection_map_size <= 0:
             parser.error("投影領域は正の有限値")
@@ -169,6 +230,8 @@ def main():
             path.append(pose)
     footprints = [footprint_cells(p, resolution, args.width, args.length) for p in path]
     store = SpatialFeatureStore()
+    store.prefer_near = not args.latest_observation_wins
+    store.distance_margin = args.near_distance_margin
     entered, passed, seen, frame_rows, path_rows, age_rows = set(), set(), [], [], [], []
     start = time.perf_counter()
     for _, _, record in messages(args.bag, [params["depth_topic"]]):
@@ -201,6 +264,8 @@ def main():
         current, support = extract(arrays, roi,
             obstacle_clear_height=None if args.legacy_obstacle_retention else params["obstacle_min_height"],
             obstacle_clear_min_pixels=args.obstacle_clear_min_pixels)
+        store.observation_quality = observation_quality(arrays, roi,
+            frame['camera_to_map']['translation'][:2], params.get('feature_neighborhood_radius_cells', 1))
         store.update(roi, current, stamp, support, coherent=not args.cue_wise)
         for mode, values in (("independent", current), ("held", store.query(roi, stamp, pose))):
             frame_rows.append(dict(frame_stamp_ns=stamp, mode=mode, **describe(values, limits)))
@@ -222,6 +287,9 @@ def main():
     summary = dict(parameters=params, radius_m=args.radius, stride=args.stride,
         retention="unlimited spatial store; no time/distance eviction", coherent_terrain=not args.cue_wise,
         single_frame_obstacle=args.single_frame_obstacle, adopted_frames=len(seen), path_samples=len(path),
+        near_observation_priority=dict(enabled=store.prefer_near, distance_margin_m=store.distance_margin,
+            old_points_at_least_new=True, rejected_updates=store.rejected_updates.tolist(),
+            first_observation_always_accepted=True),
         obstacle_update=dict(clear_low_span=not args.legacy_obstacle_retention,
             min_pixels=args.obstacle_clear_min_pixels, clear_height_below_m=params["obstacle_min_height"],
             not_a_free_space_guarantee=True),
