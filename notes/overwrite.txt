@@ -1,0 +1,4 @@
+cd ~/patasmonkey_ws
+
+git fetch origin
+git reset --hard origin/foxy
