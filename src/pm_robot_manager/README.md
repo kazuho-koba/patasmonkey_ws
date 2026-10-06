@@ -64,3 +64,12 @@ ExecStartPreでもROS overlayをsourceしてからconsole scriptを実行しま�
 boot後に時刻確認処理のpackage解決エラーが出た場合、CoreとManagerを停止せず
 `sudo bash ~/patasmonkey_ws/scripts/update_bag_clock_systemd.sh`でbag unitだけ
 更新してMission記録を復旧できます。Mission/Debug録画が停止中であることが前提です。
+
+### GUI停止時の保存先未作成bag
+
+Mission/Debug停止時、Managerはrecorderのoutputとsystemd起動IDを照合します。
+保存先不在ならunitのprocessをSIGSTOPで一時停止して再確認し、SIGKILLで
+対象bag unitだけを取消します。保存先が存在する場合は従来どおり保存検証を待ちます。
+保存先不明、起動ID不一致、権限・状態取得エラーでは強制停止しません。
+取消は保存成功ではなくCANCELLEDとして扱い、GUI状態はSTOPPEDへ戻します。
+この機能には更新したManagerとsudoersのJetson側配置が必要です。

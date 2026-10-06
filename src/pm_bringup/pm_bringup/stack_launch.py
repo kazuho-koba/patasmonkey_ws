@@ -202,6 +202,11 @@ def create_launch_description(legacy_recording=False):
         "/oak/color/camera_info",
         "/oak/depth/image_raw",
         "/oak/depth/camera_info",
+        "/oak/stereo/confidence/image_raw",
+        "/oak/stereo/disparity/image_raw",
+        "/oak/stereo/recording_snapshot",
+        "/oak/diagnostics/confidence_frame",
+        "/oak/diagnostics/disparity_frame",
 
         # -------------------------------------------------------------
         # Stage 2 local terrain mappingの出力。上記のdepth input、CameraInfo、現在の
@@ -412,6 +417,12 @@ def create_launch_description(legacy_recording=False):
         name="oakd_vio_rgbd_node",
         output="screen",
         condition=IfCondition(use_oakd),
+        parameters=[{
+            'publish_depth_confidence': ParameterValue(
+                LaunchConfiguration('oak_publish_depth_confidence'), value_type=bool),
+            'confidence_threshold': ParameterValue(
+                LaunchConfiguration('oak_confidence_threshold'), value_type=int),
+        }],
     )
     terrain_mapper_node = Node(
         package="pm_perception",
@@ -757,6 +768,10 @@ def create_launch_description(legacy_recording=False):
     ]
 
     return LaunchDescription([
+        DeclareLaunchArgument('oak_publish_depth_confidence', default_value='true',
+                              description='同sequenceのconfidence/disparityと校正設定を追加出力'),
+        DeclareLaunchArgument('oak_confidence_threshold', default_value='240',
+                              description='StereoDepth生成時のconfidence閾値0..255（小ほど厳格）'),
         DeclareLaunchArgument(
             "wit_timing_diagnostics", default_value="false",
             description="Witの読み取り・publish・周期遅延を終了時にCSV保存する",

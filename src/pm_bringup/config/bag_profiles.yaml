@@ -5,6 +5,12 @@ mission:
   - /oak/stereo/right/image_raw
   - /oak/color/image_raw
   - /oak/depth/image_raw
+  # confidenceとdisparityの座標は異なる。depthと同じ採用sequenceだけを追加記録する。
+  - /oak/stereo/confidence/image_raw
+  - /oak/stereo/disparity/image_raw
+  - /oak/stereo/recording_snapshot
+  - /oak/diagnostics/confidence_frame
+  - /oak/diagnostics/disparity_frame
   - /oak/imu/data
   - /wit/imu
   - /wit/mag

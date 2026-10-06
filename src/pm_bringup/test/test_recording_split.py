@@ -24,6 +24,9 @@ def test_profiles_are_disjoint_and_cover_legacy_topics():
     assert set(old) <= mission | debug
     assert {'/parameter_events','/set_pose','/wheel/odometry','/motor_state','/tf_static'} <= mission
     assert '/ov_msckf/trackhist' in debug
+    assert {'/oak/stereo/confidence/image_raw', '/oak/stereo/disparity/image_raw',
+            '/oak/stereo/recording_snapshot', '/oak/diagnostics/confidence_frame',
+            '/oak/diagnostics/disparity_frame'} <= mission
 
 
 def test_metadata_redaction_and_config_references(tmp_path):
@@ -46,6 +49,19 @@ def test_foxy_parameter_value_types():
     assert parameter_value(SimpleNamespace(type=2,integer_value=3)) == 3
     assert parameter_value(SimpleNamespace(type=7,integer_array_value=[2,3,5])) == [2,3,5]
     assert parameter_value(SimpleNamespace(type=0)) is None
+
+
+def test_oak_snapshot_is_saved_beside_mission_provenance(tmp_path):
+    """実センサなしで、cameraの実効JSON保存と異常schemaの拒否を確認する。"""
+    import json
+    from pm_bringup.record_trial import ParameterSnapshots
+    fake = SimpleNamespace(output=tmp_path, errors={})
+    snapshot = {'schema_version': 1, 'mx_id': 'synthetic', 'eeprom': {'version': 7},
+                'initial_config': {'confidence': 240}, 'out_config': None}
+    ParameterSnapshots.capture_oak_snapshot(fake, SimpleNamespace(data=json.dumps(snapshot)))
+    assert json.loads((tmp_path/'oak_stereo_snapshot.json').read_text()) == snapshot
+    ParameterSnapshots.capture_oak_snapshot(fake, SimpleNamespace(data='{}'))
+    assert 'oak_stereo_snapshot' in fake.errors
 
 
 def test_git_snapshot_includes_headers_and_excludes_private(tmp_path):

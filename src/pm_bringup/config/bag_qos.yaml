@@ -1,4 +1,9 @@
 # 固定geometryを遅延参加でも受け取る。depth/画像等のQoSは自動選択のまま。
+/oak/stereo/recording_snapshot:
+  history: keep_last
+  depth: 1
+  reliability: reliable
+  durability: transient_local
 /tf_static:
   history: keep_all
   reliability: reliable

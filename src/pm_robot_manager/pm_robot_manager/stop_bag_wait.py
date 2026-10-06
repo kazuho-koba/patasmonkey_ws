@@ -69,6 +69,17 @@ class BagStopWaiter(Node):
         self._refresh_status_file()
         if not self.output:
             return False
+        # bag未作成の取消は、同じ起動IDの子process終了証明で確認する。
+        if self.invocation_id and not Path(self.output).exists():
+            try:
+                cancellation = json.loads(Path(self.output+'.cancelled.json').read_text())
+            except (OSError, ValueError):
+                cancellation = {}
+            if (cancellation.get('invocation_id') == self.invocation_id
+                    and cancellation.get('cancelled_before_output') is True
+                    and cancellation.get('verified') is True
+                    and cancellation.get('recorder_returncode') in (0, 2, -2, 130)):
+                return True
         try:
             data = json.loads(
                 (Path(self.output)/'completion.json').read_text(encoding='utf-8'))

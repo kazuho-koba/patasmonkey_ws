@@ -9,3 +9,13 @@ nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl is-active pm-mission-bag.service
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block pm-debug-bag.service
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl stop pm-debug-bag.service
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl is-active pm-debug-bag.service
+
+# GUI停止時の保存先未作成bagの取消。CoreへのSIGKILL権限は与えない。
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGSTOP --kill-who=all pm-mission-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGCONT --kill-who=all pm-mission-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGKILL --kill-who=all pm-mission-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl reset-failed pm-mission-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGSTOP --kill-who=all pm-debug-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGCONT --kill-who=all pm-debug-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGKILL --kill-who=all pm-debug-bag.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl reset-failed pm-debug-bag.service

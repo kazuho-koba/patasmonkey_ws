@@ -48,6 +48,23 @@ class ParameterSnapshots(Node):
         self.parameters = {}
         self.errors = {}
         self.core_manifest = None
+        # カメラ側で読むEEPROMと設定をtopicに加え、閲覧用JSONとしてbagにも同梱する。
+        from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+        self.create_subscription(String, '/oak/stereo/recording_snapshot',
+                                 self.capture_oak_snapshot,
+                                 QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                                            durability=DurabilityPolicy.TRANSIENT_LOCAL))
+
+    def capture_oak_snapshot(self, message):
+        """カメラの校正・設定・SDK情報を保存する。未取得の校正を推測で補わない。"""
+        try:
+            data = json.loads(message.data)
+            if data.get('schema_version') != 1 or not data.get('mx_id'):
+                raise ValueError('unsupported OAK snapshot schema/identity')
+            atomic_json(self.output/'oak_stereo_snapshot.json', data)
+            self.errors.pop('oak_stereo_snapshot', None)
+        except (ValueError, TypeError) as error:
+            self.errors['oak_stereo_snapshot'] = str(error)
 
     def capture(self, refresh=False):
         """snapshotは最大10秒。旧値を残したnodeには取得時刻を付け、完全取得を偽らない。"""
@@ -226,6 +243,10 @@ def main(argv=None):
                and not stop_requested.is_set() and time.monotonic()<deadline):
             rclpy.spin_once(control,timeout_sec=.1)
             time.sleep(.1)
+        if not output.is_dir() and stop_requested.is_set():
+            # 起動直後の停止はdirectory未作成でも異常ではない。finallyで
+            # 子process終了を待ち、実データなしの取消証明を別ファイルに残す。
+            return
         if not output.is_dir():
             raise RuntimeError('recorderが出力directoryを作成できませんでした')
         provenance = output/'provenance'
@@ -307,6 +328,15 @@ def main(argv=None):
                 'bag_info_returncode':info.returncode if info is not None else None,
                 'verified':verified,'error':completion_error,
                 'metadata_snapshot_error':snapshot_error,
+            })
+        elif (stop_requested.is_set() and child is not None
+              and child.returncode in (0, 2, -signal.SIGINT, 130)):
+            # 保存済みbagとは区別する。SIGINT終了とdirectory不在の両方が
+            # 確認できた場合だけ、保存すべきデータがない取消として扱う。
+            verified = True
+            atomic_json(Path(str(output)+'.cancelled.json'), {
+                'invocation_id': invocation_id, 'cancelled_before_output': True,
+                'recorder_returncode': child.returncode, 'verified': True,
             })
         elif not completion_error:
             completion_error = 'bag出力directoryがなく、保存完了を確認できません'

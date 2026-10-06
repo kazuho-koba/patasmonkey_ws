@@ -1,5 +1,9 @@
 # 制御・必須記録・任意記録を分離した起動
 
+OAK confidence・disparity・実効校正／設定JSONはmission側に追加しました。
+topic座標の違い、採用ground画素の分布解析、厳格閾値の再処理手順は
+[confidence記録・解析README](../pm_evaluation/README_depth_confidence.md)を参照してください。
+
 `pm_core.launch.py`はセンサ、motor/vehicle interface、teleop、localization、
 perceptionを起動します。`mission_bag.launch.py`は上位の観測・オンライン状態・
 指令/安全履歴、`debug_bag.launch.py`は再計算可能な派生表示だけを記録します。

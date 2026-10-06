@@ -267,6 +267,19 @@ class RobotManager(Node):
             output = self._recording_runtime[profile].get('output', '')
         if not output:
             return False
+        # 保存済みbagと起動直後の取消を区別し、古い起動の証明は採用しない。
+        with self._lock:
+            cancellation_id = self._recording_runtime[profile].get('invocation_id', '')
+        if cancellation_id and not Path(output).exists():
+            try:
+                cancellation = json.loads(Path(output+'.cancelled.json').read_text())
+            except (OSError, ValueError):
+                cancellation = {}
+            if (cancellation.get('invocation_id') == cancellation_id
+                    and cancellation.get('cancelled_before_output') is True
+                    and cancellation.get('verified') is True
+                    and cancellation.get('recorder_returncode') in (0, 2, -2, 130)):
+                return True
         completion_path = Path(output) / 'completion.json'
         try:
             data = json.loads(completion_path.read_text(encoding='utf-8'))
@@ -423,6 +436,67 @@ class RobotManager(Node):
             raise RuntimeError(
                 '{} bag recorderが停止要求を拒否しました: {}'.format(profile, detail))
 
+    def _force_stop_missing_bag(self, profile):
+        """保存先不在の起動だけを取消す。保存成功とは区別する。
+
+        判定中のdirectory作成をSIGSTOPで防止し、systemdの起動IDと
+        recorder statusを照合する。確認不能・保存先ありの場合は再開する。
+        """
+        with self._lock:
+            runtime = dict(self._recording_runtime[profile])
+        output = runtime.get('output', '')
+        invocation_id = runtime.get('invocation_id', '')
+        if not output or not invocation_id or not Path(output).is_absolute():
+            return False
+        try:
+            Path(output).lstat()
+            return False
+        except FileNotFoundError:
+            pass
+        unit = self.units[profile]
+        killed = False
+        try:
+            # 一部processだけ停止してからsystemctlが失敗する場合もfinallyで再開する。
+            result = self._systemctl('kill', '--signal=SIGSTOP', '--kill-who=all', unit)
+            if result.returncode != 0:
+                raise RuntimeError(result.stderr.strip() or 'bagの一時停止に失敗しました')
+            # 読み取り専用showにはsudoを使わず、権限をkill対象unitだけに限定する。
+            result = subprocess.run(
+                ['systemctl', 'show', unit, '--property=InvocationID', '--value'],
+                check=False, capture_output=True, text=True, timeout=5.0)
+            if result.returncode != 0 or result.stdout.strip() != invocation_id:
+                raise RuntimeError('bagの起動IDを確認できないため強制停止しません')
+            try:
+                Path(output).lstat()
+                return False
+            except FileNotFoundError:
+                pass
+            result = self._systemctl('kill', '--signal=SIGKILL', '--kill-who=all', unit)
+            if result.returncode != 0:
+                raise RuntimeError(result.stderr.strip() or 'bagの強制停止に失敗しました')
+            killed = True
+        finally:
+            if not killed:
+                result = self._systemctl('kill', '--signal=SIGCONT', '--kill-who=all', unit)
+                if result.returncode != 0:
+                    raise RuntimeError(result.stderr.strip() or 'bagを再開できませんでした')
+        result = self._systemctl('stop', unit, timeout=30.0)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or '強制停止後のunit停止に失敗しました')
+        result = self._systemctl('reset-failed', unit)
+        if result.returncode != 0 or self._unit_state(profile) != 'inactive':
+            raise RuntimeError('強制停止後のunit状態を正常化できませんでした')
+        with self._lock:
+            self._recording_runtime[profile].update({
+                'recorder_state': 'CANCELLED', 'output': '', 'verified': False,
+                'error': '', 'started_at_unix_sec': None,
+            })
+        self.get_logger().warning(
+            '{} bagを保存先不在のため強制停止しました（保存済みbagなし）: {}'
+            .format(profile, output))
+        self._set_component(profile, 'STOPPED', '')
+        return True
+
     def _stop_bag_safely(self, profile):
         state = self._unit_state(profile)
         if state in ('inactive', 'unknown'):
@@ -461,7 +535,14 @@ class RobotManager(Node):
         with self._lock:
             self._operation_targets.add(profile)
         self._set_component(profile, 'STOPPING', '')
-        self._request_recorder_stop(profile)
+        if self._force_stop_missing_bag(profile):
+            return
+        try:
+            self._request_recorder_stop(profile)
+        except RuntimeError:
+            if self._force_stop_missing_bag(profile):
+                return
+            raise
         stop_started = time.monotonic()
         warned = False
         completion_confirmed = False
@@ -470,6 +551,9 @@ class RobotManager(Node):
             if unit_state == 'failed':
                 raise RuntimeError(
                     '{} bag unitが異常終了しました。Core停止を中断します'.format(profile))
+            if unit_state in ('active', 'activating', 'deactivating'):
+                if self._force_stop_missing_bag(profile):
+                    return
             completion_confirmed = self._verify_bag_completion(profile)
             if unit_state == 'inactive':
                 if not completion_confirmed:
