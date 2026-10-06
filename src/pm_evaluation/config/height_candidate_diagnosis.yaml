@@ -1,0 +1,8 @@
+# 独立frame候補の診断専用。通常mapperの設定を変更しない。
+# grid／sampling／hazard閾値はmapper traceから読み、以下は候補表現だけの値。
+gap_m: 0.05                 # 隣接zの差がこれを超えたら別群。障害物閾値とは別[m]
+thin_span_m: 0.04           # 群の観測z幅がこれ以下ならthin。それ以外はbroad[m]
+ground_tolerance_m: 0.03    # 最下群と同一frame局所平面の整合幅。ground確定ではない[m]
+max_object_candidates: 2   # 非ground／未分類の枠数。ground仮説は別枠
+vehicle_height_m: null     # 車両全高未計測。nullならbody_height_hitはunknown
+safety_margin_m: 0.05      # 全高に加える余裕[m]。カメラ高さ0.4mを全高に代用しない
