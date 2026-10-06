@@ -209,11 +209,16 @@ class RobotManager(Node):
                 return
             with self._lock:
                 runtime = self._recording_runtime[profile]
+                # 取消済みの起動から遅れて届くERROR/RECORDINGを採用しない。
+                if (runtime.get('cancelled_before_output') is True
+                        and runtime.get('invocation_id') == data.get('invocation_id')):
+                    return
                 runtime.update({
                     'recorder_state': str(data.get('state', 'UNKNOWN')).upper(),
                     'output': str(data.get('output', '')),
                     'started_at_unix_sec': data.get('started_at_unix_sec'),
                     'verified': data.get('verified'),
+                    'cancelled_before_output': data.get('cancelled_before_output', False),
                     'invocation_id': str(data.get('invocation_id', '')),
                     'error': str(data.get('error', '')),
                     'stamp_unix_sec': data.get('stamp_unix_sec', time.time()),
@@ -233,6 +238,9 @@ class RobotManager(Node):
         try:
             for component in self.units:
                 unit_state = self._unit_state(component)
+                if component in self.PROFILES:
+                    if self._cancel_missing_stopped_bag(component, unit_state):
+                        continue
                 with self._lock:
                     previous = self._states[component]
                 if component in self.PROFILES and unit_state == 'inactive':
@@ -436,6 +444,55 @@ class RobotManager(Node):
             raise RuntimeError(
                 '{} bag recorderが停止要求を拒否しました: {}'.format(profile, detail))
 
+    def _cancel_missing_stopped_bag(self, profile, state):
+        """終了済みで保存先のないbagを取消し、Core停止を妨げない。
+
+        取消済みの起動、または現在の起動IDと保存先不在を確認できる場合
+        だけを対象とする。存在する未検証bagや確認不能な起動は解除しない。
+        """
+        if state not in ('inactive', 'failed'):
+            return False
+        with self._lock:
+            runtime = dict(self._recording_runtime[profile])
+        already_cancelled = runtime.get('cancelled_before_output') is True
+        output = runtime.get('output', '')
+        if not already_cancelled:
+            if not output or not Path(output).is_absolute() or not runtime.get('invocation_id'):
+                return False
+            try:
+                Path(output).lstat()
+                return False
+            except FileNotFoundError:
+                pass
+        result = subprocess.run(
+            ['systemctl', 'show', self.units[profile], '--property=InvocationID',
+             '--property=MainPID', '--property=ControlPID', '--property=ActiveState'],
+            check=False, capture_output=True, text=True, timeout=5.0)
+        if result.returncode != 0:
+            raise RuntimeError('終了済みbagの状態取得に失敗しました')
+        values = dict(line.split('=', 1) for line in result.stdout.splitlines() if '=' in line)
+        if (values.get('ActiveState') not in ('inactive', 'failed')
+                or values.get('MainPID') != '0' or values.get('ControlPID') != '0'):
+            return False
+        if not already_cancelled and values.get('InvocationID') != runtime['invocation_id']:
+            return False
+        if already_cancelled and values.get('InvocationID') not in ('', runtime.get('invocation_id')):
+            return False
+        if values['ActiveState'] == 'failed':
+            result = self._systemctl('reset-failed', self.units[profile])
+            if result.returncode != 0:
+                raise RuntimeError(result.stderr.strip() or 'bag取消のfailed解除に失敗しました')
+        if self._unit_state(profile) != 'inactive':
+            raise RuntimeError('bag取消後の停止状態を確認できませんでした')
+        with self._lock:
+            self._recording_runtime[profile].update({
+                'recorder_state': 'CANCELLED', 'output': '', 'verified': False,
+                'cancelled_before_output': True, 'error': '',
+                'started_at_unix_sec': None, 'stamp_unix_sec': time.time(),
+            })
+        self._set_component(profile, 'STOPPED', '')
+        return True
+
     def _force_stop_missing_bag(self, profile):
         """保存先不在の起動だけを取消す。保存成功とは区別する。
 
@@ -483,12 +540,20 @@ class RobotManager(Node):
         result = self._systemctl('stop', unit, timeout=30.0)
         if result.returncode != 0:
             raise RuntimeError(result.stderr.strip() or '強制停止後のunit停止に失敗しました')
-        result = self._systemctl('reset-failed', unit)
-        if result.returncode != 0 or self._unit_state(profile) != 'inactive':
-            raise RuntimeError('強制停止後のunit状態を正常化できませんでした')
+        # SIGKILL完了後の実状態だけを正常化する。既にinactiveなら
+        # reset-failedは不要で、未ロードunitへの失敗も回避できる。
+        final_state = self._unit_state(profile)
+        if final_state == 'failed':
+            result = self._systemctl('reset-failed', unit)
+            if result.returncode != 0:
+                raise RuntimeError(result.stderr.strip() or 'bagのfailed状態を解除できませんでした')
+            final_state = self._unit_state(profile)
+        if final_state != 'inactive':
+            raise RuntimeError('強制停止後のunit状態を正常化できませんでした: '+final_state)
         with self._lock:
             self._recording_runtime[profile].update({
                 'recorder_state': 'CANCELLED', 'output': '', 'verified': False,
+                'cancelled_before_output': True, 'stamp_unix_sec': time.time(),
                 'error': '', 'started_at_unix_sec': None,
             })
         self.get_logger().warning(
@@ -499,6 +564,8 @@ class RobotManager(Node):
 
     def _stop_bag_safely(self, profile):
         state = self._unit_state(profile)
+        if self._cancel_missing_stopped_bag(profile, state):
+            return
         if state in ('inactive', 'unknown'):
             if state == 'unknown':
                 raise RuntimeError('{} bag unit状態を取得できません'.format(profile))
@@ -548,6 +615,8 @@ class RobotManager(Node):
         completion_confirmed = False
         while True:
             unit_state = self._unit_state(profile)
+            if self._cancel_missing_stopped_bag(profile, unit_state):
+                return
             if unit_state == 'failed':
                 raise RuntimeError(
                     '{} bag unitが異常終了しました。Core停止を中断します'.format(profile))

@@ -34,4 +34,11 @@ PY
 systemctl kill --signal=SIGKILL --kill-who=all "$unit"
 resume=false
 systemctl stop "$unit"
-echo '強制停止しました。保存成功とは扱いません（unitがfailedになる場合があります）。'
+# 強制停止由来のfailedだけを解除し、GUIが通常の開始待ちへ戻れるようにする。
+final_state="$(systemctl show "$unit" --property=ActiveState --value)"
+if [[ "$final_state" == failed ]]; then
+    systemctl reset-failed "$unit"
+    final_state="$(systemctl show "$unit" --property=ActiveState --value)"
+fi
+[[ "$final_state" == inactive ]] || { echo "停止後の状態が不正です: $final_state" >&2; exit 1; }
+echo '強制停止しました。通常の記録開始待ちへ戻しました（保存成功ではありません）。'
