@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import threading
 import time
+import traceback
 
 import rclpy
 from rclpy.node import Node
@@ -130,8 +131,13 @@ class RobotManager(Node):
         command = ['systemctl', *arguments]
         if self.use_sudo:
             command[0:0] = ['sudo', '-n']
-        return subprocess.run(
-            command, check=False, capture_output=True, text=True, timeout=timeout)
+        try:
+            return subprocess.run(
+                command, check=False, capture_output=True, text=True, timeout=timeout)
+        except OSError as error:
+            # errnoだけでは保存先・process起動・systemd接続を区別できない。
+            raise RuntimeError('systemctl process起動失敗: {}: {}'.format(
+                ' '.join(command), error)) from error
 
     def _unit_state(self, component):
         result = self._systemctl('is-active', self.units[component])
@@ -260,7 +266,8 @@ class RobotManager(Node):
                     error = 'systemd unit状態を取得できません'
                 self._set_component(component, state, error)
         except (OSError, subprocess.TimeoutExpired) as exc:
-            self.get_logger().warning('systemd unit監視に失敗しました: {}'.format(exc))
+            self.get_logger().warning(
+                'systemd unit監視に失敗しました: {}\n{}'.format(exc, traceback.format_exc()))
         finally:
             with self._lock:
                 self._monitor_running = False
@@ -711,7 +718,8 @@ class RobotManager(Node):
                 profile = operation[len('stop_'):-len('_bag')]
                 self._stop_bag_safely(profile)
         except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
-            self.get_logger().error('{} failed: {}'.format(operation, exc))
+            self.get_logger().error(
+                '{} failed: {}\n{}'.format(operation, exc, traceback.format_exc()))
             with self._lock:
                 # Core停止中に実測で見つかったbag unitも対象へ追加されるため、
                 # 失敗時点の対象一覧を読み直して状態を反映する。

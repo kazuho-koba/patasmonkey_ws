@@ -653,7 +653,7 @@ class TelemetryPanel(QWidget):
         right.setSpacing(2)
         self.mode = QLabel('NO DATA')
         self.mode.setAlignment(Qt.AlignCenter)
-        self.mode.setStyleSheet('font-size:11px; font-weight:bold; color:' + PALETTE['muted'])
+        self.mode.setStyleSheet('font-size:16.5px; font-weight:bold; color:' + PALETTE['muted'])
         right.addWidget(self.mode)
         self.stick = JoystickCanvas()
         self.stick.set_deadzone(float(joystick_config.get('deadzone', 0.0)))
@@ -750,8 +750,8 @@ class TelemetryPanel(QWidget):
                   'CONFIG ERROR': PALETTE['red']}
         self.mode.setText(mode)
         mode_color = colors.get(mode, PALETTE['muted'])
-        self.mode.setStyleSheet('font-size:11px; font-weight:bold; color:' + mode_color)
-        self.stick.set_input(x_value, y_value, mode_color)
+        self.mode.setStyleSheet('font-size:16.5px; font-weight:bold; color:' + mode_color)
+        self.stick.set_input(x_value, y_value, mode_color, mode)
         if x_value is None or y_value is None:
             self.stick_values.setText('X: --   Y: --')
         else:
@@ -776,6 +776,7 @@ class JoystickCanvas(QWidget):
         self.x_value = None
         self.y_value = None
         self.color = PALETTE['muted']
+        self.mode = 'NO DATA'
         self.deadzone = 0.0
         self.setMinimumSize(88, 88)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -783,10 +784,11 @@ class JoystickCanvas(QWidget):
     def set_deadzone(self, value):
         self.deadzone = max(0.0, min(1.0, float(value)))
 
-    def set_input(self, x_value, y_value, color):
+    def set_input(self, x_value, y_value, color, mode='NO DATA'):
         self.x_value = x_value
         self.y_value = y_value
         self.color = color
+        self.mode = mode
         self.update()
 
     def paintEvent(self, _event):
@@ -821,6 +823,19 @@ class JoystickCanvas(QWidget):
         painter.setPen(QPen(QColor(PALETTE['text']), 2))
         painter.setBrush(QColor(self.color))
         painter.drawEllipse(QPointF(stick_x, stick_y), 21.0, 21.0)
+        # 色に加えてmodeを形でも示す。円の中心に右向きの再生/早送り記号を描く。
+        # font glyphを使わずpolygonにして、日本語font等の選択に依存させない。
+        if self.mode in ('ENABLED', 'TURBO'):
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QColor(PALETTE['background']))
+            offsets = (-11.0, 1.0) if self.mode == 'TURBO' else (-5.0,)
+            for offset in offsets:
+                left = stick_x + offset
+                painter.drawPolygon(QPolygonF([
+                    QPointF(left, stick_y - 8.0),
+                    QPointF(left + 10.0, stick_y),
+                    QPointF(left, stick_y + 8.0),
+                ]))
 
 
 class LocalizationPanel(QWidget):
@@ -953,7 +968,11 @@ class RecordingPanel(QWidget):
         layout.addWidget(title)
         self.directory = QLabel('')
         self.disk = QLabel('')
-        self.directory.setWordWrap(False)
+        # 長いbag名がタイルの最小幅を押し広げないよう、幅制約内で折り返す。
+        self.directory.setWordWrap(True)
+        self.directory.setTextFormat(Qt.PlainText)
+        self.directory.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.directory.setMinimumWidth(0)
         self.external = QLabel('')
         for label in (self.directory, self.disk, self.external):
             label.setStyleSheet('font-size:10px;')
@@ -981,6 +1000,9 @@ class RecordingPanel(QWidget):
             detail = QLabel('')
             state.setStyleSheet('font-size:10px; font-weight:bold;')
             detail.setStyleSheet('font-size:9px; color:' + PALETTE['muted'] + ';')
+            detail.setWordWrap(True)
+            detail.setTextFormat(Qt.PlainText)
+            detail.setMinimumWidth(0)
             detail.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
             toggle = QPushButton('▶  START')
             toggle.setMinimumSize(142, 38)
@@ -1012,8 +1034,15 @@ class RecordingPanel(QWidget):
             self._start(profile)
 
     def refresh(self, snapshot):
-        self.directory.setText('Jetson output: ' + snapshot['recording_directory'])
-        self.directory.setToolTip(snapshot['recording_directory'])
+        # profile別の行にし、区切り位置に不可視の改行候補を入れる。
+        # tooltipには元のパスを保持する。ROS/backendの値は変更しない。
+        paths = [profile.upper()+': '+str(item.get('output'))
+                 for profile in ('mission', 'debug')
+                 for item in (snapshot['recordings'].get(profile) or {},)
+                 if item.get('output')]
+        directory_text = '\n'.join(paths) if paths else snapshot['recording_directory']
+        self.directory.setText(directory_text.replace('/', '/\u200b').replace('_', '_\u200b'))
+        self.directory.setToolTip(directory_text)
         free = snapshot['free_bytes']
         if free is None:
             self.disk.setText('Disk free: 不明')
@@ -1072,7 +1101,7 @@ class RecordingPanel(QWidget):
                 item_error = item.get('error') or item.get('manager_error')
                 if item_error:
                     warnings.append('{}: {}'.format(profile, item_error))
-                detail.setText(detail_text)
+                detail.setText(detail_text.replace('/', '/\u200b').replace('_', '_\u200b'))
                 detail.setToolTip('\n'.join((detail_text, item_error or '')))
             else:
                 detail.setText('')
