@@ -56,3 +56,16 @@ def test_window_is_recent_not_unbounded_average():
     for i, z in enumerate([0., .01, .02, .03]):
         result = model.update((0, 0), [row(z)], i, i)[0]
     assert result['mean_z_m'] == pytest.approx(.025)
+
+
+def test_five_observations_confirm_only_at_fifth():
+    model = CandidateTracks(5)
+    for i in range(5):
+        result = model.update((0, 0), [row(z=.01*i)], i, i)[0]
+        assert result['confirmed'] == (i == 4)
+        assert result['first_confirmation'] == (i == 4)
+    assert result['history_size'] == 5
+    assert result['mean_z_m'] == pytest.approx(.025)
+    result = model.update((0, 0), [row(z=.04, hit=None)], 5, 5)[0]
+    assert not result['confirmed'] and result['pending']
+    assert result['positive_support'] == 4  # unknownをfalse／freeの票にはしない

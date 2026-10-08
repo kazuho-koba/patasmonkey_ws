@@ -41,7 +41,8 @@ def main():
     rows = list(csv.DictReader((folder/'footprints.csv').open()))
     modes = {m: {r['stamp_ns']: {k:v for k,v in r.items() if k != 'mode'}
                  for r in rows if r['mode'] == m} for m in summary['results']}
-    if modes['N1'] != modes['N3_conservative']:
+    conservative_mode = next(mode for mode in modes if mode.endswith('_conservative'))
+    if modes['N1'] != modes[conservative_mode]:
         raise ValueError('N1と保守側の結果が異なります')
     result['n1_conservative_identical_all_footprints'] = True
     (folder/'sequence_audit.json').write_text(json.dumps(result, ensure_ascii=False, indent=2)+'\n')

@@ -166,6 +166,25 @@ N1とN3保守側は同じ出力となる。単純な3回確認の黒率低下を
 
 ## 今後必要な検証
 
+### 保存された通過評価の黒原因・更新状態を確認する
+
+連続frame診断は`footprints.csv`に4cue別の黒セル数、`black_cells.csv`に黒の指標値・
+出典stamp・最後の観測状態を保存する。ground gate不成立はunknownであり、直接blackには
+しないが、過去のblackが保持される場合を調べられる。最新画像で未観測だった状態と、
+そのセルの最後の実観測で平面基準が不成立だった状態は区別する。
+
+```bash
+python3 src/pm_evaluation/tools/analyze_height_footprint_causes.py \
+  /tmp/height_candidate_sequence_with_causes \
+  --reference notes/reports/perception/20261006_231622_高さ候補のground診断と短期窓比較_assets/sequence
+```
+
+入力は上の連続診断を新規出力先で実行したdirectory。旧結果の全既存footprint列と
+summaryの割合が一致しなければ停止する。`cause_audit.json`に重複cue・排他的組合せ・
+状態別件数を出す。N=3確認済みのobstacle出典stampは初回確認、N=1は初回positive。
+最後のhigh-hitなしだけでsafeへ解除できるとは解釈しない。TF／DDS失敗等の実機障害を
+このオフライン状態診断から推定することもできない。
+
 候補の対応付けが成立することを確認してから別parameterで追加する。
 
 1. 同じセル・高さ・XY領域・観測品質の候補を対応付ける。姿勢／ground基準ずれを診断。
@@ -179,3 +198,100 @@ N1とN3保守側は同じ出力となる。単純な3回確認の黒率低下を
 
 `z_mean_m`は**同一frame内・同一候補の平均**、track出力`mean_z_m`は直近対応観測の平均。
 どちらも平面fitの高さではない。ground gate、free証拠、対応安定性の改善は未完成。
+
+## N=5比較と確認待ちの観測数
+
+連続診断のコマンドに`--window 5`を追加し、別の新規`--output`へ保存する。
+既定は3で、N5では`N5_confirmed`／`N5_conservative`が出る。通常mapperは変更しない。
+Nは画像数／秒数ではなく対応候補観測の数。5全てpositiveなら確認済みとなる。
+
+`pending_obstacle_cells.csv`には、通過前に保守側でobstacleが黒、確認済み側では黒でない
+セルだけ保存する。複数の歴史的high trackから窓内positive最多の代表を選び、
+対応窓の充填数・positive／valid no-hit／plane unknown、直近N画像でのセル観測数、
+通過前全期間と初回hit以降のセル観測画像数を分ける。未対応画像をhistoryへ補充しない。
+これらは確認待ちの原因診断で、candidate対応の同一物体保証ではない。
+
+`analyze_height_footprint_causes.py --reference ...`は異なるNの場合に共通のN1／raw幅を照合。
+同じNの再試なら全共通方式を照合する。以前の全方式が再現された意味と混ぜない。
+同trackの初回確認遅れを比較する場合：
+
+```bash
+python3 src/pm_evaluation/tools/compare_height_confirmation_windows.py \
+  /tmp/height_candidate_sequence_n5 \
+  --short-window-directory notes/reports/perception/20261006_231622_高さ候補のground診断と短期窓比較_assets/sequence
+```
+
+同track ID・XYセル・初回positiveを検査し、違えば停止する。`tracks.csv.gz`にも対応。
+確認済みになった母集団が違うN3／N5の平均遅延だけを見比べるより、共通trackの追加待ち時間を
+確認する。CSVの出典stampは初回確認と初回hitを区別し、未確認をsafeへ落とさない。
+
+## 確認待ち・確認済みを残したまま短期再観測で黒を解除する試験
+
+`tools/evaluate_obstacle_window_clearance.py`は別のオフライン実験で、通常mapperや
+上記の解除なし診断を変更しない。同じ採用画像・実使用TFで、解除なし対照と
+N=1／3／5を一括計算する。各黒の原因、解除前の確認状態も保存する。
+
+```bash
+python3 src/pm_evaluation/tools/evaluate_obstacle_window_clearance.py \
+  bags/rosbag2_2026_07_26-09_17_38 \
+  --mapper-trace notes/reports/perception/20261003_100000_depth融合_stride比較_assets/stride4/trace/mapper_trace.jsonl \
+  --output /tmp/obstacle_window_clearance_new
+```
+
+平均する高さは、各frame・各XYセルの全投影点について計算した
+`h=max(0, max(z_point - z_provisional_plane(x,y)))`（m）。保存候補枠外の点も含む。
+**以前のground候補／物体候補のz_meanの短期平均とは別の量**である。
+以前の平均は候補高さの変動診断に使い、ground平面やterrainを平均値から再fitしたり、
+障害物の黒を解除したりしていなかった。この実験でもground／terrain三指標は変更しない。
+
+- 新しい高さがobstacle limit以上なら直ちに黒。古い低い高さで薄めない。
+- 新しい黒episodeの開始時に窓をリセットし、その後の有効なセル観測を直近N個保持する。
+  N個が揃い、今回の高さがlimit未満、平均がlimitの99.5%未満なら黒を解除する。
+  99.5%は整数costの丸めで100となる境界に合わせるため。
+- 解除まで確認待ちも確認済みも黒のまま。確認済みへの昇格は同一候補trackの
+  直近N対応観測が全てhigh-hitで、全て今回の黒開始以降の場合。昇格後は解除まで保持。
+- 解除窓は**有効なセル観測**、確認窓は**対応候補観測**であり、同じ分母ではない。
+  画像欠測・平面unknownを0として窓へ入れない。時間での破棄もしない。
+- 解除後に新しいhigh-hitがあれば再び即時黒にする。
+
+`summary.json`に黒／unknown／全cue有効率、原因別footprint件数、処理時間、CPU時間、
+peak RSSを保存する。`footprints.csv`は通過前の評価、`black_cells.csv`は黒の根拠値、
+`clear_events.csv`は解除前状態・現在高さ・平均・観測数・黒開始からの秒数を保存する。
+時間は分析結果であり破棄条件ではない。footprintは0.45×0.55mの暫定矩形。
+
+**低い再観測はfree-ray証拠ではない。** 疎な画素、遮蔽、ground基準の変化でも
+高点が消える可能性がある。真の障害物の誤解除や検出率をこの舗装路bagだけでは評価できず、
+この規則を安全な走行判定として導入した意味にはしない。特に壁／枝の表面を同一セル内で
+平均化する試験であり、サブクラスタの同一性に基づく高さ平滑化の完成版ではない。
+
+## 付録用の立体HTMLデモ
+
+`tools/demo_height_candidate_scene.py`は現在frameの投影点、ground／thin／broad／sparseの
+候補外包、対応候補の平均z、N=1／3／5の保持hazardと確認状態を自己完結HTMLへ保存する。
+ブラウザで視点回転・拡大・snapshot再生・N切替・セル選択ができ、ROS node／実機センサは起動しない。
+外部CDNやWebサーバも不要。通常mapperは変更しない。
+
+```bash
+# runtime overlayをsourceし、source treeの新規moduleを優先する（ビルド不要）。
+export PYTHONPATH=/workspaces/patasmonkey_ws/src/pm_evaluation:/workspaces/patasmonkey_ws/src/pm_perception:$PYTHONPATH
+python3 src/pm_evaluation/tools/demo_height_candidate_scene.py \
+  --synthetic --output /workspaces/patasmonkey_ws/notes/height_demo_synthetic_new.html
+
+python3 src/pm_evaluation/tools/demo_height_candidate_scene.py \
+  bags/rosbag2_2026_07_26-09_17_38 \
+  --mapper-trace notes/reports/perception/20261003_100000_depth融合_stride比較_assets/stride4/trace/mapper_trace.jsonl \
+  --start-seconds 20 --display-every-seconds 0.5 --max-display-frames 60 \
+  --output /workspaces/patasmonkey_ws/notes/height_demo_july_new.html
+```
+
+start-secondsはtraceの最初の採用depthからの秒数。その前の画像も更新してから表示開始する。
+表示snapshotは間引くが、その間の採用画像も全て候補・確認・解除の更新へ入れる。
+`--max-display-points`（既定1800）は描画のみの間引き、pixel_strideはtraceの値を使う。
+`--view-radius`（既定4m）は描画範囲のみで、状態の破棄条件ではない。
+`--max-display-frames`（既定60）に達すると終了。長区間はHTML／メモリ所要が増える。
+既存HTML／sidecar JSONは上書きしない。
+
+箱は観測点の外包で、内部全体のoccupied証拠ではない。高い枝を通過可能とは判定しない。
+候補の箱は今回frameだけ、hazardは過去の評価保持も含む。青い線は候補高さ平均で、
+黒解除に使う最大平面残差平均とは別。白も部分unknownを含み、安全保証ではない。
+人工例は説明用で実センサ性能を示さない。車体は暫定寸法の目安で実URDFではない。
