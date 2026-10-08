@@ -3,6 +3,10 @@ pm_robot_manager:
     unit_name: start-pm.service
     mission_bag_unit_name: pm-mission-bag.service
     debug_bag_unit_name: pm-debug-bag.service
+    vehicle_unit_name: pm-vehicle-control.service
+    vehicle_start_service: /pm/robot_manager/vehicle/start
+    vehicle_stop_service: /pm/robot_manager/vehicle/stop
+    vehicle_status_topic: /pm/vehicle/status
     use_sudo: true
     startup_timeout_sec: 60.0
     shutdown_timeout_sec: 45.0

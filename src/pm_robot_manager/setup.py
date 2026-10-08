@@ -15,6 +15,7 @@ setup(
          ['systemd/pm-robot-manager.service',
           'systemd/pm-robot-manager.sudoers',
           'systemd/start-pm.service',
+          'systemd/pm-vehicle-control.service',
           'systemd/pm-mission-bag.service',
           'systemd/pm-debug-bag.service']),
     ],

@@ -6,6 +6,8 @@ operator_console:
       start_service: /pm/robot_manager/start
       stop_service: /pm/robot_manager/stop
       get_status_service: /pm/robot_manager/get_status
+      vehicle_start_service: /pm/robot_manager/vehicle/start
+      vehicle_stop_service: /pm/robot_manager/vehicle/stop
       mission_bag_start_service: /pm/robot_manager/mission_bag/start
       mission_bag_stop_service: /pm/robot_manager/mission_bag/stop
       debug_bag_start_service: /pm/robot_manager/debug_bag/start

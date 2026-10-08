@@ -17,11 +17,14 @@ class MotorController:
         vel_gain=0.15,
         vel_integrator_gain=0.5,
         vel_integrator_limit=1.0,
+        activate=True,
     ):
         """
         ODrive motor controller class.
         :param axis_index: 0 (left motor) or 1 (right motor)
         """
+        # GUIの走行許可では中立確認までIDLEを維持する。既存の呼び出しは即時有効。
+        self.activate_on_init = activate
         self.axis_index = axis_index
         self.vel_ramp_rate = vel_ramp_rate
         self.pos_gain = pos_gain
@@ -43,8 +46,9 @@ class MotorController:
             raise ValueError("Invalid axis_index! Use 0 or 1.")
 
     def init_motor(self):
-        """Initialize motor: closed-loop control & ramped velocity mode."""
-        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        """IDLEで旧指令を消し、速度制御を設定してから必要時だけ有効化する。"""
+        self.axis.requested_state = AXIS_STATE_IDLE
+        self.axis.controller.input_vel = 0.0
         self.axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
         self.axis.controller.config.vel_ramp_rate = self.vel_ramp_rate
         self.axis.controller.config.input_mode = INPUT_MODE_VEL_RAMP
@@ -52,10 +56,17 @@ class MotorController:
         self.axis.controller.config.vel_gain = self.vel_gain
         self.axis.controller.config.vel_integrator_gain = self.vel_integrator_gain
         self.axis.controller.config.vel_integrator_limit = self.vel_integrator_limit
+        if self.activate_on_init:
+            self.activate()
         print(
             f"Motor {self.axis_index}: Initialized in velocity control mode.",
             flush=True,
         )
+
+    def activate(self):
+        """必ずゼロ速度を設定してからclosed-loopへ移行する。"""
+        self.axis.controller.input_vel = 0.0
+        self.axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
 
     def get_velocity(self):
         """Get the current motor velocity [rps]."""

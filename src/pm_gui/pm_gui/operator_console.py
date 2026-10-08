@@ -109,7 +109,7 @@ class OperatorWindow(QMainWindow):
         manager_layout.addLayout(controls, 4, 0, 1, 2)
 
         # 左側はcameraを上段、姿勢とjoystickを下段に置く。
-        self.telemetry_panel = TelemetryPanel(config)
+        self.telemetry_panel = TelemetryPanel(config, backend=backend)
         self.camera_panel = CameraPanel(backend, config)
         self.localization_panel = LocalizationPanel(config)
         self.recording_panel = RecordingPanel(backend, config)

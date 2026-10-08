@@ -1,7 +1,9 @@
 from pathlib import Path
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import RegisterEventHandler
+from launch.actions import RegisterEventHandler, DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.parameter_descriptions import ParameterValue
 from launch.event_handlers import OnShutdown
 from ament_index_python.packages import get_package_share_directory
 import os
@@ -23,6 +25,8 @@ def generate_launch_description():
         parameters=[
             str(vehicle_geometry_yaml),
             str(vehicle_control_yaml),
+            {"require_neutral_on_start": ParameterValue(
+                LaunchConfiguration("require_neutral_on_start"), value_type=bool)},
         ],
         output="screen",
     )
@@ -36,6 +40,8 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        # GUIの走行launchではtrue。既存の単体起動設定は変更しない。
+        DeclareLaunchArgument("require_neutral_on_start", default_value="false"),
         vehicle_interface_node,
         shutdown_handler,  # Ensure proper cleanup when the node exits
     ])

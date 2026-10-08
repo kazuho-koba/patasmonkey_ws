@@ -7,7 +7,7 @@ from PyQt5.QtCore import QPointF, Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QImage, QPainter, QPen, QPolygonF, QPixmap
 from PyQt5.QtWidgets import (
     QCheckBox, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QPushButton,
-    QSplitter, QSizePolicy, QVBoxLayout, QWidget,
+    QSplitter, QSizePolicy, QVBoxLayout, QWidget, QMessageBox,
 )
 
 from .map_tiles import MapTileProvider
@@ -644,10 +644,56 @@ class CameraPanel(QWidget):
             self._render_frame(camera_image)
 
 
+def _circle_diameter(widget):
+    """左右の表示枠の小さい方に合わせ、許可ボタンとスティック外円を同径にする。"""
+    reference = getattr(widget, 'circle_reference', None)
+    sizes = [widget.width(), widget.height()]
+    if reference is not None:
+        sizes.extend([reference.width(), reference.height()])
+    return max(0.0, min(sizes)-14.0)
+
+
+class VehicleEnableButton(QPushButton):
+    """走行許可の円形ボタン。回転中ではなく制御launch稼働中をSTOPで示す。"""
+
+    def __init__(self):
+        super().__init__('WAIT')
+        self.color = PALETTE['muted']
+        self.circle_reference = None
+        self.setMinimumSize(88, 88)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setEnabled(False)
+
+    def hitButton(self, pos):
+        delta = QPointF(pos)-QPointF(self.width()/2.0, self.height()/2.0)
+        return delta.x()**2+delta.y()**2 <= (_circle_diameter(self)/2.0)**2
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        radius = _circle_diameter(self)/2.0
+        center = QPointF(self.width()/2.0, self.height()/2.0)
+        color = QColor(self.color)
+        if not self.isEnabled():
+            color.setAlpha(135)
+        painter.setPen(QPen(QColor(PALETTE['text']) if self.hasFocus()
+                            else QColor(PALETTE['muted']), 2))
+        painter.setBrush(color.darker(120) if self.isDown() else color)
+        painter.drawEllipse(center, radius, radius)
+        font = QFont(self.font())
+        font.setPointSize(20)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(QColor(PALETTE['background']))
+        painter.drawText(self.rect(), Qt.AlignCenter, self.text())
+
+
 class TelemetryPanel(QWidget):
-    def __init__(self, config=None):
+    def __init__(self, config=None, backend=None):
         super().__init__()
         config = config or {}
+        self.backend = backend
+        self._vehicle_active = False
         root = QHBoxLayout(self)
         attitude = QGroupBox('ATTITUDE')
         left = QVBoxLayout(attitude)
@@ -658,7 +704,29 @@ class TelemetryPanel(QWidget):
         joystick_config = config.get('joystick', {})
         joystick_topic = config.get('topics', {}).get('joy', '/pm/joy')
         joystick = QGroupBox('JOYSTICK / TELEOP  ' + joystick_topic)
-        right = QVBoxLayout(joystick)
+        joystick_columns = QHBoxLayout(joystick)
+        joystick_columns.setContentsMargins(6, 4, 6, 4)
+        joystick_columns.setSpacing(6)
+        enable_panel = QWidget()
+        enable_layout = QVBoxLayout(enable_panel)
+        enable_layout.setContentsMargins(0, 0, 0, 0)
+        enable_layout.setSpacing(2)
+        title = QLabel('MOTOR ENABLE')
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet('font-size:16.5px; font-weight:bold;')
+        enable_layout.addWidget(title)
+        self.vehicle_button = VehicleEnableButton()
+        self.vehicle_button.clicked.connect(self._vehicle_clicked)
+        enable_layout.addWidget(self.vehicle_button, 1)
+        self.vehicle_status = QLabel('Manager待受中')
+        self.vehicle_status.setAlignment(Qt.AlignCenter)
+        self.vehicle_status.setWordWrap(True)
+        self.vehicle_status.setStyleSheet('font-size:11px;')
+        enable_layout.addWidget(self.vehicle_status)
+        indicator_panel = QWidget()
+        joystick_columns.addWidget(enable_panel, 1)
+        joystick_columns.addWidget(indicator_panel, 1)
+        right = QVBoxLayout(indicator_panel)
         right.setContentsMargins(6, 4, 6, 4)
         right.setSpacing(2)
         self.mode = QLabel('NO DATA')
@@ -666,6 +734,8 @@ class TelemetryPanel(QWidget):
         self.mode.setStyleSheet('font-size:16.5px; font-weight:bold; color:' + PALETTE['muted'])
         right.addWidget(self.mode)
         self.stick = JoystickCanvas()
+        self.stick.circle_reference = self.vehicle_button
+        self.vehicle_button.circle_reference = self.stick
         self.stick.set_deadzone(float(joystick_config.get('deadzone', 0.0)))
         right.addWidget(self.stick, 1)
         self.speed = QLabel('--.- km/h')
@@ -715,12 +785,61 @@ class TelemetryPanel(QWidget):
         self.splitter.setStretchFactor(1, 1)
         root.addWidget(self.splitter)
 
+    def _vehicle_clicked(self):
+        if self.backend is None:
+            return
+        if self._vehicle_active:
+            self.backend.request_vehicle_stop()
+        elif QMessageBox.question(
+                self, '走行許可の確認',
+                'モーター制御とjoystick速度指令を有効にします。\n'
+                '車両周囲の安全を確認し、スティックを中立にしてください。',
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) == QMessageBox.Yes:
+            self.backend.request_vehicle_start()
+
+    def _refresh_vehicle(self, snapshot):
+        vehicle = snapshot.get('vehicle', {})
+        state = vehicle.get('state', 'UNKNOWN')
+        connected = snapshot.get('connection') == 'CONNECTED'
+        available = connected and snapshot.get('vehicle_services_ready', False)
+        active = state == 'RUNNING' or vehicle.get('unit_state') == 'active'
+        self._vehicle_active = active
+        transitioning = state in ('STARTING', 'STOPPING')
+        label = ('WAIT' if state == 'UNKNOWN' else
+                 'WAIT' if transitioning else 'STOP' if active else 'START')
+        self.vehicle_button.setText(label)
+        self.vehicle_button.color = (PALETTE['yellow'] if transitioning else
+                                     PALETTE['red'] if active else
+                                     PALETTE['green'] if state == 'STOPPED' else PALETTE['muted'])
+        self.vehicle_button.setEnabled(
+            self.backend is not None and available and not transitioning
+            and state != 'UNKNOWN'
+            and (active or snapshot.get('core_state') == 'RUNNING'))
+        detail = vehicle.get('detail', {})
+        if not connected:
+            text = 'Manager通信待受中'
+        elif vehicle.get('error'):
+            text = vehicle['error']
+        elif active:
+            text = ('車両状態 STALE' if not vehicle.get('fresh') else
+                    '緊急停止中' if detail.get('emergency_stop') else
+                    'ODrive接続待ち' if not detail.get('connected') else
+                    '走行許可 ON' if detail.get('armed') else '中立指令待ち')
+        else:
+            text = '走行許可 OFF' if state == 'STOPPED' else state
+        # 長いエラーはtooltipへ。小タイルの最小幅を増やさない。
+        self.vehicle_status.setText(text if len(text) <= 35 else text[:32]+'…')
+        self.vehicle_status.setToolTip(text)
+        self.vehicle_button.setToolTip('STOPは走行用nodeの停止です。非常停止とは別の操作です。')
+        self.vehicle_button.update()
+
     @staticmethod
     def _fresh(snapshot, key):
         item = snapshot['telemetry'].get(key)
         return item['value'] if item and item['fresh'] else None
 
     def refresh(self, snapshot, config):
+        self._refresh_vehicle(snapshot)
         odom = self._fresh(snapshot, 'odometry')
         if odom:
             roll, pitch, yaw = odom['roll'], odom['pitch'], odom['yaw']
@@ -819,7 +938,7 @@ class JoystickCanvas(QWidget):
     def paintEvent(self, _event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
-        diameter = min(self.width(), self.height()) - 14
+        diameter = _circle_diameter(self)
         if diameter <= 0:
             return
         radius = diameter * 0.5

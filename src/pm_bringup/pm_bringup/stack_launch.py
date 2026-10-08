@@ -20,11 +20,12 @@ from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
 
 
-def create_launch_description(legacy_recording=False):
+def create_launch_description(legacy_recording=False, drive_default=True):
     """共通UGV起動構成。旧launchだけは従来の一括記録も維持する。
 
     新pm_coreではrecorderを起動せず、OpenVINS等の付帯ログをROS home側へ分離する。
-    センサ・制御・推定の起動順と既存launch引数は共通実装で維持する。
+    drive_default=Falseでは入力監視だけ残し、走行は独立launchで明示的に許可する。
+    旧launchの制御既定値はdrive_default=Trueで維持する。
     """
     # GNSS情報をどの程度使うか決めるパラメータ
     use_gnss = LaunchConfiguration("use_gnss")
@@ -32,6 +33,7 @@ def create_launch_description(legacy_recording=False):
     # Visual Odometryを使うかどうかのパラメータ
     use_oakd = LaunchConfiguration("use_oakd")
     use_openvins = LaunchConfiguration("use_openvins")
+    use_joy = LaunchConfiguration("use_joy")
     use_teleop = LaunchConfiguration("use_teleop")
     use_vehicle_interface = LaunchConfiguration("use_vehicle_interface")
     mapper_callback_diagnostics = LaunchConfiguration(
@@ -341,7 +343,8 @@ def create_launch_description(legacy_recording=False):
 
     teleop_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(teleop_launch_file)),
-        condition=IfCondition(use_teleop),
+        # 入力監視は走行許可と独立。速度指令の変換だけをOFFにできる。
+        launch_arguments={"use_joy": use_joy, "use_teleop": use_teleop}.items(),
     )
     vehicle_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(vehicle_launch_file)),
@@ -800,14 +803,16 @@ def create_launch_description(legacy_recording=False):
             default_value="true",
             description="Start OpenVINS",
         ),
+        DeclareLaunchArgument("use_joy", default_value="true",
+                              description="操縦入力を監視するjoy nodeを起動する"),
         DeclareLaunchArgument(
             "use_teleop",
-            default_value="true",
+            default_value="true" if drive_default else "false",
             description="ジョイスティック操縦を起動する。センサ単独試験ではfalseにする",
         ),
         DeclareLaunchArgument(
             "use_vehicle_interface",
-            default_value="true",
+            default_value="true" if drive_default else "false",
             description="モーター制御可能な車両interfaceを起動する。センサ単独試験ではfalseにする",
         ),
         DeclareLaunchArgument(

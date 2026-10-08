@@ -7,7 +7,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 deployment_workspace="${1:-/home/nvidia/patasmonkey_ws}"
 deployment_share="$deployment_workspace/install/pm_robot_manager/share/pm_robot_manager/systemd"
-for unit in start-pm.service pm-mission-bag.service pm-debug-bag.service; do
+for unit in start-pm.service pm-mission-bag.service pm-debug-bag.service pm-vehicle-control.service; do
     unit_state="$(systemctl is-active "$unit" || true)"
     case "$unit_state" in
         active|activating|deactivating)
@@ -18,7 +18,7 @@ done
 visudo -cf "$deployment_share/pm-robot-manager.sudoers"
 deployment_backup="/var/backups/pm-robot-manager/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$deployment_backup"
-for unit in start-pm.service pm-robot-manager.service pm-mission-bag.service pm-debug-bag.service; do
+for unit in start-pm.service pm-robot-manager.service pm-mission-bag.service pm-debug-bag.service pm-vehicle-control.service; do
     if [[ -f "/etc/systemd/system/$unit" ]]; then
         cp -a "/etc/systemd/system/$unit" "$deployment_backup/"
     fi
@@ -34,6 +34,7 @@ install -m 0440 "$deployment_share/pm-robot-manager.sudoers" /etc/sudoers.d/pm-r
 visudo -cf /etc/sudoers.d/pm-robot-manager
 systemctl daemon-reload
 systemctl reset-failed start-pm.service
+# 走行許可unitにはInstall節がなく、bootで自動起動させない。
 systemctl enable start-pm.service pm-robot-manager.service pm-mission-bag.service
 # missionはboot targetから独立して開始する。GUIのCore startには連動しない。
 # 更新したManagerのコードを反映する。Coreとbagは起動しない。

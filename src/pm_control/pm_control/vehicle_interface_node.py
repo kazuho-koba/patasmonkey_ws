@@ -1,12 +1,14 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from pm_msgs.msg import MotorState
 from rclpy.time import Time
 from .odrive_controller import MotorController
 import math
 import sys
+import json
+import time
 
 
 class VehicleInterfaceNode(Node):
@@ -160,6 +162,18 @@ class VehicleInterfaceNode(Node):
         # display the set parameters
         self.print_parameters()
 
+        # 走行用launchだけが中立インターロックを使用する。Core起動では本nodeを起動しない。
+        self.declare_parameter('require_neutral_on_start', False)
+        self.declare_parameter('vehicle_status_topic', '/pm/vehicle/status')
+        self.require_neutral = bool(self.get_parameter('require_neutral_on_start').value)
+        self._drive_armed = not self.require_neutral
+        self._emergency_stop_active = False
+        self._neutral_received_at = None
+        self._connected_at = None
+        self._status_pub = self.create_publisher(
+            String, str(self.get_parameter('vehicle_status_topic').value), 10)
+        self.create_timer(0.5, self.publish_vehicle_status)
+
         # connect to odrive
         self.left_motor = None
         self.right_motor = None
@@ -218,6 +232,8 @@ class VehicleInterfaceNode(Node):
     def connect_odrive(self):
         """Connect/Re-Connect to ODrive and initialize both motors."""
         try:
+            self._drive_armed = not self.require_neutral and not self._emergency_stop_active
+            self._neutral_received_at = None
             self.get_logger().info("connecting to ODrive...")
             self.left_motor = MotorController(
                 self.mtr_axis_l,
@@ -226,6 +242,7 @@ class VehicleInterfaceNode(Node):
                 vel_gain=self.vel_gain,
                 vel_integrator_gain=self.vel_integrator_gain,
                 vel_integrator_limit=self.vel_integrator_limit,
+                activate=not self.require_neutral and not self._emergency_stop_active,
             )
 
             self.right_motor = MotorController(
@@ -235,12 +252,14 @@ class VehicleInterfaceNode(Node):
                 vel_gain=self.vel_gain,
                 vel_integrator_gain=self.vel_integrator_gain,
                 vel_integrator_limit=self.vel_integrator_limit,
+                activate=not self.require_neutral and not self._emergency_stop_active,
             )
 
             self.left_cmd_rps = 0.0  # モータ指令値をpublishするために値を保存しておく変数（左）
             self.right_cmd_rps = 0.0  # モータ指令値をpublishするために値を保存しておく変数（右）
             self.reset_motion_limits()
             self.odrive_connected = True
+            self._connected_at = time.monotonic()
             self.reconnect_in_progress = False
 
             # 再接続後の最初のMotorState publishでvbusを即時再取得する
@@ -249,6 +268,8 @@ class VehicleInterfaceNode(Node):
             self.get_logger().info("ODrive connected and initialized!")
 
         except Exception as e:
+            # 右軸の接続失敗時にも先に接続した左軸をIDLEへ戻す。
+            self.stop_motors()
             self.left_motor = None
             self.right_motor = None
             self.odrive_connected = False
@@ -267,6 +288,12 @@ class VehicleInterfaceNode(Node):
         callback function when /cmd_vel_joy from gamepad has been received.
         joy_teleop由来のTwistを、車両制約を考慮したTwistに変換して保存する。
         """
+        # 車両変換後のゼロは真横入力でも発生するため、生Twistの中立だけを使う。
+        values = (float(msg.linear.x), float(msg.angular.z))
+        if all(math.isfinite(v) and abs(v) < 1e-6 for v in values):
+            self._neutral_received_at = time.monotonic()
+        else:
+            self._neutral_received_at = None
         self.last_cmd_vel_joy = self.map_joy_twist_to_vehicle_twist(msg)
         self.last_cmd_vel_joy_time = self.get_clock().now()
 
@@ -355,6 +382,26 @@ class VehicleInterfaceNode(Node):
     def command_selector(self):
         """check which command should be prioritized, from gamepad or autonomous driving software"""
         try:
+            if self._emergency_stop_active:
+                return
+            if not self._drive_armed:
+                # 再接続後にも新しい中立を要求する。ROS時刻停止中も鮮度を延長しない。
+                neutral = self._neutral_received_at
+                if (self.odrive_connected and neutral is not None
+                        and self._connected_at is not None and neutral >= self._connected_at
+                        and time.monotonic() - neutral < 0.3):
+                    try:
+                        self.left_motor.activate()
+                        self.right_motor.activate()
+                    except Exception:
+                        self.stop_motors()
+                        raise
+                    self._drive_armed = True
+                    self.last_cmd_vel = None
+                    self.last_cmd_vel_time = None
+                    self.reset_motion_limits()
+                    self.get_logger().info('中立指令確認: 走行出力を許可しました')
+                return
             now = self.get_clock().now()
             cmd = None
 
@@ -604,26 +651,45 @@ class VehicleInterfaceNode(Node):
             self.mark_odrive_disconnected(e)
 
     def emergency_stop_callback(self, msg):
-        """emefgency stop: stop motors immediately"""
+        """緊急停止は再起動までラッチする。GUIの走行許可とは別の安全経路。"""
         if msg.data:
+            self._emergency_stop_active = True
             self.reset_motion_limits()
-            self.left_cmd_rps = 0.0
-            self.right_cmd_rps = 0.0
-
-            if self.odrive_connected:
-                try:
-                    self.left_motor.set_idle()
-                    self.right_motor.set_idle()
-                except Exception as e:
-                    self.mark_odrive_disconnected(e)
-
+            self.left_cmd_rps = self.right_cmd_rps = 0.0
+            self.stop_motors()
             self.get_logger().warn("Emergency STOP activated!")
 
     def stop_motors(self):
-        """in case of emergency cases: motor stop"""
-        self.left_motor.set_idle()
-        self.right_motor.set_idle()
-        self.get_logger().warn("No !")
+        """正常終了でも各軸へゼロとIDLEを送る。片軸の失敗で他軸を飛ばさない。"""
+        self._drive_armed = False
+        succeeded = True
+        for motor in (self.left_motor, self.right_motor):
+            if motor is None:
+                continue
+            try:
+                motor.set_velocity(0.0)
+            except Exception as exc:
+                succeeded = False
+                self.get_logger().error('停止ゼロ指令に失敗: {}'.format(exc))
+            try:
+                # set_idleの旧実装は例外を握りつぶすため、ここでは結果を隠さない。
+                from odrive.enums import AXIS_STATE_IDLE
+                motor.axis.requested_state = AXIS_STATE_IDLE
+            except Exception as exc:
+                succeeded = False
+                self.get_logger().error('ODrive IDLE指令に失敗: {}'.format(exc))
+
+        return succeeded
+
+    def publish_vehicle_status(self):
+        """Managerへ接続・中立待ち・緊急停止を通知。実際の回転有無とは区別する。"""
+        message = String()
+        message.data = json.dumps({
+            'connected': self.odrive_connected,
+            'armed': self._drive_armed and self.odrive_connected,
+            'emergency_stop': self._emergency_stop_active,
+        })
+        self._status_pub.publish(message)
 
     def print_parameters(self):
         header = f"{'Parameter':<20} {'Value':<20}"
@@ -674,6 +740,7 @@ class VehicleInterfaceNode(Node):
         if self.odrive_connected:
             self.get_logger().error(f"ODrive disconnected: {reason}")
 
+        self.stop_motors()
         self.reset_motion_limits()
         self.odrive_connected = False
         self.left_motor = None
@@ -692,10 +759,13 @@ def main(args=None):
     except KeyboardInterrupt:
         node.get_logger().info("Shutting down gracefully...")  # Log clean shutdown
     finally:
+        # SIGINT後にROS contextが無効でもUSB経由の停止処理を必ず実行する。
+        stopped = node.stop_motors()
+        node.destroy_node()
         if rclpy.ok():  # Prevent multiple shutdown calls
-            node.destroy_node()  # Destroy node properly
             rclpy.shutdown()  # Shutdown ROS2 cleanly
-        sys.exit(0)  # Exit without error
+        # USB停止指令の失敗はnodeの終了コードにも反映する。詳細はjournalへ残す。
+        sys.exit(0 if stopped else 1)
 
 
 if __name__ == "__main__":

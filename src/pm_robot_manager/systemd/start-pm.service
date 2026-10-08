@@ -11,7 +11,7 @@ Group=nvidia
 Environment=HOME=/home/nvidia
 Environment=ROS_DOMAIN_ID=0
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec /home/nvidia/patasmonkey_ws/scripts/run_ros_launch.sh pm_bringup pm_core.launch.py'
+ExecStart=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec /home/nvidia/patasmonkey_ws/scripts/run_ros_launch.sh pm_bringup pm_core.launch.py use_teleop:=false use_vehicle_interface:=false'
 Restart=on-failure
 RestartSec=3
 KillMode=control-group

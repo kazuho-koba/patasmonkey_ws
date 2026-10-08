@@ -6,4 +6,4 @@ from pm_bringup.stack_launch import create_launch_description
 
 def generate_launch_description():
     """既存の起動順と引数を共有し、記録プロセスを切り離す。"""
-    return create_launch_description(legacy_recording=False)
+    return create_launch_description(legacy_recording=False, drive_default=False)

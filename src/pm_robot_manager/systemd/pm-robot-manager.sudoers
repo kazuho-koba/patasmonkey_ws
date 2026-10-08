@@ -19,3 +19,8 @@ nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGSTOP --kill-who=
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGCONT --kill-who=all pm-debug-bag.service
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl kill --signal=SIGKILL --kill-who=all pm-debug-bag.service
 nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl reset-failed pm-debug-bag.service
+
+# 走行許可unitは明示的な開始・正常停止と状態取得だけを許可する。
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block pm-vehicle-control.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl stop pm-vehicle-control.service
+nvidia ALL=(root) NOPASSWD: /usr/bin/systemctl is-active pm-vehicle-control.service

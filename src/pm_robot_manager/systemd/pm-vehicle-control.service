@@ -1,0 +1,20 @@
+[Unit]
+Description=Patasmonkey explicit vehicle enable
+BindsTo=start-pm.service
+After=start-pm.service
+
+[Service]
+Type=simple
+User=nvidia
+Group=nvidia
+Environment=HOME=/home/nvidia
+Environment=ROS_DOMAIN_ID=0
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/bin/bash -lc 'source /opt/ros/foxy/setup.bash && source /home/nvidia/ros2_ws/install/setup.bash && source /home/nvidia/patasmonkey_ws/install/setup.bash && exec /home/nvidia/patasmonkey_ws/scripts/run_ros_launch.sh pm_bringup pm_drive.launch.py'
+# boot時のenable対象にはしない。異常終了後も自動で走行を再許可しない。
+Restart=no
+KillMode=control-group
+KillSignal=SIGINT
+SuccessExitStatus=130 143
+TimeoutStopSec=45
+SendSIGKILL=no

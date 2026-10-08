@@ -110,3 +110,31 @@ quaternionから求める相対姿勢であり、東西南北とは解釈しま�
 表示の切替にすぎず、品質を自動検証しません。一般のsoft-iron行列や磁気外乱の
 検出は未実装です。車体・モータ・電源配線の磁気影響があるため、実機で複数方向
 への回転と基準方位を用いた校正が必要です。
+
+## JOYSTICKタイルのモーターイネーブル
+
+タイルを左右に分割し、左に走行許可の円形ボタン、右に従来のスティックと速度を表示する。
+左の円は右のスティック外円と同径。OFFは緑のSTART、走行用launch稼働中は赤のSTOP。
+遷移中は黄色のWAIT、Manager未対応・未接続では操作不可とする。
+赤のSTOPは走行許可ONを意味し、実際の回転中を意味しない。
+右のDISABLED/ENABLED/TURBOは従来どおりjoystickのdeadman/turboボタンの状態であり、
+左の走行許可とは独立して表示する。
+
+STARTは確認ダイアログ後、Managerのvehicle/start serviceへ依頼する。
+STOPは確認を挟まずvehicle/stopを依頼する。GUIから速度指令は送信しない。
+ODrive接続待ち、中立指令待ち、緊急停止、status STALEも左下に表示する。
+Core起動時は走行許可OFF。GUI起動時はManagerが管理している現在の状態を表示し、
+GUI終了だけでは走行用launchを止めない。
+
+実機側のManager、bringup、teleop、control、systemd/sudoersの更新が必要。
+旧Managerでは左ボタンを操作不可にする。Core/bag操作の既存interfaceは維持する。
+単体の開発表示は、従来の`gui_mock.yaml`で同じSTART/STOP遷移を利用できる。
+
+```bash
+PM_GUI_ROS_DOMAIN_ID=227 \
+PM_GUI_CONFIG=/workspaces/patasmonkey_ws/src/pm_gui/config/gui_mock.yaml \
+./scripts/pm_gui_container.sh
+```
+
+mockのCoreを先に起動すると、左のSTARTを操作できる。
+mockは実機やモーターを操作せず、Core再起動後は走行許可OFFへ戻る。

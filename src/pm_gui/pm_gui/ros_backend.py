@@ -39,6 +39,12 @@ class RosBackend(Node):
     def __init__(self, config):
         super().__init__('pm_gui_backend')
         manager = config['manager']
+        self._vehicle_service_names = {
+            action: manager.get('vehicle_'+action+'_service',
+                                '/pm/robot_manager/vehicle/'+action)
+            for action in ('start', 'stop')
+        }
+        self._vehicle = {'state': 'UNKNOWN', 'error': '', 'detail': {}, 'fresh': False}
         self.backend_mode = manager.get('backend', 'ros')
         self.status_topic = manager['status_topic']
         self.start_service_name = manager['start_service']
@@ -100,6 +106,10 @@ class RosBackend(Node):
         self._start_client = self.create_client(Trigger, self.start_service_name)
         self._stop_client = self.create_client(Trigger, self.stop_service_name)
         self._status_client = self.create_client(Trigger, self.get_status_service_name)
+        self._vehicle_clients = {
+            action: self.create_client(Trigger, name)
+            for action, name in self._vehicle_service_names.items()
+        }
         self._bag_clients = {
             profile: {
                 operation: self.create_client(Trigger, service_name)
@@ -127,6 +137,9 @@ class RosBackend(Node):
         self._telemetry_timer = self.create_timer(0.2, self._telemetry_tick)
 
         if self.backend_mode == 'mock':
+            self._vehicle = {'state': 'STOPPED', 'error': '', 'detail': {}, 'fresh': True}
+            self._mock_vehicle_deadline = None
+            self._mock_vehicle_target = None
             self._mock_state = 'STOPPED'
             self._mock_deadline = None
             self._mock_target = None
@@ -147,6 +160,10 @@ class RosBackend(Node):
                     Trigger, services['stop'],
                     lambda request, response, bag=profile:
                         self._mock_stop_bag(bag, request, response))
+            for action, name in self._vehicle_service_names.items():
+                self.create_service(Trigger, name,
+                                    lambda request, response, op=action:
+                                        self._mock_vehicle_request(op, request, response))
             self.create_service(Trigger, '/pm/gui/mock_error', self._mock_error_request)
             self._mock_error_client = self.create_client(Trigger, '/pm/gui/mock_error')
             self.create_timer(0.25, self._mock_tick)
@@ -324,6 +341,13 @@ class RosBackend(Node):
         """Jetson managerへCore停止を依頼し、bagの保存確認はmanagerに任せる。"""
         return self._request(self._stop_client)
 
+    def request_vehicle_start(self):
+        """GUIから走行を明示許可する。GUI内で速度指令は生成しない。"""
+        return self._request(self._vehicle_clients['start'])
+
+    def request_vehicle_stop(self):
+        return self._request(self._vehicle_clients['stop'])
+
     def _request(self, client):
         if not client.service_is_ready():
             with self._lock:
@@ -343,6 +367,10 @@ class RosBackend(Node):
                 self._state = state
                 self._error = str(data.get('error', ''))
                 self._unit = str(data.get('unit', ''))
+                vehicle = data.get('vehicle')
+                self._vehicle = (dict(vehicle) if isinstance(vehicle, dict)
+                                 else {'state': 'UNKNOWN', 'error': 'Managerを更新してください',
+                                       'detail': {}, 'fresh': False})
                 remote_recordings = data.get('recordings', {})
                 if isinstance(remote_recordings, dict):
                     for profile in ('mission', 'debug'):
@@ -387,6 +415,7 @@ class RosBackend(Node):
         with self._lock:
             last_heartbeat, state = self._last_heartbeat, self._state
             error, unit, response = self._error, self._unit, self._last_response
+            vehicle = dict(self._vehicle)
             telemetry = dict(self._telemetry)
             gnss_path = list(self._gnss_path)
             image, image_stamp = self._camera_image, self._camera_stamp
@@ -419,6 +448,8 @@ class RosBackend(Node):
             'connection': connection, 'core_state': state, 'error': error, 'unit': unit,
             'heartbeat_age_sec': age, 'last_response': response, 'telemetry': data,
             'gnss_path': gnss_path,
+            'vehicle': vehicle,
+            'vehicle_services_ready': all(c.service_is_ready() for c in self._vehicle_clients.values()),
             'camera': {
                 'enabled': camera_enabled,
                 'subscribed': camera_subscription_active,
@@ -456,6 +487,7 @@ class RosBackend(Node):
         return json.dumps({
             'state': self._mock_state, 'error': self._error,
             'unit': 'mock://robot-core', 'recordings': recordings,
+            'vehicle': dict(self._vehicle),
             'stamp_unix_sec': now,
         }, ensure_ascii=False)
 
@@ -469,7 +501,32 @@ class RosBackend(Node):
             publisher = self._mock_publisher
         publisher.publish(message)
 
+    def _mock_vehicle_request(self, action, _request, response):
+        """実機を操作せず、独立した走行許可の状態遷移を再現する。"""
+        with self._lock:
+            if self._mock_vehicle_deadline is not None or self._mock_deadline is not None:
+                response.success, response.message = False, '状態遷移中です'
+            elif action == 'start' and self._mock_state != 'RUNNING':
+                response.success, response.message = False, 'Coreの起動が必要です'
+            else:
+                self._vehicle['state'] = 'STARTING' if action == 'start' else 'STOPPING'
+                self._mock_vehicle_target = 'RUNNING' if action == 'start' else 'STOPPED'
+                self._mock_vehicle_deadline = time.monotonic()+0.75
+                response.success, response.message = True, 'mock vehicle '+action+' accepted'
+        self._mock_publish()
+        return response
+
     def _mock_tick(self):
+        if (self._mock_vehicle_deadline is not None
+                and time.monotonic() >= self._mock_vehicle_deadline):
+            self._vehicle.update({
+                'state': self._mock_vehicle_target,
+                'unit_state': 'active' if self._mock_vehicle_target == 'RUNNING' else 'inactive',
+                'detail': {'connected': self._mock_vehicle_target == 'RUNNING',
+                           'armed': self._mock_vehicle_target == 'RUNNING'},
+                'fresh': True,
+            })
+            self._mock_vehicle_deadline = self._mock_vehicle_target = None
         if self._mock_deadline is not None and time.monotonic() >= self._mock_deadline:
             self._mock_state, self._mock_deadline, self._mock_target = self._mock_target, None, None
         now = time.monotonic()
@@ -505,6 +562,9 @@ class RosBackend(Node):
         elif self._mock_state == 'STOPPED':
             response.success, response.message = True, '既にSTOPPEDです'
         else:
+            self._vehicle.update({'state': 'STOPPED', 'unit_state': 'inactive',
+                                  'detail': {'connected': False, 'armed': False}})
+            self._mock_vehicle_deadline = self._mock_vehicle_target = None
             self._mock_state, self._mock_target = 'STOPPING', 'STOPPED'
             self._mock_deadline = time.monotonic() + 1.5
             for profile, item in self._recordings.items():
@@ -564,6 +624,9 @@ class RosBackend(Node):
         return True
 
     def _mock_error_request(self, _request, response):
+        self._vehicle.update({'state': 'STOPPED', 'unit_state': 'inactive',
+                              'detail': {'connected': False, 'armed': False}})
+        self._mock_vehicle_deadline = self._mock_vehicle_target = None
         self._mock_state, self._mock_target, self._mock_deadline = 'ERROR', None, None
         self._error = '開発用mockがERROR状態を表示しています'
         response.success, response.message = True, 'mock ERROR set'

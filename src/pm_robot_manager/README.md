@@ -73,3 +73,47 @@ Mission/Debug停止時、Managerはrecorderのoutputとsystemd起動IDを照合�
 保存先不明、起動ID不一致、権限・状態取得エラーでは強制停止しません。
 取消は保存成功ではなくCANCELLEDとして扱い、GUI状態はSTOPPEDへ戻します。
 この機能には更新したManagerとsudoersのJetson側配置が必要です。
+
+## GUIからの走行許可（モーターイネーブル）
+
+Core、bag、走行許可は別々に操作する。`pm_core.launch.py`は既定で
+`use_teleop:=false use_vehicle_interface:=false`となり、joy入力nodeだけを残す。
+CoreやMission bagがbootで起動しても、モーター制御は起動しない。
+従来の単体teleop/vehicle launchと旧一括launchの既定動作は維持する。
+
+走行許可には独立した`pm-vehicle-control.service`を使う。このunitは
+`pm_bringup/pm_drive.launch.py`から速度指令変換とvehicle interfaceを起動し、
+既存の`/pm/joy`入力を再利用する。`Install`節を持たず、bootでenableしない。
+Coreへの`BindsTo`依存により、Core終了時は走行用unitも停止する。
+`Restart=no`により、走行用nodeの異常終了後に自動で再許可しない。
+
+- START: `/pm/robot_manager/vehicle/start` (`std_srvs/srv/Trigger`)
+- STOP: `/pm/robot_manager/vehicle/stop` (`std_srvs/srv/Trigger`)
+- 接続・出力許可状態: `/pm/vehicle/status` (`std_msgs/msg/String`、JSON)
+- Managerの既存status JSONに`vehicle`項目を追加する。
+  `state`は走行用launchの状態であり、車両が実際に動いていることを意味しない。
+  `detail.connected`はODrive接続、`detail.armed`は中立指令確認後の出力許可、
+  `detail.emergency_stop`は緊急停止ラッチを示す。`fresh`は3秒以内の受信を示す。
+
+STARTはCore稼働中だけ受け付け、旧Coreや手動launchの同名走行nodeとの重複を拒否する。
+systemdのactiveだけで接続成功と判断せず、新しいODrive接続statusを待つ。
+接続待受timeoutでは走行用unitを停止し、遅れて有効になるprocessを残さない。
+
+ODriveはIDLEでゼロ速度を設定し、接続後に届いた新しい生`/cmd_vel_joy`のゼロ指令を
+確認するまでclosed-loopを要求しない。車両制約による変換後のゼロは中立判定に使わない。
+USB再接続時にも同じ確認を要求する。停止時は各軸へゼロ速度とIDLEを要求してから終了する。
+緊急停止はnode再起動まで保持し、USB再接続で解除しない。
+これは非常停止装置や物理的なモーター停止確認を代替するものではない。
+
+GUIの走行STOPはbag操作とは別workerで処理し、bagの保存待ちで受付を遅らせない。
+Core STOPは走行用launch、bagの正常保存、Coreの順で停止する。
+GUI終了や通信断だけでは走行許可を解除しないため、GUIなしでもjoystick操作を継続できる。
+
+### 後日Jetsonへ反映する際
+
+`pm_control`、`pm_teleop`、`pm_bringup`、`pm_robot_manager`を反映・ビルドする。
+Coreとbagと走行用unitを正常停止した後、従来の
+`sudo bash scripts/install_robot_manager_systemd.sh`で新unit、Core unit、sudoersを更新する。
+このスクリプトはManagerだけを再起動し、走行用unitはenableも起動もしない。
+旧unit/drop-inが独自の起動設定を持つ場合は、走行nodeを自動起動していないことを確認する。
+GUI側は`pm_gui`を反映する。開発PCのmockでは実機やsystemdを操作しない。

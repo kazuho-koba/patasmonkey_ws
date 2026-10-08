@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""systemd管理下のCoreとbag launchを安全に操作するnode。"""
+"""systemd管理下のCore、走行許可、bag launchを独立して操作するnode。"""
 
 import json
 from pathlib import Path
@@ -26,6 +26,10 @@ class RobotManager(Node):
         self.declare_parameter('unit_name', 'start-pm.service')
         self.declare_parameter('mission_bag_unit_name', 'pm-mission-bag.service')
         self.declare_parameter('debug_bag_unit_name', 'pm-debug-bag.service')
+        self.declare_parameter('vehicle_unit_name', 'pm-vehicle-control.service')
+        self.declare_parameter('vehicle_start_service', '/pm/robot_manager/vehicle/start')
+        self.declare_parameter('vehicle_stop_service', '/pm/robot_manager/vehicle/stop')
+        self.declare_parameter('vehicle_status_topic', '/pm/vehicle/status')
         self.declare_parameter('use_sudo', True)
         self.declare_parameter('startup_timeout_sec', 60.0)
         self.declare_parameter('shutdown_timeout_sec', 45.0)
@@ -56,6 +60,7 @@ class RobotManager(Node):
 
         self.units = {
             'core': str(self.get_parameter('unit_name').value),
+            'vehicle': str(self.get_parameter('vehicle_unit_name').value),
             'mission': str(self.get_parameter('mission_bag_unit_name').value),
             'debug': str(self.get_parameter('debug_bag_unit_name').value),
         }
@@ -81,12 +86,24 @@ class RobotManager(Node):
             }
             for profile in self.PROFILES
         }
+        self._vehicle_operation = None
+        self._vehicle_detail = {}
+        self._vehicle_stamp = None
+        self._vehicle_unit_state = 'unknown'
         self._operation = None
         self._operation_targets = set()
         self._monitor_running = False
 
         self._publisher = self.create_publisher(
             String, str(self.get_parameter('status_topic').value), 10)
+        self.create_subscription(
+            String, str(self.get_parameter('vehicle_status_topic').value),
+            self._vehicle_status_callback, 10)
+        for operation in ('start', 'stop'):
+            self.create_service(
+                Trigger, str(self.get_parameter('vehicle_'+operation+'_service').value),
+                lambda request, response, action=operation:
+                    self._vehicle_request(action, request, response))
         self._bag_stop_clients = {}
         for profile in self.PROFILES:
             start_name = str(self.get_parameter(
@@ -142,6 +159,9 @@ class RobotManager(Node):
     def _unit_state(self, component):
         result = self._systemctl('is-active', self.units[component])
         state = result.stdout.strip()
+        if component == 'vehicle':
+            with self._lock:
+                self._vehicle_unit_state = state or 'unknown'
         return state or 'unknown'
 
     def _refresh_initial_state(self):
@@ -197,6 +217,14 @@ class RobotManager(Node):
                 'state': self._states['core'],
                 'error': self._errors['core'],
                 'unit': self.units['core'],
+                'vehicle': {
+                    'state': self._states['vehicle'],
+                    'error': self._errors['vehicle'],
+                    'unit_state': self._vehicle_unit_state,
+                    'detail': dict(self._vehicle_detail),
+                    'fresh': (self._vehicle_stamp is not None
+                              and time.monotonic()-self._vehicle_stamp <= 3.0),
+                },
                 'recordings': recordings,
                 'operation': self._operation or '',
                 'stamp_unix_sec': now,
@@ -243,6 +271,9 @@ class RobotManager(Node):
     def _monitor_units(self):
         try:
             for component in self.units:
+                with self._lock:
+                    if component == 'vehicle' and self._vehicle_operation is not None:
+                        continue
                 unit_state = self._unit_state(component)
                 if component in self.PROFILES:
                     if self._cancel_missing_stopped_bag(component, unit_state):
@@ -259,7 +290,9 @@ class RobotManager(Node):
                                 'bag終了後の保存検証に成功していません')
                         continue
                 state = self._state_from_unit(unit_state)
-                error = ''
+                # 正常終了を確認できなかった走行STOPのエラーは、active監視で消さない。
+                with self._lock:
+                    error = self._errors[component] if component == 'vehicle' else ''
                 if unit_state == 'failed':
                     error = 'systemd unitがfailed状態です'
                 elif unit_state == 'unknown':
@@ -316,9 +349,12 @@ class RobotManager(Node):
 
     def _begin_operation(self, operation, transitions, response):
         with self._lock:
-            if self._operation is not None:
+            if (self._operation is not None
+                    or operation in ('start_core', 'stop_core')
+                    and self._vehicle_operation is not None):
                 response.success = False
-                response.message = '別の操作が進行中です: {}'.format(self._operation)
+                response.message = '別の操作が進行中です: {}'.format(
+                    self._operation or 'vehicle '+str(self._vehicle_operation))
                 return False
             self._operation = operation
             self._operation_targets = set(transitions)
@@ -343,7 +379,7 @@ class RobotManager(Node):
     def _stop_request(self, _request, response):
         with self._lock:
             core_state = self._states['core']
-            bag_states = {p: self._states[p] for p in self.PROFILES}
+            bag_states = {p: self._states[p] for p in (*self.PROFILES, 'vehicle')}
         if core_state == 'STOPPED' and all(
                 state == 'STOPPED' for state in bag_states.values()):
             response.success, response.message = True, 'Coreとbagは既にSTOPPEDです'
@@ -354,6 +390,102 @@ class RobotManager(Node):
                 transitions[profile] = 'STOPPING'
         self._begin_operation('stop_core', transitions, response)
         return response
+
+    def _vehicle_status_callback(self, message):
+        try:
+            detail = json.loads(message.data)
+            if not isinstance(detail, dict):
+                raise ValueError('statusがobjectではありません')
+            with self._lock:
+                self._vehicle_detail = detail
+                self._vehicle_stamp = time.monotonic()
+        except (ValueError, TypeError) as exc:
+            self.get_logger().warning('車両statusを解釈できません: {}'.format(exc))
+
+    def _vehicle_request(self, action, _request, response):
+        """bagの保存待ちで走行STOPを遅らせないよう、独立workerで処理する。"""
+        with self._lock:
+            state, core = self._states['vehicle'], self._states['core']
+            if self._vehicle_operation is not None:
+                response.success, response.message = False, '走行許可は状態遷移中です'
+                return response
+            if action == 'start' and (core != 'RUNNING' or self._operation is not None):
+                response.success, response.message = False, 'Core稼働中かつ他の操作の完了後に許可してください'
+                return response
+            if (action == 'start' and state == 'RUNNING'
+                    or action == 'stop' and state == 'STOPPED'):
+                response.success, response.message = True, '走行許可は要求された状態です'
+                return response
+            self._vehicle_operation = action
+            self._states['vehicle'] = 'STARTING' if action == 'start' else 'STOPPING'
+            self._errors['vehicle'] = ''
+        response.success, response.message = True, 'vehicle '+action+'要求を受け付けました'
+        threading.Thread(target=self._run_vehicle_operation, args=(action,), daemon=True).start()
+        return response
+
+    def _run_vehicle_operation(self, action):
+        try:
+            if action == 'start':
+                self._start_vehicle()
+            else:
+                self._stop_vehicle()
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
+            self._set_component('vehicle', 'ERROR', str(exc))
+            self.get_logger().error('走行許可の操作に失敗: {}'.format(exc))
+        finally:
+            with self._lock:
+                self._vehicle_operation = None
+
+    def _start_vehicle(self):
+        if self._unit_state('core') != 'active':
+            raise RuntimeError('Coreがactiveではありません')
+        if self._unit_state('vehicle') == 'active':
+            self._set_component('vehicle', 'RUNNING', '')
+            return
+        # 古いCoreや手動launchとの重複起動を拒否する。既存processは勝手に停止しない。
+        nodes = {name for name, namespace in self.get_node_names_and_namespaces()}
+        if nodes.intersection({'vehicle_interface_node', 'joy_teleop'}):
+            raise RuntimeError('管理外の走行nodeが存在します。Coreの旧設定や手動launchを確認してください')
+        started = time.monotonic()
+        with self._lock:
+            self._vehicle_stamp = None
+            self._vehicle_detail = {}
+        result = self._systemctl('start', '--no-block', self.units['vehicle'], timeout=10.0)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or '走行用unitの開始に失敗しました')
+        try:
+            self._wait_for_unit('vehicle', 'active', self.startup_timeout)
+            # systemd activeだけではUSB接続成功を保証しない。新しい接続statusを待つ。
+            while time.monotonic()-started < self.startup_timeout:
+                if self._unit_state('vehicle') != 'active':
+                    raise RuntimeError('走行用launchが終了しました')
+                with self._lock:
+                    stamp, detail = self._vehicle_stamp, dict(self._vehicle_detail)
+                if (stamp is not None and stamp >= started
+                        and time.monotonic()-stamp <= 3.0 and detail.get('connected')):
+                    self._set_component('vehicle', 'RUNNING', '')
+                    return
+                time.sleep(0.25)
+            raise RuntimeError('ODrive接続statusの待受がtimeoutしました')
+        except Exception:
+            # 起動失敗後に遅れてモーター制御が始まるprocessを残さない。
+            self._stop_vehicle()
+            raise
+
+    def _stop_vehicle(self):
+        """速度変換とvehicle interfaceへSIGINTを送り、IDLE処理後の終了を待つ。"""
+        state = self._unit_state('vehicle')
+        if state == 'inactive':
+            self._set_component('vehicle', 'STOPPED', '')
+            return
+        if state in ('failed', 'unknown'):
+            # failedでも停止timeoutでprocessが残る場合があるため、OFF成功に見せない。
+            raise RuntimeError('走行unitの正常停止を確認できません: '+state)
+        result = self._systemctl('stop', self.units['vehicle'],
+                                 timeout=self.shutdown_timeout+5.0)
+        if result.returncode != 0 or self._unit_state('vehicle') != 'inactive':
+            raise RuntimeError(result.stderr.strip() or '走行用launchの正常終了を確認できません')
+        self._set_component('vehicle', 'STOPPED', '')
 
     def _bag_start_request(self, profile, _request, response):
         with self._lock:
@@ -707,6 +839,8 @@ class RobotManager(Node):
             if operation == 'start_core':
                 self._start_core()
             elif operation == 'stop_core':
+                # bag保存で時間がかかっても先に走行を不許可にする。
+                self._stop_vehicle()
                 # recorderがcompletion.jsonまで書き終えたことを確認してからCoreを止める。
                 for profile in ('debug', 'mission'):
                     self._stop_bag_safely(profile)
@@ -726,7 +860,7 @@ class RobotManager(Node):
                 targets = set(self._operation_targets)
                 for component in targets:
                     unit_state = self._safe_unit_state(component)
-                    if component == 'core':
+                    if component in ('core', 'vehicle'):
                         self._states[component] = self._state_from_unit(unit_state)
                     elif component in self.PROFILES and unit_state == 'inactive':
                         if self._verify_bag_completion(component):
