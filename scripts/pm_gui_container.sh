@@ -16,7 +16,10 @@ PM_GUI_USER="${PM_GUI_USER:-1000:1000}"
 PM_GUI_HOME="${PM_GUI_HOME:-/home/developer}"
 PM_GUI_ROS_WS="${PM_GUI_ROS_WS:-/workspaces/ros2_ws}"
 PM_GUI_WS="${PM_GUI_WS:-/workspaces/patasmonkey_ws}"
-PM_GUI_CONFIG="${PM_GUI_CONFIG:-}"
+# 別アプリ起動時はGUI用env fileのconfigと区別し、空指定も維持する。
+PM_GUI_CONFIG="${PM_GUI_LAUNCH_CONFIG-${PM_GUI_CONFIG:-}}"
+PM_GUI_LAUNCH_PACKAGE="${PM_GUI_LAUNCH_PACKAGE:-pm_gui}"
+PM_GUI_LAUNCH_FILE="${PM_GUI_LAUNCH_FILE:-operator_console.launch.py}"
 PM_GUI_ROS_DOMAIN_ID="${PM_GUI_ROS_DOMAIN_ID:-}"
 
 if ! docker container inspect "${PM_GUI_CONTAINER}" >/dev/null 2>&1; then
@@ -32,6 +35,8 @@ exec docker exec \
     --env PM_GUI_ROS_WS="${PM_GUI_ROS_WS}" \
     --env PM_GUI_WS="${PM_GUI_WS}" \
     --env PM_GUI_CONFIG="${PM_GUI_CONFIG}" \
+    --env PM_GUI_LAUNCH_PACKAGE="${PM_GUI_LAUNCH_PACKAGE}" \
+    --env PM_GUI_LAUNCH_FILE="${PM_GUI_LAUNCH_FILE}" \
     --env PM_GUI_ROS_DOMAIN_ID="${PM_GUI_ROS_DOMAIN_ID}" \
     "${PM_GUI_CONTAINER}" bash -lc '
         if [ ! -w "${HOME}" ]; then
@@ -46,7 +51,7 @@ exec docker exec \
         fi
         source "${PM_GUI_WS}/install/setup.bash"
         if [ -n "${PM_GUI_CONFIG}" ]; then
-            exec ros2 launch pm_gui operator_console.launch.py config:="${PM_GUI_CONFIG}"
+            exec ros2 launch "${PM_GUI_LAUNCH_PACKAGE}" "${PM_GUI_LAUNCH_FILE}" config:="${PM_GUI_CONFIG}"
         fi
-        exec ros2 launch pm_gui operator_console.launch.py
+        exec ros2 launch "${PM_GUI_LAUNCH_PACKAGE}" "${PM_GUI_LAUNCH_FILE}"
     '
