@@ -1,0 +1,5 @@
+# Jetson側受信箱。保存完了を応答するだけで、走行nodeは起動しない。
+mission_receiver:
+  ros__parameters:
+    upload_service: /pm/mission/upload
+    output_directory: ~/.local/share/pm_mission/received

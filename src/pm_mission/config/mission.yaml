@@ -1,0 +1,22 @@
+# Laptop側の編集・送信設定。純粋なUI設定はROS parameterにしない。
+mission_directory: ~/.local/share/pm_mission/missions
+upload_timeout_sec: 15.0
+ros:
+  # 既存pm_guiで確認済みのNavSatFix source。odomのx/yを緯度経度にしない。
+  gnss_topic: /fix
+  upload_service: /pm/mission/upload
+map:
+  online_tiles_enabled: true
+  tile_url_template: https://tile.openstreetmap.org/{z}/{x}/{y}.png
+  user_agent: PatasmonkeyMissionPlanner/0.1
+  tile_cache_dir: ~/.cache/pm_gui/osm
+  offline_tiles_dir: ""
+  attribution: © OpenStreetMap contributors
+  # 位置未受信時は世界表示。手動指定、読み込み、GNSS受信で目的地へ移動する。
+  latitude: 0.0
+  longitude: 0.0
+  zoom: 3
+  vehicle_zoom: 17
+  # tile取得はZ19まで、表示・経路編集はZ26まで。以降は既存tileを拡大する。
+  tile_max_zoom: 19
+  max_zoom: 26

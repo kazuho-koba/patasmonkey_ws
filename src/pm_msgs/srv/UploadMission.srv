@@ -1,0 +1,10 @@
+# request_idは通信timeout後の再送でも同一受領を識別するID。
+string request_id
+pm_msgs/Mission mission
+---
+bool accepted
+string request_id
+string mission_id
+string message
+# 受信node上の保存先。acceptedは永続保存完了後だけtrueとなる。
+string stored_path

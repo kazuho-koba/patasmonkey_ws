@@ -1,0 +1,66 @@
+schema_version: 1
+coordinate_system: WGS84
+mission_id: c2359df7-a6d6-45e8-944f-45a8b6856011
+name: home
+revision: 1136
+waypoints:
+- waypoint_id: 1adbef6d-8176-4edb-8ef1-a75c1eb4a299
+  latitude: 35.8403250977535
+  longitude: 139.63883757591248
+  attribute: start
+  pause_sec: 0.0
+  note: ''
+- waypoint_id: 244b3cec-1c12-4826-a8fa-ab143f81542b
+  latitude: 35.84027291362692
+  longitude: 139.63924795389175
+  attribute: pass
+  pause_sec: 0.0
+  note: ''
+- waypoint_id: 192d8bef-5c9c-438c-8dff-9f0dd2c081c8
+  latitude: 35.84064255045053
+  longitude: 139.6393820643425
+  attribute: pass
+  pause_sec: 0.0
+  note: ''
+- waypoint_id: 7750dd62-183f-4a89-91e5-8a43fd9fa262
+  latitude: 35.84084693713111
+  longitude: 139.6393847465515
+  attribute: pass
+  pause_sec: 0.0
+  note: ''
+- waypoint_id: 3c37b267-e934-45df-940e-ab08842b19c9
+  latitude: 35.84109915826633
+  longitude: 139.63931769132614
+  attribute: pass
+  pause_sec: 0.0
+  note: ''
+- waypoint_id: ad772cf5-3323-4d44-b4ee-d9368b428d92
+  latitude: 35.840944781632224
+  longitude: 139.6393820643425
+  attribute: pass
+  pause_sec: 0.0
+  note: ''
+- waypoint_id: 5856557f-4a86-4655-9cd3-b9a884f505c0
+  latitude: 35.84073822087721
+  longitude: 139.63938742876053
+  attribute: pass
+  pause_sec: 0.0
+  note: ''
+- waypoint_id: ac5360ba-1497-4bf1-a182-d1656b920bc0
+  latitude: 35.840431640238656
+  longitude: 139.63932037353516
+  attribute: pass
+  pause_sec: 0.0
+  note: ''
+- waypoint_id: b52eb294-cedc-4c06-8ed1-58a44b70ea55
+  latitude: 35.84027508796621
+  longitude: 139.63926672935486
+  attribute: pass
+  pause_sec: 0.0
+  note: ''
+- waypoint_id: 02718467-1202-46a3-a5f1-bf1f85b4f72f
+  latitude: 35.840333795104584
+  longitude: 139.63885366916656
+  attribute: goal
+  pause_sec: 0.0
+  note: ''

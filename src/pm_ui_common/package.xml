@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>pm_ui_common</name>
+  <version>0.1.0</version>
+  <description>Patasmonkey Qt地図表示の共通部品</description>
+  <maintainer email="kazuho.kobayashi.ynu@gmail.com">kazuho</maintainer>
+  <license>MIT</license>
+  <exec_depend>python3-pyqt5</exec_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

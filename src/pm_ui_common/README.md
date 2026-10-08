@@ -1,0 +1,4 @@
+# pm_ui_common
+
+pm_guiとpm_missionで利用する非同期XYZ地図tile取得・cache管理です。
+pm_guiの既存map_tiles importは互換性のため再公開します。
