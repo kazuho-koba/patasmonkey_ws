@@ -9,10 +9,11 @@ from collections import deque
 import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
-from sensor_msgs.msg import Image, Joy, NavSatFix
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
+from sensor_msgs.msg import Image, Imu, Joy, MagneticField, NavSatFix
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
+from .magnetic_heading import magnetic_bearing
 
 try:
     from ublox_msgs.msg import NavPVT
@@ -70,6 +71,8 @@ class RosBackend(Node):
         for services in self._bag_service_names.values():
             self._service_names.update(services.values())
         self._telemetry = {}
+        self._compass_config = config.get('compass', {})
+        self._wit_attitude = None
         map_config = config.get('map', {})
         path_limit = max(10, int(map_config.get('gnss_history_points', 2000)))
         self._gnss_path = deque(maxlen=path_limit)
@@ -105,8 +108,16 @@ class RosBackend(Node):
             for profile, services in self._bag_service_names.items()
         }
         self._telemetry_subscriptions = []
+        # 絶対方位はodometryの初期yawではなく、Witの磁気ベクトルから計算する。
+        self._add_subscription(Imu, topics.get('wit_imu', '/wit/imu'),
+                               self._wit_imu_callback, qos=qos_profile_sensor_data)
+        self._add_subscription(MagneticField, topics.get('wit_mag', '/wit/mag'),
+                               self._wit_mag_callback, qos=qos_profile_sensor_data)
         self._add_subscription(Odometry, topics.get('odometry', '/odometry/global'),
                                self._odometry_callback)
+        self._add_subscription(
+            Odometry, topics.get('wheel_odometry', '/wheel/odometry'),
+            self._wheel_odometry_callback, qos=qos_profile_sensor_data)
         self._add_subscription(Joy, topics.get('joy', '/pm/joy'), self._joy_callback)
         self._add_subscription(NavSatFix, topics.get('gnss_fix', '/fix'),
                                self._fix_callback)
@@ -142,14 +153,53 @@ class RosBackend(Node):
         else:
             self._status_probe_timer = self.create_timer(1.0, self._request_initial_status)
 
-    def _add_subscription(self, msg_type, topic, callback):
+    def _add_subscription(self, msg_type, topic, callback, qos=10):
         if topic:
             self._telemetry_subscriptions.append(
-                self.create_subscription(msg_type, topic, callback, 10))
+                self.create_subscription(msg_type, topic, callback, qos))
 
     def _store(self, key, value):
         with self._lock:
             self._telemetry[key] = (value, time.monotonic())
+
+    def _wheel_odometry_callback(self, message):
+        """車体座標のvx [m/s]を保持する。指令値・融合odometryは使用しない。"""
+        vx = float(message.twist.twist.linear.x)
+        self._store('wheel_odometry', {'vx': vx if math.isfinite(vx) else None})
+
+    def _wit_imu_callback(self, message):
+        """磁気方位の傾斜補償用roll/pitchを保持。orientation yawは使用しない。"""
+        q = message.orientation
+        values = (q.x, q.y, q.z, q.w)
+        norm = math.sqrt(sum(v*v for v in values))
+        with self._lock:
+            self._wit_attitude = None
+            if (message.orientation_covariance[0] < 0 or not math.isfinite(norm)
+                    or abs(norm-1.0) > 0.01):
+                return
+            roll, pitch, _yaw = _quaternion_rpy(q)
+            self._wit_attitude = (roll, pitch, message.header.frame_id, time.monotonic())
+
+    def _wit_mag_callback(self, message):
+        """鮮度・frame・非ゼロ磁場を検査し、誤った0度表示を避ける。"""
+        with self._lock:
+            attitude = self._wit_attitude
+        value = {'bearing': None, 'error': '', 'source': '/wit/mag',
+                 'calibrated': bool(self._compass_config.get('calibrated', False))}
+        try:
+            if attitude is None or time.monotonic()-attitude[3] > self.topic_timeout:
+                raise ValueError('Wit姿勢が未受信・無効・stale')
+            if not message.header.frame_id or message.header.frame_id != attitude[2]:
+                raise ValueError('Wit IMUと磁気のframeが一致しません')
+            field = message.magnetic_field
+            cfg = self._compass_config
+            value['bearing'] = magnetic_bearing(
+                (field.x,field.y,field.z), attitude[0], attitude[1],
+                cfg.get('bias', (0,0,0)), cfg.get('scale', (1,1,1)),
+                float(cfg.get('offset_deg', 0)), float(cfg.get('declination_deg', 0)))
+        except (ValueError, TypeError) as exc:
+            value['error'] = str(exc)
+        self._store('magnetic_heading', value)
 
     def _odometry_callback(self, message):
         pose = message.pose.pose

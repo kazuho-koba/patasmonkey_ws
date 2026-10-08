@@ -10,7 +10,7 @@ import threading
 import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QProcess, QTimer, Qt
 from PyQt5.QtGui import QFont, QFontDatabase
 from PyQt5.QtWidgets import (
     QApplication, QGridLayout, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
@@ -58,7 +58,13 @@ class OperatorWindow(QMainWindow):
         title.setStyleSheet(
             'background:' + PALETTE['panel'] + '; color:' + PALETTE['yellow']
             + '; font-size:16px; font-weight:bold; padding-left:8px;')
-        layout.addWidget(title)
+        title_row = QHBoxLayout()
+        title_row.addWidget(title, 1)
+        mission_button = QPushButton('MISSION PLANNER')
+        mission_button.setToolTip('独立したミッション編集アプリを開く（走行は開始しません）')
+        mission_button.clicked.connect(self._open_mission_planner)
+        title_row.addWidget(mission_button)
+        layout.addLayout(title_row)
 
         manager_box = QWidget()
         manager_layout = QGridLayout(manager_box)
@@ -175,6 +181,20 @@ class OperatorWindow(QMainWindow):
         self._set_split_ratio(self._left_splitter, (3, 1))
         self._set_split_ratio(self._telemetry_splitter, (1, 1))
         self._set_split_ratio(self._right_splitter, (2, 1))
+
+    def _open_mission_planner(self):
+        """独立processを起動し、Console終了時もプランナーを終了させない。"""
+        try:
+            get_package_share_directory('pm_mission')
+            arguments = ['run', 'pm_mission', 'mission_planner']
+            config = self.config.get('mission_planner', {}).get('config', '')
+            if config:
+                arguments += ['--config', os.path.expanduser(config)]
+            started, _pid = QProcess.startDetached('ros2', arguments)
+            if not started:
+                raise RuntimeError('mission_planner processを起動できませんでした')
+        except Exception as error:
+            QMessageBox.warning(self, 'Mission Planner起動失敗', str(error))
 
     @staticmethod
     def _set_split_ratio(splitter, ratio):

@@ -14,9 +14,19 @@ operator_console:
     topics:
       stale_timeout_sec: 2.0
       odometry: /odometry/global
+      wheel_odometry: /wheel/odometry
       joy: /pm/joy
       gnss_fix: /fix
       navpvt: /navpvt
+      wit_imu: /wit/imu
+      wit_mag: /wit/mag
+    compass:
+      # 北0度・時計回り。偏角0なら磁北基準。既存Witのraw磁気単位でbiasを指定。
+      bias: [0.0, 0.0, 0.0]
+      scale: [1.0, 1.0, 1.0]
+      offset_deg: 0.0
+      declination_deg: 0.0
+      calibrated: false
     joystick:
       config_package: pm_teleop
       teleop_config: config/teleop_twist_joy.yaml
@@ -38,6 +48,9 @@ operator_console:
       offline_tiles_dir: /workspaces/patasmonkey_ws/maps/xyz
       attribution: © OpenStreetMap contributors
       zoom: 17
+      # 取得tileはZ19まで、表示はZ26まで拡大する。
+      tile_max_zoom: 19
+      max_zoom: 26
       gnss_history_points: 2000
     ui:
       refresh_hz: 4.0

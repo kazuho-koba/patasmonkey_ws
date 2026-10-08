@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 from PyQt5.QtCore import QPointF, Qt, QRectF, pyqtSignal
-from PyQt5.QtGui import QColor, QImage, QPainter, QPen, QPolygonF, QPixmap
+from PyQt5.QtGui import QColor, QFont, QImage, QPainter, QPen, QPolygonF, QPixmap
 from PyQt5.QtWidgets import (
     QCheckBox, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QPushButton,
     QSplitter, QSizePolicy, QVBoxLayout, QWidget,
@@ -221,7 +221,10 @@ class TrajectoryCanvas(QWidget):
         self._follow_vehicle = True
         self._drag_last_position = None
         self._controls_overlay = None
-        self._zoom = max(1, min(19, int(self.map_config.get('zoom', 17))))
+        # tile取得上限と表示上限を分け、画像だけを拡大する。
+        self.tile_max_zoom = max(1, min(30, int(self.map_config.get('tile_max_zoom', 19))))
+        self.max_zoom = max(self.tile_max_zoom, min(30, int(self.map_config.get('max_zoom', 26))))
+        self._zoom = max(1, min(self.max_zoom, int(self.map_config.get('zoom', 17))))
         self._tile_provider = MapTileProvider(self.map_config, self)
         self._tile_provider.tiles_changed.connect(self.update)
         self.setMinimumSize(260, 170)
@@ -250,8 +253,8 @@ class TrajectoryCanvas(QWidget):
         return self._zoom
 
     def set_zoom(self, zoom):
-        """地図縮尺を1段階から19段階に制限し、表示タイルを更新する。"""
-        zoom = max(1, min(19, int(zoom)))
+        """地図縮尺を設定上限まで変更する。tile取得の上限は独立して維持する。"""
+        zoom = max(1, min(self.max_zoom, int(zoom)))
         if zoom == self._zoom:
             return
         self._zoom = zoom
@@ -413,12 +416,15 @@ class TrajectoryCanvas(QWidget):
             self.geo_center[0], self.geo_center[1], zoom)
         left = center_x - self.width() / 2.0
         top = center_y - self.height() / 2.0
-        first_x = int(math.floor(left / 256.0))
-        last_x = int(math.floor((left + self.width() - 1) / 256.0))
-        first_y = int(math.floor(top / 256.0))
-        last_y = int(math.floor((top + self.height() - 1) / 256.0))
-        tile_count = 1 << zoom
-        visible_tiles = [(zoom, tile_x % tile_count, tile_y)
+        tile_zoom = min(zoom, self.tile_max_zoom)
+        enlargement = 1 << (zoom - tile_zoom)
+        tile_pixels = 256.0 * enlargement
+        first_x = int(math.floor(left / tile_pixels))
+        last_x = int(math.floor((left + self.width() - 1) / tile_pixels))
+        first_y = int(math.floor(top / tile_pixels))
+        last_y = int(math.floor((top + self.height() - 1) / tile_pixels))
+        tile_count = 1 << tile_zoom
+        visible_tiles = [(tile_zoom, tile_x % tile_count, tile_y)
                          for tile_x in range(first_x, last_x + 1)
                          for tile_y in range(first_y, last_y + 1)
                          if 0 <= tile_y < tile_count]
@@ -433,11 +439,13 @@ class TrajectoryCanvas(QWidget):
         image_count = 0
         for tile_x in range(first_x, last_x + 1):
             for tile_y in range(first_y, last_y + 1):
-                image = self._tile_provider.tile(zoom, tile_x, tile_y)
+                image = self._tile_provider.tile(tile_zoom, tile_x, tile_y)
                 if image is not None:
                     image_count += 1
-                    painter.drawImage(QPointF(tile_x * 256 - left,
-                                              tile_y * 256 - top), image)
+                    # scaled画像の巨大なallocationを避け、canvas clip内だけ描画する。
+                    painter.drawImage(QRectF(tile_x * tile_pixels - left,
+                                             tile_y * tile_pixels - top,
+                                             tile_pixels, tile_pixels), image)
 
         projected = []
         for latitude, longitude in self.gnss_points:
@@ -472,6 +480,8 @@ class TrajectoryCanvas(QWidget):
         source_text = self._tile_provider.source_summary
         painter.fillRect(QRectF(6, 6, min(self.width() - 12, 270), 24),
                          QColor(16, 24, 32, 210))
+        if enlargement > 1:
+            source_text += ' / 画像×{}'.format(enlargement)
         painter.drawText(12, 23, '{}  z{}'.format(source_text, zoom))
         attribution = self._tile_provider.attribution
         attribution_width = min(self.width() - 12, len(attribution) * 8 + 12)
@@ -658,10 +668,12 @@ class TelemetryPanel(QWidget):
         self.stick = JoystickCanvas()
         self.stick.set_deadzone(float(joystick_config.get('deadzone', 0.0)))
         right.addWidget(self.stick, 1)
-        self.stick_values = QLabel('X: --   Y: --')
-        self.stick_values.setAlignment(Qt.AlignCenter)
-        self.stick_values.setStyleSheet('font-size:9px;')
-        right.addWidget(self.stick_values)
+        self.speed = QLabel('--.- km/h')
+        self.speed.setAlignment(Qt.AlignCenter)
+        speed_font = QFont(self.speed.font())
+        speed_font.setPointSize(20)
+        self.speed.setFont(speed_font)
+        right.addWidget(self.speed)
         self.stick_mapping = QLabel('joystick設定を読み込み中')
         self.stick_mapping.setAlignment(Qt.AlignCenter)
         self.stick_mapping.setStyleSheet('font-size:9px; color:' + PALETTE['muted'])
@@ -712,18 +724,26 @@ class TelemetryPanel(QWidget):
         odom = self._fresh(snapshot, 'odometry')
         if odom:
             roll, pitch, yaw = odom['roll'], odom['pitch'], odom['yaw']
-            bearing = (90.0 - math.degrees(yaw)) % 360.0
-            cardinal = ('N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
-                        'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW')
-            direction = cardinal[int((bearing + 11.25) // 22.5) % 16]
             self.attitude.setText(
                 'Roll: {:+.1f}°  Pitch: {:+.1f}°\n'
-                'Yaw: ROS {:+.1f}° / 方位 {:.1f}° {}'.format(
+                'Odom yaw: {:+.1f}°（地球方位ではない）'.format(
                     math.degrees(roll), math.degrees(pitch), math.degrees(yaw),
-                    bearing, direction))
+                ))
             self.canvas.set_attitude(roll, pitch, yaw)
         else:
             self.attitude.setText('姿勢データ stale / 待受中')
+        # Odom姿勢と磁気コンパスを明示的に分離。未受信を「東0度」にしない。
+        from .magnetic_heading import cardinal
+        heading = self._fresh(snapshot, 'magnetic_heading')
+        if heading is None:
+            compass_text = '磁気方位: stale / 待受中'
+        elif heading['bearing'] is None:
+            compass_text = '磁気方位: 無効 / ' + heading['error']
+        else:
+            compass_text = '磁気方位: {:.1f}° {}（{}）'.format(
+                heading['bearing'], cardinal(heading['bearing']),
+                '補正設定済' if heading['calibrated'] else '未校正・参考値')
+        self.attitude.setText(self.attitude.text()+'\n'+compass_text)
         joy = self._fresh(snapshot, 'joy')
         joy_cfg = self.joystick_settings
         if joy_cfg['config_error']:
@@ -752,10 +772,15 @@ class TelemetryPanel(QWidget):
         mode_color = colors.get(mode, PALETTE['muted'])
         self.mode.setStyleSheet('font-size:16.5px; font-weight:bold; color:' + mode_color)
         self.stick.set_input(x_value, y_value, mode_color, mode)
-        if x_value is None or y_value is None:
-            self.stick_values.setText('X: --   Y: --')
-        else:
-            self.stick_values.setText('X: {:+.2f}   Y: {:+.2f}'.format(x_value, y_value))
+        # vxの符号を保持してm/sからkm/hへ換算する。後退は負値で示す。
+        # stale/非有限値を0 km/hと誤表示せず、受信待ち表示へ戻す。
+        wheel_odometry = self._fresh(snapshot, 'wheel_odometry')
+        vx = wheel_odometry.get('vx') if wheel_odometry else None
+        self.speed.setText('{:.1f} km/h'.format(vx * 3.6)
+                           if vx is not None and math.isfinite(vx) else '--.- km/h')
+        self.speed.setStyleSheet('font-weight:bold; color:' + mode_color)
+        self.speed.setToolTip('ホイールodometry vx × 3.6（後退は負値）'
+                              if vx is not None else 'ホイールodometry受信待ち / STALE')
 
     @staticmethod
     def _joy_axis(axes, index):
@@ -903,7 +928,7 @@ class LocalizationPanel(QWidget):
     def _update_zoom_controls(self, zoom):
         self.zoom_level.setText('z{}'.format(zoom))
         self.zoom_out_button.setEnabled(zoom > 1)
-        self.zoom_in_button.setEnabled(zoom < 19)
+        self.zoom_in_button.setEnabled(zoom < self.map.max_zoom)
 
     def _update_follow_button(self, following):
         self.follow_button.setChecked(following)

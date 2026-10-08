@@ -7,6 +7,8 @@
   <maintainer email="kazuho.kobayashi.ynu@gmail.com">kazuho</maintainer>
   <license>MIT</license>
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>pm_ui_common</exec_depend>
+  <exec_depend>pm_mission</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>

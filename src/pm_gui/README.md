@@ -68,3 +68,45 @@ Robot ManagerのROS interface、systemd unitの関係、Jetsonへの配置手順
 ## 現段階の表示範囲
 
 地図は設定されたtile URLから現在viewport内のXYZ tileだけを非同期取得し、cache headersに従って保存します。OSM標準tileを使うときはUser-Agentと画面内の attributionを設定し、先読みやエリア一括downloadは行いません。online時に実際に表示したtileは`~/.cache/pm_gui/osm`へ保存され、通信断後も再利用します。追加のoffline XYZ tileは`map.offline_tiles_dir`で指定できます。cacheにもoffline tileにも対象地域がない場合は、GNSS軌跡と緯度経度gridを表示します。初回から通信なしで道路画像を出すには、利用条件に沿った地域のoffline XYZ tileを同directoryへ用意してください。Vehicle ENABLE、emergency stop、joystick enableの操作機能は含みません。
+
+## Mission Planner
+
+タイトル右のMISSION PLANNERから独立した`pm_mission`を起動できます。
+経路編集・保存・UGVへの受領確認を行い、走行は開始しません。
+設定の`mission_planner.config`に任意のPlanner YAMLを指定できます。
+地図tile providerは`pm_ui_common`へ共通化し、既存importは維持しています。
+
+## 地図の拡大上限
+
+map.tile_max_zoomは取得tileの上限（19）、map.max_zoomは表示上限（26）です。
+Z19を超えた表示は取得済みtileの画像拡大です。車両・軌跡・pan・scale barは
+表示zoomを使います。画像拡大自体は地図の位置精度を向上させません。
+
+## 現在速度表示
+
+Joystickの円下にホイールodometryのvx × 3.6をkm/hで表示します。
+20ポイントでmodeと同じ色です。後退は負値、未受信・STALE・非有限値は
+`--.- km/h`とします。sourceはtopics.wheel_odometry（既定`/wheel/odometry`）、
+nav_msgs/Odometry.twist.twist.linear.xです。sensor QoSで購読します。
+# Wit磁気コンパス表示
+
+姿勢パネルの`Odom yaw`は`topics.odometry`（既定`/odometry/global`）の
+quaternionから求める相対姿勢であり、東西南北とは解釈しません。
+磁気方位は別欄で`/wit/mag`と`/wit/imu`から計算します。北0度・時計回り
+（東90度、南180度、西270度）です。未受信やstaleは待受表示、無効値は理由を
+表示し、欠測時に0度へ置き換えません。地図矢印と3Dモデルのyawは従来のodomを
+維持し、コンパス値をEKF・地図座標変換・走行制御へは入力しません。
+
+`/wit/imu`のroll/pitchだけで磁気ベクトルの傾斜を補償し、orientation yawは
+使いません。同じframeの新鮮なIMU姿勢が必要です。取付軸はx前方/y左/z上を
+仮定します。Witドライバは現状`/wit/mag`にraw register値を格納しているため、
+磁場のTesla単位には依存せず方向比だけを使います。ドライバのyaw -90度補正は
+この磁気方位計算には入りません。取付軸が異なる場合は正しいframeへの軸変換を
+先に行ってください（offsetだけで軸反転や3D取付姿勢を直すことはできません）。
+
+`gui.yaml`の`compass`でbias（磁気データと同じ単位）、軸別scale、方位offset、
+偏角を設定できます。偏角0なら磁北基準で、真北への補正は行いません。
+初期値は未校正・参考値と表示します。`calibrated=true`は補正設定済みという
+表示の切替にすぎず、品質を自動検証しません。一般のsoft-iron行列や磁気外乱の
+検出は未実装です。車体・モータ・電源配線の磁気影響があるため、実機で複数方向
+への回転と基準方位を用いた校正が必要です。
