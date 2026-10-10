@@ -65,6 +65,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-robot-localization \
     ros-foxy-tf2-tools \
     ros-foxy-rtcm-msgs \
+    ros-foxy-joy* \
+    ros-foxy-teleop* \
     ros-foxy-rosbag2-storage-mcap \
     ros-foxy-joint-state-publisher \
     ros-foxy-joint-state-publisher-gui \
