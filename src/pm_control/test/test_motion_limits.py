@@ -35,7 +35,8 @@ def make_control(alpha=1.0, yaw_cap=1.0):
     cls = next(n for n in ast.parse(source.read_text()).body
                if isinstance(n, ast.ClassDef) and n.name == 'VehicleInterfaceNode')
     names = {'map_joy_twist_to_vehicle_twist', 'clamp', 'reset_motion_limits',
-             'apply_motion_limits', 'motor_control'}
+             'apply_motion_limits', 'motor_control', 'joy_state_callback', 'joy_speed_limit',
+             'command_selector', 'cmd_vel_callback_joy'}
     body = [n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name in names]
     tree = ast.Module(body=[ast.ClassDef(name='Control', bases=[], keywords=[],
                                        body=body, decorator_list=[])], type_ignores=[])
@@ -43,12 +44,20 @@ def make_control(alpha=1.0, yaw_cap=1.0):
     exec(compile(ast.fix_missing_locations(tree), str(source), 'exec'), env)
     a = env['Control']()
     a.max_linear_speed, a.min_turn_radius = 1.0, 0.7
+    a.joy_normal_max_linear_speed = 1.0
+    a.joy_turbo_max_linear_speed = 2.0
+    a.autonomous_max_linear_speed = 1.0
+    a.joy_turbo_button = 1
+    a._joy_turbo_active = False
+    a._joy_state_received_at = None
     a.max_yaw_rate, a.max_yaw_accel = yaw_cap, alpha
     a.wheel_radius, a.tread_width, a.gear_ratio = 0.1016, 0.36, 10.0
     a.max_whl_rps = 4.0
     a.left_motor_sign, a.right_motor_sign = 1.0, -1.0
     a.joy_max_turn_angle_deg, a.joy_side_stop_angle_deg = 45.0, 80.0
     a.now_ns = 0
+    # Joyの鮮度判定も同じ制御時刻で再現し、実時間への依存をなくす。
+    env['time'] = SimpleNamespace(monotonic=lambda: a.now_ns * 1e-9)
     a.get_clock = lambda: SimpleNamespace(now=lambda: Stamp(a.now_ns))
     a.left_motor = SimpleNamespace(set_velocity=lambda value: setattr(a, 'left_sent', value))
     a.right_motor = SimpleNamespace(set_velocity=lambda value: setattr(a, 'right_sent', value))
@@ -58,12 +67,12 @@ def make_control(alpha=1.0, yaw_cap=1.0):
     return a
 
 
-def drive(a, v, w, dt=0.04):
+def drive(a, v, w, dt=0.04, speed_limit=None):
     """時刻を進めて速度指令を処理し、最終車輪指令の等価Twistを返す。"""
     a.now_ns += int(dt * 1e9)
     msg = Twist()
     msg.linear.x, msg.angular.z = v, w
-    a.motor_control(msg)
+    a.motor_control(msg, speed_limit)
     circumference = 2 * math.pi * a.wheel_radius
     left = a.left_cmd_rps / a.gear_ratio * circumference
     right = a.right_cmd_rps / a.gear_ratio * circumference
@@ -196,3 +205,92 @@ def test_clock_pause_backward_and_long_delay():
     assert drive(a, 1.0, 0.0, dt=0.0) == (0.0, 0.0)
     assert drive(a, 1.0, 0.0, dt=-0.04) == (0.0, 0.0)
     assert drive(a, 1.0, 0.0, dt=2.0)[0] == pytest.approx(0.07)
+
+
+@pytest.mark.parametrize('turbo, magnitude, expected', [
+    (False, 1.0, 1.0), (False, 2.0, 1.0), (True, 2.0, 2.0)])
+def test_turbo_mode_has_separate_straight_speed(turbo, magnitude, expected):
+    """直進の通常/Turboが別上限へ到達し、通常入力の過大値を丸める。"""
+    a = make_control()
+    a.max_linear_speed = 2.0
+    msg = Twist()
+    msg.linear.x = magnitude
+    for _ in range(120):
+        a.joy_state_callback(SimpleNamespace(buttons=[0, int(turbo)]))
+        limit = a.joy_speed_limit()
+        mapped = a.map_joy_twist_to_vehicle_twist(msg, limit)
+        v, _ = drive(a, mapped.linear.x, mapped.angular.z, speed_limit=limit)
+    assert v == pytest.approx(expected)
+
+
+def test_normal_diagonal_is_not_turbo():
+    """Twistのノルムが1を超えても明示的なボタンなしで通常上限を超えない。"""
+    a = make_control()
+    a.max_linear_speed = 2.0
+    msg = Twist()
+    msg.linear.x, msg.angular.z = 1.0, 0.4
+    mapped = a.map_joy_twist_to_vehicle_twist(msg, a.joy_speed_limit())
+    assert mapped.linear.x == 1.0
+
+
+def test_turbo_release_stale_and_missing_button_fall_back():
+    """Turbo解除・古いJoy・欠損/無効ボタンで通常上限へ戻す。"""
+    a = make_control()
+    a.max_linear_speed = 2.0
+    assert a.joy_speed_limit() == 1.0
+    a.joy_state_callback(SimpleNamespace(buttons=[0, 1]))
+    assert a.joy_speed_limit() == 2.0
+    a.now_ns += 300_000_000
+    assert a.joy_speed_limit() == 1.0
+    for buttons in ([0, 0], []):
+        a.joy_state_callback(SimpleNamespace(buttons=buttons))
+        assert a.joy_speed_limit() == 1.0
+    a.joy_turbo_button = -1
+    a.joy_state_callback(SimpleNamespace(buttons=[1, 1]))
+    assert a.joy_speed_limit() == 1.0
+
+
+def test_turbo_release_caps_previous_fast_command():
+    """解除直後に、速度ランプや残ったTurboのTwistより通常上限を優先する。"""
+    a = make_control()
+    a.max_linear_speed = 2.0
+    for _ in range(100):
+        drive(a, 2.0, 0.0, speed_limit=2.0)
+    assert a.prev_linear_speed_cmd == 2.0
+    v, _ = drive(a, 2.0, 0.0, speed_limit=1.0)
+    assert v == 1.0
+
+
+def test_autonomous_speed_remains_normal_when_turbo_ceiling_increases():
+    """共通上限2 m/sでも自律指令の選択では従来の1 m/sを維持する。"""
+    a = make_control()
+    a.max_linear_speed = 2.0
+    a._emergency_stop_active = False
+    a._drive_armed = True
+    a.last_cmd_vel_joy = None
+    a.last_cmd_vel_time = Stamp(0)
+    a.last_cmd_vel = Twist()
+    a.last_cmd_vel.linear.x = 2.0
+    captured = []
+    a.motor_control = lambda cmd, limit: captured.append((cmd, limit))
+    a.command_selector()
+    assert captured == [(a.last_cmd_vel, 1.0)]
+
+
+def test_selector_rechecks_turbo_state_for_cached_twist():
+    """最新Joyで変換をやり直し、同じTwistの保持中にもTurbo解除を反映する。"""
+    a = make_control()
+    a.max_linear_speed = 2.0
+    a._emergency_stop_active = False
+    a._drive_armed = True
+    a.last_cmd_vel = None
+    msg = Twist()
+    msg.linear.x = 2.0
+    a.cmd_vel_callback_joy(msg)
+    captured = []
+    a.motor_control = lambda cmd, limit: captured.append((cmd.linear.x, limit))
+    a.joy_state_callback(SimpleNamespace(buttons=[0, 1]))
+    a.command_selector()
+    a.joy_state_callback(SimpleNamespace(buttons=[0, 0]))
+    a.command_selector()
+    assert captured == [(2.0, 2.0), (1.0, 1.0)]

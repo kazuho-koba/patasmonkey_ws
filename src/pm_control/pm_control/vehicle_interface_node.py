@@ -1,6 +1,8 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from sensor_msgs.msg import Joy
+from rclpy.qos import qos_profile_sensor_data
 from std_msgs.msg import Bool, String
 from pm_msgs.msg import MotorState
 from rclpy.time import Time
@@ -22,7 +24,12 @@ class VehicleInterfaceNode(Node):
         self.declare_parameter("tread_width", 0.36)
         self.declare_parameter("gear_ratio", 10.0)
         self.declare_parameter("max_whl_rps", 4.0)
-        self.declare_parameter("max_linear_speed", 1.0)  # 車体中心の速度上限 [m/s]
+        self.declare_parameter("max_linear_speed", 1.0)  # 全モードの絶対速度上限 [m/s]
+        self.declare_parameter("joy_normal_max_linear_speed", 1.0)
+        self.declare_parameter("joy_turbo_max_linear_speed", 2.0)
+        self.declare_parameter("autonomous_max_linear_speed", 1.0)
+        self.declare_parameter("joy_state_topic", "/pm/joy")
+        self.declare_parameter("joy_turbo_button", 1)
 
         self.declare_parameter("odrv_usb_port", "/dev/ttyACM0")
         self.declare_parameter("odrv_baud_rate", 115200)
@@ -145,9 +152,21 @@ class VehicleInterfaceNode(Node):
         )
 
         self.max_linear_speed = float(self.get_parameter("max_linear_speed").value)
+        self.joy_normal_max_linear_speed = float(
+            self.get_parameter("joy_normal_max_linear_speed").value)
+        self.joy_turbo_max_linear_speed = float(
+            self.get_parameter("joy_turbo_max_linear_speed").value)
+        self.autonomous_max_linear_speed = float(
+            self.get_parameter("autonomous_max_linear_speed").value)
+        self.joy_state_topic = str(self.get_parameter("joy_state_topic").value)
+        self.joy_turbo_button = int(self.get_parameter("joy_turbo_button").value)
+        self._joy_turbo_active = False
+        self._joy_state_received_at = None
         # 不正な寸法・閾値を接続前に拒否し、ゼロ除算や内側車輪の逆転を避ける。
         positive = (self.wheel_radius, self.tread_width, self.gear_ratio,
-                    self.max_whl_rps, self.max_linear_speed, self.min_turn_radius)
+                    self.max_whl_rps, self.max_linear_speed, self.min_turn_radius,
+                    self.joy_normal_max_linear_speed, self.joy_turbo_max_linear_speed,
+                    self.autonomous_max_linear_speed)
         if any(not math.isfinite(value) or value <= 0.0 for value in positive):
             raise ValueError("Vehicle geometry and speed limits must be finite and positive")
         if self.min_turn_radius <= self.tread_width / 2.0:
@@ -192,6 +211,10 @@ class VehicleInterfaceNode(Node):
         self.last_cmd_vel_joy = None
         self.last_cmd_vel_joy_time = None
 
+        # Twistだけでは通常の斜め入力とTurboを区別できないため、既存Joyのボタンを監視する。
+        # sensor QoSはbest_effort/reliable双方のJoy publisherから受信できる。
+        self.create_subscription(Joy, self.joy_state_topic,
+                                 self.joy_state_callback, qos_profile_sensor_data)
         # subscriber config
         self.create_subscription(Twist, self.cmd_vel_topic, self.cmd_vel_callback, 10)
         self.create_subscription(
@@ -286,7 +309,7 @@ class VehicleInterfaceNode(Node):
     def cmd_vel_callback_joy(self, msg):
         """
         callback function when /cmd_vel_joy from gamepad has been received.
-        joy_teleop由来のTwistを、車両制約を考慮したTwistに変換して保存する。
+        joy_teleop由来の生Twistと鮮度を保存し、中立インターロックを更新する。
         """
         # 車両変換後のゼロは真横入力でも発生するため、生Twistの中立だけを使う。
         values = (float(msg.linear.x), float(msg.angular.z))
@@ -294,10 +317,27 @@ class VehicleInterfaceNode(Node):
             self._neutral_received_at = time.monotonic()
         else:
             self._neutral_received_at = None
-        self.last_cmd_vel_joy = self.map_joy_twist_to_vehicle_twist(msg)
+        # 元のTwistを保持し、制御周期ごとに最新のボタン状態で変換する。
+        # ボタンを離した後も古いTurbo変換済み指令が残ることを避ける。
+        self.last_cmd_vel_joy = msg
         self.last_cmd_vel_joy_time = self.get_clock().now()
 
-    def map_joy_twist_to_vehicle_twist(self, msg):
+    def joy_state_callback(self, msg):
+        """既存JoyのTurboボタンと受信時刻を保持する。欠損・無効番号は通常扱い。"""
+        index = self.joy_turbo_button
+        self._joy_turbo_active = (
+            0 <= index < len(msg.buttons) and bool(msg.buttons[index]))
+        self._joy_state_received_at = time.monotonic()
+
+    def joy_speed_limit(self):
+        """直近0.3秒の明示的なTurbo入力だけで高速側を許可する。"""
+        received = self._joy_state_received_at
+        if (self._joy_turbo_active and received is not None
+                and 0.0 <= time.monotonic() - received < 0.3):
+            return min(self.max_linear_speed, self.joy_turbo_max_linear_speed)
+        return min(self.max_linear_speed, self.joy_normal_max_linear_speed)
+
+    def map_joy_twist_to_vehicle_twist(self, msg, speed_limit=None):
         """
         joy_teleop由来のTwistを、車両的なTwistに変換する。
 
@@ -322,7 +362,10 @@ class VehicleInterfaceNode(Node):
         # 入力の異常値は停止扱いとし、通常・turbo・斜め入力を共通速度上限内に収める。
         if not (math.isfinite(x) and math.isfinite(y)):
             return out
-        r = min(math.hypot(x, y), self.max_linear_speed)
+        # modeごとの上限でノルムを丸め、通常の斜め入力をTurboと誤判定しない。
+        if speed_limit is None:
+            speed_limit = self.joy_normal_max_linear_speed
+        r = min(math.hypot(x, y), speed_limit, self.max_linear_speed)
 
         # joy_teleop側でdeadzoneを処理する前提。
         # ここでは数値誤差レベルのみ停止扱いにする。
@@ -404,12 +447,15 @@ class VehicleInterfaceNode(Node):
                 return
             now = self.get_clock().now()
             cmd = None
+            speed_limit = min(self.max_linear_speed, self.autonomous_max_linear_speed)
 
             # prioritize /cmd_vel_joy from gamepad
             if self.last_cmd_vel_joy is not None:
                 # check the command's newness
                 if (now - self.last_cmd_vel_joy_time).nanoseconds < 0.3 * 1e9:
-                    cmd = self.last_cmd_vel_joy
+                    speed_limit = self.joy_speed_limit()
+                    cmd = self.map_joy_twist_to_vehicle_twist(
+                        self.last_cmd_vel_joy, speed_limit)
 
             # use /cmd_vel when no joy cmd received
             if cmd is None and self.last_cmd_vel is not None:
@@ -418,7 +464,7 @@ class VehicleInterfaceNode(Node):
                     cmd = self.last_cmd_vel
 
             # control motor:
-            self.motor_control(cmd)
+            self.motor_control(cmd, speed_limit)
 
         except Exception as e:
             self.get_logger().error(f"Exception in command_selector: {e}")
@@ -429,7 +475,7 @@ class VehicleInterfaceNode(Node):
         self.prev_yaw_rate_cmd = 0.0
         self.prev_yaw_rate_time = self.get_clock().now()
 
-    def apply_motion_limits(self, lin_x, ang_z):
+    def apply_motion_limits(self, lin_x, ang_z, speed_limit=None):
         """曲率とyaw制約から速度を適応的に落とし、速度とyawを独立に平滑化する。
 
         入力は車体中心速度[m/s]とyawレート[rad/s]。目標曲率を保持した定常速度を
@@ -439,6 +485,9 @@ class VehicleInterfaceNode(Node):
         """
         eps = 1e-6
         lin_x, ang_z = float(lin_x), float(ang_z)
+        # mode上限は絶対上限以下。Turbo解除時は速度ランプより通常上限を優先する。
+        speed_limit = (self.max_linear_speed if speed_limit is None
+                       else min(self.max_linear_speed, speed_limit))
         now = self.get_clock().now()
         if not (math.isfinite(lin_x) and math.isfinite(ang_z)) or abs(lin_x) < eps:
             self.reset_motion_limits()
@@ -452,7 +501,7 @@ class VehicleInterfaceNode(Node):
         curvature = self.clamp(ang_z / lin_x,
                                -1.0 / self.min_turn_radius,
                                1.0 / self.min_turn_radius)
-        target_v = self.clamp(lin_x, -self.max_linear_speed, self.max_linear_speed)
+        target_v = self.clamp(lin_x, -speed_limit, speed_limit)
         if self.max_yaw_rate > 0.0:
             # p=4の滑らかな最小値。直進では減速せず、曲率が強いほど
             # |v|をmax_yaw_rate/|curvature|以下へ滑らかに近づける。
@@ -467,7 +516,7 @@ class VehicleInterfaceNode(Node):
                                self.prev_linear_speed_cmd + delta_v)
         else:
             lin_x = target_v
-        lin_x = self.clamp(lin_x, -self.max_linear_speed, self.max_linear_speed)
+        lin_x = self.clamp(lin_x, -speed_limit, speed_limit)
 
         target_w = lin_x * curvature
         if self.max_yaw_rate > 0.0:
@@ -490,7 +539,7 @@ class VehicleInterfaceNode(Node):
         self.prev_yaw_rate_time = now
         return lin_x, ang_z
 
-    def motor_control(self, cmd):
+    def motor_control(self, cmd, speed_limit=None):
         """Twist[m/s, rad/s]を左右モータ回転数[rps]へ変換して送る。
 
         車体制約、差動駆動変換、車輪回転数上限の順で処理する。最終車輪指令から
@@ -502,7 +551,7 @@ class VehicleInterfaceNode(Node):
             ang_z = float(cmd.angular.z)  # yaw rate command
 
             # 車両運動制約を適用
-            lin_x, ang_z = self.apply_motion_limits(lin_x, ang_z)
+            lin_x, ang_z = self.apply_motion_limits(lin_x, ang_z, speed_limit)
 
             wheel_perimeter = self.wheel_radius * 2.0 * math.pi
 
@@ -607,27 +656,10 @@ class VehicleInterfaceNode(Node):
                 self.right_motor_sign * self.right_motor.get_velocity()
             )
 
-            
-            # q軸電流 [A]　実績
-            # （符号も車体座標系に合わせるなら motor_sign を掛けるべき？）
-            msg.left_iq_measured_a = float(self.left_motor.get_iq_measured())
-            msg.right_iq_measured_a = float(
-                self.right_motor_sign * self.right_motor.get_iq_measured()
-            )
-            # q軸電流 [A]　指令値
-            msg.left_iq_setpoint_a = float(
-                self.left_motor_sign * self.left_motor.get_iq_setpoint()
-            )
-            msg.right_iq_setpoint_a = float(
-                self.right_motor_sign * self.right_motor.get_iq_setpoint()
-            )
-            '''
-            # USBの速度がたりないので一度計測対象外にする
-            msg.left_iq_measured_a = 0.0
-            msg.right_iq_measured_a = 0.0
-            msg.left_iq_setpoint_a = 0.0
-            msg.right_iq_setpoint_a = 0.0
-            '''
+            # 左右軸が共有するODrive全体のDC入力電流を、30 Hzのpublishごとに1回読む。
+            # 消費/回生の符号をそのまま保持し、motor_signを掛けたり左右加算したりしない。
+            # stampは上記の位置取得代表時刻であり、電流の厳密な個別取得時刻ではない。
+            msg.ibus_a = float(self.left_motor.get_bus_current())
 
             # 電源電圧
             # ODriveからの実読出しは1 Hzに抑え、それ以外の周期では直近値を再利用する。
@@ -701,6 +733,11 @@ class VehicleInterfaceNode(Node):
             ("gear_ratio", self.gear_ratio),
             ("max_whl_rps", self.max_whl_rps),
             ("max_linear_speed", self.max_linear_speed),
+            ("joy_normal_max_linear_speed", self.joy_normal_max_linear_speed),
+            ("joy_turbo_max_linear_speed", self.joy_turbo_max_linear_speed),
+            ("autonomous_max_linear_speed", self.autonomous_max_linear_speed),
+            ("joy_state_topic", self.joy_state_topic),
+            ("joy_turbo_button", self.joy_turbo_button),
             ("odrv_usb_port", self.odrv_usb_port),
             ("odrv_baud_rate", self.odrv_baud_rate),
             ("mtr_axis_l", self.mtr_axis_l),

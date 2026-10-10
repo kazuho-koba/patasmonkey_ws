@@ -6,9 +6,9 @@ joy_teleop:
     axis_linear:
       x: 1  # assign forward/backward of left stick to linear.x
     scale_linear:
-      x: 1.0  # max speed 0.5 m/s
+      x: 1.0  # 通常の前後指令倍率（最大1.0 m/s）
     scale_linear_turbo:
-      x: 2.0  # max speed at turbo mode 1.0 m/s
+      x: 2.0  # Turboの前後指令倍率（最大2.0 m/s）
 
     axis_angular:
       yaw: 0  # assign left/right of left stick to angular.z
@@ -17,4 +17,4 @@ joy_teleop:
     scale_angular_turbo:
       yaw: 2.0  # max yaw rate at turbo mode 2.0 rad/s
 
-    enable_turbo_button: 1  # button for turbo mode (L1 button)
+    enable_turbo_button: 1  # Turboボタン番号。物理ボタン配置は機種依存。vehicle_control.yamlと揃える。

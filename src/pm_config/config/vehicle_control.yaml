@@ -53,9 +53,18 @@ vehicle_interface_node:
     #
     min_turn_radius: 0.7
 
-    # 車体中心の速度上限 [m/s]。手動・turbo・自律指令へ共通適用する。
-    # turbo倍率2.0でもこの上限を超えない。上げる場合は走行条件に合わせて設定する。
-    max_linear_speed: 1.0
+    # 全モードに共通する車体中心の絶対速度上限 [m/s]。
+    # 通常・Turbo・自律を分け、通常の斜め入力でも通常上限を超えない。
+    max_linear_speed: 2.0
+    joy_normal_max_linear_speed: 1.0
+    joy_turbo_max_linear_speed: 2.0
+    autonomous_max_linear_speed: 1.0
+
+    # Twistにはmode情報がないため、既存JoyのボタンでTurboを明示的に判定する。
+    # ボタン番号はpm_teleop/config/teleop_twist_joy.yamlのenable_turbo_buttonと揃える。
+    # Joy未受信・0.3秒以上古い場合は通常モードへ戻す。
+    joy_state_topic: "/pm/joy"
+    joy_turbo_button: 1
 
     # 最大ヨーレート [rad/s]
     #

@@ -79,13 +79,13 @@ class MotorController:
         pos = self.axis.encoder.pos_estimate
         return pos
   
-    def get_iq_measured(self):
-        """Get measured q-axis motor current [A]."""
-        return self.axis.motor.current_control.Iq_measured
+    def get_bus_current(self):
+        """ボード全体の推定DC入力電流[A]。正は消費、負は電源への回生。
 
-    def get_iq_setpoint(self):
-        """Get q-axis motor current setpoint [A]."""
-        return self.axis.motor.current_control.Iq_setpoint
+        軸別のIqではなく、左右軸とブレーキ抵抗を含むodrive.ibusを読む。
+        同じボードの左右から重複取得・加算せず、回転方向の補正も行わない。
+        """
+        return self.odrive.ibus
 
     def set_velocity(self, velocity):
         """Set target velocity [rps]."""
