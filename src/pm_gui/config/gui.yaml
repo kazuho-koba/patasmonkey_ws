@@ -17,6 +17,7 @@ operator_console:
       stale_timeout_sec: 2.0
       odometry: /odometry/global
       wheel_odometry: /wheel/odometry
+      motor_state: /motor_state
       joy: /pm/joy
       gnss_fix: /fix
       navpvt: /navpvt
@@ -29,6 +30,32 @@ operator_console:
       offset_deg: 0.0
       declination_deg: 0.0
       calibrated: false
+    battery:
+      model: BL1860B
+      parallel_packs: 2
+      capacity_ah_per_pack: 6.0
+      stale_timeout_sec: 3.0
+      smoothing_time_constant_sec: 5.0
+      # 停止5秒後に電圧基準を更新。走行中は正のibusをAh積算し、負電流は無視。
+      rest_settle_sec: 5.0
+      stationary_command_rps: 0.001
+      stationary_velocity_rps: 0.1
+      # メーカー保証の閾値ではなく、5S Li-ionを仮定した運用上の注意目安。
+      low_voltage_v: 17.0
+      critical_voltage_v: 16.0
+      high_voltage_v: 21.3
+      # 汎用の参考曲線 [pack電圧V, 残量%]。BL1860B実測の校正表ではない。
+      voltage_soc_curve:
+        - [16.0, 0.0]
+        - [16.5, 5.0]
+        - [17.5, 10.0]
+        - [18.0, 20.0]
+        - [18.5, 35.0]
+        - [19.0, 50.0]
+        - [19.5, 65.0]
+        - [20.0, 80.0]
+        - [20.5, 90.0]
+        - [21.0, 100.0]
     joystick:
       config_package: pm_teleop
       teleop_config: config/teleop_twist_joy.yaml
@@ -38,7 +65,9 @@ operator_console:
         x: -1.0
         y: 1.0
     camera:
-      topic: /oak/color/image_raw
+      # raw画像の遠隔購読はOAK publishを滞らせ得る。表示専用JPEGだけを受信する。
+      topic: /oak/preview/image/compressed
+      transport: compressed
     attitude:
       urdf_path: ""
       pixels_per_meter: 240.0

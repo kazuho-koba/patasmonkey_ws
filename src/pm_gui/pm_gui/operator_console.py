@@ -179,7 +179,7 @@ class OperatorWindow(QMainWindow):
     def _apply_initial_split_sizes(self):
         self._set_split_ratio(self._dashboard_splitter, (3, 2))
         self._set_split_ratio(self._left_splitter, (3, 1))
-        self._set_split_ratio(self._telemetry_splitter, (1, 1))
+        self._set_split_ratio(self._telemetry_splitter, (1, 3, 4))
         self._set_split_ratio(self._right_splitter, (2, 1))
 
     def _open_mission_planner(self):

@@ -157,7 +157,16 @@ class RobotManager(Node):
                 ' '.join(command), error)) from error
 
     def _unit_state(self, component):
-        result = self._systemctl('is-active', self.units[component])
+        # 読み取りだけの一時的なprocess起動失敗・timeoutで走行開始を取消さない。
+        # start/stopは再発行せず、状態照会だけを最大3回、0.25秒間隔で試す。
+        for attempt in range(3):
+            try:
+                result = self._systemctl('is-active', self.units[component])
+                break
+            except (OSError, RuntimeError, subprocess.TimeoutExpired):
+                if attempt == 2:
+                    raise
+                time.sleep(0.25)
         state = result.stdout.strip()
         if component == 'vehicle':
             with self._lock:
@@ -173,7 +182,7 @@ class RobotManager(Node):
                     self._errors[component] = 'systemd unitがfailed状態です'
                 elif unit_state == 'unknown':
                     self._errors[component] = 'systemd unit状態を取得できません'
-            except (OSError, subprocess.TimeoutExpired) as exc:
+            except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
                 self._states[component] = 'ERROR'
                 self._errors[component] = 'systemd状態を取得できません: {}'.format(exc)
 
@@ -297,8 +306,12 @@ class RobotManager(Node):
                     error = 'systemd unitがfailed状態です'
                 elif unit_state == 'unknown':
                     error = 'systemd unit状態を取得できません'
-                self._set_component(component, state, error)
-        except (OSError, subprocess.TimeoutExpired) as exc:
+                with self._lock:
+                    # 状態照会中に走行workerが開始した場合も、WAITを古い観測で上書きしない。
+                    if component == 'vehicle' and self._vehicle_operation is not None:
+                        continue
+                    self._set_component(component, state, error)
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
             self.get_logger().warning(
                 'systemd unit監視に失敗しました: {}\n{}'.format(exc, traceback.format_exc()))
         finally:
@@ -439,21 +452,28 @@ class RobotManager(Node):
     def _start_vehicle(self):
         if self._unit_state('core') != 'active':
             raise RuntimeError('Coreがactiveではありません')
-        if self._unit_state('vehicle') == 'active':
-            self._set_component('vehicle', 'RUNNING', '')
-            return
-        # 古いCoreや手動launchとの重複起動を拒否する。既存processは勝手に停止しない。
-        nodes = {name for name, namespace in self.get_node_names_and_namespaces()}
-        if nodes.intersection({'vehicle_interface_node', 'joy_teleop'}):
-            raise RuntimeError('管理外の走行nodeが存在します。Coreの旧設定や手動launchを確認してください')
+        unit_state = self._unit_state('vehicle')
+        if unit_state == 'failed':
+            # 所有するunitだけを正常停止する。failedを理由に残プロセスを放置しない。
+            self._stop_vehicle()
+            unit_state = 'inactive'
+        if unit_state not in ('inactive', 'active'):
+            raise RuntimeError('走行unitの開始前状態を確認できません: '+unit_state)
+        if unit_state == 'inactive':
+            # SIGTERM終了後はDDSのnode情報だけが遅れて消えることがある。
+            # STARTINGを維持して消失を待つ。実際の管理外processは停止も無視もしない。
+            self._wait_vehicle_nodes_gone(self.startup_timeout)
         started = time.monotonic()
-        with self._lock:
-            self._vehicle_stamp = None
-            self._vehicle_detail = {}
-        result = self._systemctl('start', '--no-block', self.units['vehicle'], timeout=10.0)
-        if result.returncode != 0:
-            raise RuntimeError(result.stderr.strip() or '走行用unitの開始に失敗しました')
+        if unit_state == 'inactive':
+            with self._lock:
+                self._vehicle_stamp = None
+                self._vehicle_detail = {}
         try:
+            if unit_state == 'inactive':
+                # start受付後のtimeoutも停止対象に含め、遅れて起動するprocessを残さない。
+                result = self._systemctl('start', '--no-block', self.units['vehicle'], timeout=10.0)
+                if result.returncode != 0:
+                    raise RuntimeError(result.stderr.strip() or '走行用unitの開始に失敗しました')
             self._wait_for_unit('vehicle', 'active', self.startup_timeout)
             # systemd activeだけではUSB接続成功を保証しない。新しい接続statusを待つ。
             while time.monotonic()-started < self.startup_timeout:
@@ -461,30 +481,51 @@ class RobotManager(Node):
                     raise RuntimeError('走行用launchが終了しました')
                 with self._lock:
                     stamp, detail = self._vehicle_stamp, dict(self._vehicle_detail)
-                if (stamp is not None and stamp >= started
+                if (stamp is not None and (unit_state == 'active' or stamp >= started)
                         and time.monotonic()-stamp <= 3.0 and detail.get('connected')):
                     self._set_component('vehicle', 'RUNNING', '')
                     return
                 time.sleep(0.25)
             raise RuntimeError('ODrive接続statusの待受がtimeoutしました')
-        except Exception:
+        except Exception as start_error:
             # 起動失敗後に遅れてモーター制御が始まるprocessを残さない。
-            self._stop_vehicle()
+            try:
+                self._stop_vehicle()
+            except Exception as stop_error:
+                raise RuntimeError('走行開始失敗: {}; 停止確認失敗: {}'.format(
+                    start_error, stop_error)) from start_error
             raise
+
+    def _wait_vehicle_nodes_gone(self, timeout_sec):
+        """ROS graph上の制御node消失を待つ。期限を過ぎても重複起動は許可しない。"""
+        deadline = time.monotonic() + timeout_sec
+        while True:
+            nodes = {'{}/{}'.format(namespace.rstrip('/'), name)
+                     for name, namespace in self.get_node_names_and_namespaces()
+                     if name in ('vehicle_interface_node', 'joy_teleop')}
+            if not nodes:
+                return
+            if time.monotonic() >= deadline:
+                raise RuntimeError('走行nodeの消失待ちがtimeoutしました: {}。'
+                                   '管理外launchまたは停止後のROS通信情報を確認してください'.format(
+                                       ', '.join(sorted(nodes))))
+            time.sleep(0.25)
 
     def _stop_vehicle(self):
         """速度変換とvehicle interfaceへSIGINTを送り、IDLE処理後の終了を待つ。"""
         state = self._unit_state('vehicle')
-        if state == 'inactive':
-            self._set_component('vehicle', 'STOPPED', '')
-            return
-        if state in ('failed', 'unknown'):
-            # failedでも停止timeoutでprocessが残る場合があるため、OFF成功に見せない。
+        if state == 'unknown':
             raise RuntimeError('走行unitの正常停止を確認できません: '+state)
-        result = self._systemctl('stop', self.units['vehicle'],
-                                 timeout=self.shutdown_timeout+5.0)
-        if result.returncode != 0 or self._unit_state('vehicle') != 'inactive':
-            raise RuntimeError(result.stderr.strip() or '走行用launchの正常終了を確認できません')
+        if state != 'inactive':
+            result = self._systemctl('stop', self.units['vehicle'],
+                                     timeout=self.shutdown_timeout+5.0)
+            if result.returncode != 0 or self._unit_state('vehicle') != 'inactive':
+                raise RuntimeError(result.stderr.strip() or '走行用launchの正常終了を確認できません')
+        # unit停止だけでSTARTを再許可せず、ROS graphへの終了通知も待つ。
+        self._wait_vehicle_nodes_gone(self.shutdown_timeout)
+        with self._lock:
+            self._vehicle_stamp = None
+            self._vehicle_detail = {}
         self._set_component('vehicle', 'STOPPED', '')
 
     def _bag_start_request(self, profile, _request, response):
@@ -884,7 +925,7 @@ class RobotManager(Node):
     def _safe_unit_state(self, component):
         try:
             return self._unit_state(component)
-        except (OSError, subprocess.TimeoutExpired):
+        except (OSError, RuntimeError, subprocess.TimeoutExpired):
             return 'unknown'
 
 

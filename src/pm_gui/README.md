@@ -6,6 +6,16 @@ Patasmonkey UGVのROS 2 Foxy用操縦・監視GUIです。Qt画面とROS callbac
 
 ## 起動
 
+通常のカメラ表示は `/oak/preview/image/compressed`（CompressedImage）を
+BEST_EFFORT・履歴1で受信します。Jetsonの `oak_preview_node` が最大5 Hz、幅160 px、
+JPEG quality50に変換し、OAK本体とは別プロセスで配信します。元の画像はVIO／mapper／
+bag向けに保持されるため、遠隔表示目的で `/oak/color/image_raw` を購読しないでください。
+新しい設定を使うにはGUIを再起動してください。
+
+`camera.transport: compressed` と `camera.topic` でJPEG入力を指定します。
+既存bagを直接確認するmock設定などでは `camera.transport: raw`（省略時もraw）と
+原画像topicを指定できます。GUIのON/OFFはsubscriberの生成／破棄を行います。
+
 Foxy container内でworkspaceをbuildし、overlayをsourceした後に起動します。
 
 ```bash
@@ -53,7 +63,7 @@ GNSS品質は`/navpvt`の`FLAGS_GNSS_FIX_OK`、`fix_type`、carrier phase flags�
 
 現行localization設定の`heading_initializer.yaml`にある`yaw_correction_radians`は`0.0`です。関連READMEではこれは実機校正済み値ではないとされています。GUIの見た目だけでlocalization補正値を変更せず、姿勢表示は`/odometry/global`が出す姿勢をそのまま使用します。必要な場合は`attitude.urdf_path`で別のURDFファイルを指定できます。
 
-OAK-D camera displayをONにした間だけ`/oak/color/image_raw`をBEST_EFFORT、queue depth 1でsubscribeします。このQoSはBEST_EFFORT publisherとRELIABLE publisherの両方から受信できます。OFFではGUI側subscriptionを破棄します。camera driverや他nodeのpipelineには操作を送りません。画面上部のcamera statusには状態、topic、最終受信時間、callback数、cv_bridge変換数・エラー数、Qt描画更新数を表示します。
+OAK-D camera displayをONにした間だけ、設定されたcamera topicをBEST_EFFORT、queue depth 1でsubscribeします。通常は表示専用JPEG、bag再生用mock設定は原画像です。このQoSはBEST_EFFORT publisherとRELIABLE publisherの両方から受信できます。OFFではGUI側subscriptionを破棄します。camera driverや他nodeのpipelineには操作を送りません。画面上部のcamera statusには状態、topic、最終受信時間、callback数、cv_bridge変換数・エラー数、Qt描画更新数を表示します。
 
 Docker imageには`fonts-noto-cjk`を含め、Qtの標準fontにNoto Sans CJK JPを設定します。
 
@@ -138,3 +148,87 @@ PM_GUI_CONFIG=/workspaces/patasmonkey_ws/src/pm_gui/config/gui_mock.yaml \
 
 mockのCoreを先に起動すると、左のSTARTを操作できる。
 mockは実機やモーターを操作せず、Core再起動後は走行許可OFFへ戻る。
+
+## BL1860B並列電源の残量推定
+
+左下のBATTERYパネルは`pm_msgs/msg/MotorState`の`vbus_voltage`と`ibus_a`を使う。
+購読先は`topics.motor_state`（既定`/motor_state`）、QoSはsensor data。
+電池外形・残量バー・概算%・実測V・電圧警告をセットで表示する。
+下段は左から電池、車体姿勢、走行許可/joystickを1:3:4の初期比率で配置し、
+splitterによる幅調整とwindowのサイズ変更も維持する。
+
+### 停止中の電圧基準
+
+両軸の指令と実回転がゼロ付近の場合を停止とし、連続5秒後から電圧基準を更新する。
+電圧は停止区間だけで指数平滑化（既定の時定数5秒）し、YAMLの電圧/SOC表を区間線形補間する。
+走行中の負荷電圧はこの基準へ混ぜない。初回の停止中受信は暫定電圧基準として表示する。
+停止直後の5秒間は直前の推定を保ち、整定後は電圧推定へ再校正するので、停止後に%が補正される場合がある。
+5秒は運用上の整定時間であり、厳密な無負荷OCVや電気化学的平衡を保証しない。
+
+マキタのBL1860B資料は18V、6.0AhのLi-ion電池と説明している。
+2個並列の共通電源は18V系であり、公称容量の合計を12Ahとして扱う。
+各電池の残量や接続状態は、共通busのV/Aだけでは区別できない。
+
+BL1860Bのメーカー校正済み電圧/SOC曲線や放電停止電圧は公開資料から確認できなかった。
+5直列Li-ionを仮定した汎用の目安曲線であり、メーカー実測の校正表ではない。
+参考セルの公称3.6V・充電終止4.2Vを参照しているが、そのセルがBL1860Bに搭載されているとは主張しない。
+16〜21Vを0〜100%へ割り当て、途中の点もYAMLで変更できる暫定的な近似である。
+0%は物理的な完全放電を意味しない。負荷・温度・劣化・配線損失による誤差がある。
+
+### 走行中の正のIbus積算
+
+停止中に得た最後の残量を基点に、次の式で走行消費分を引く。
+
+```text
+容量Ah = capacity_ah_per_pack × parallel_packs
+消費Ah = max(ibus_a, 0) × サンプル間隔秒 / 3600
+残量% = clamp(直前の残量% − 100 × 消費Ah / 容量Ah, 0, 100)
+```
+
+直近電流をそのサンプル区間の代表とする矩形積分で、低い走行電圧から%を再計算しない。
+負のIbusはゼロとして扱い、回生で残量を増やさない。ODrive全体のbus電流なので、左右分として二重加算しない。
+停止整定後に基準電圧を更新するたび、基準以降の走行消費Ahをリセットする。
+実測電圧、基準電圧、積算Ah、設定容量、Ibusは表示とtooltipで確認できる。
+
+積分には`MotorState.stamp`を使用し、rosbagの再生速度で消費Ahが変わらないようにする。
+stampがゼロで使えない場合だけmonotonic受信時刻を使用する。
+基準時計の切替、データ時刻の逆行、データ/受信間隔がstale timeoutを超える場合は積算を無効化する。
+通信断中の消費や電池交換を推測せず、走行中は「停止基準待ち」で%を未取得に戻す。
+GUIを走行中に初めて起動した場合も同様。停止中に再基準を得れば復帰する。
+走行中のIbus欠落・NaN・無限大も未計測の区間をゼロ消費と見なさず、停止基準の再取得を要求する。
+
+### YAML設定と注意表示
+
+- `capacity_ah_per_pack`: 電池1個の実効容量Ah。既定6.0。劣化時は実測容量に調整できる。
+- `parallel_packs`: 並列個数。既定2、正の整数。
+- `voltage_soc_curve`: 昇順の`[共通bus電圧V, 残量%]`。端点0/100%、区間線形補間。
+- `rest_settle_sec`: 停止判定が連続してから電圧へ再校正するまでの時間。既定5秒。
+- `smoothing_time_constant_sec`: 停止電圧の指数平滑化の時定数。既定5秒。
+- `stationary_command_rps`: 両軸の指令が既定0.001rps以下であることを要求。
+- `stationary_velocity_rps`: 両軸の実回転が既定0.1rps以下であることも要求。
+  どちらもMotorState内のモーター軸単位。非有限値は停止と判断しない。
+- `low_voltage_v`: 瞬時17V以下で黄色の「低電圧 / 交換目安」。
+- `critical_voltage_v`: 瞬時16V以下で赤の「使用中断目安」。
+- `high_voltage_v`: 瞬時21.3V超で赤の「電圧範囲外」。
+- `stale_timeout_sec`: 既定3秒。受信停止後は残量・電圧を`--`へ戻してSTALEを表示。
+
+これらの閾値はメーカー保証の安全使用範囲ではなく、GUIの注意表示用の暫定値。
+警告は瞬時電圧から計算し、残量積算や平滑化で低下を隠さない。%が高くても電圧警告を優先する。
+0V・非有限値は無効とし、空電池の0%と区別する。
+表示はモーター出力を変更しない。各セルの電圧・電池温度・保護回路動作は確認していない。
+マキタのSTAR Protectionには工具との通信があり、ODrive給電で同じ保護が働くとは仮定しない。
+ODriveのIbusは推定DC電流であり、他の電池負荷は含まない。これらも推定誤差になる。
+
+### 開発PCでの反映
+
+`pm_msgs`と`pm_gui`を開発コンテナでビルドしてから、overlayをsourceしてGUIを再起動する。
+新版MotorStateの`ibus_a`を公開するpublisherが必要。旧message定義のbagではこのフィールドを取得できない。
+走行許可OFFやODrive未接続でMotorState配信が止まると、パネルは待受/STALEになる。
+GUI表示のために制御nodeを自動起動することはない。
+
+### 参照資料
+
+- [マキタBL1860B仕様](https://makitatools.com/products/details/BL1860B/)
+- [Murataの参考セル仕様](https://www.murata.com/-/media/webrenewal/products/batteries/cylindrical/datasheet/us18650vtc5-product-datasheet.ashx?cvid=20250324010000000000&la=en)
+- [電圧推定の負荷依存性](https://www.ti.com/document-viewer/lit/html/SSZT786/GUID-5DD8C3D9-BCBE-467B-90E5-FAA672AAC15D)
+- [ODrive firmware0.5.6のDC bus電流定義](https://raw.githubusercontent.com/odriverobotics/ODrive/fw-v0.5.6/Firmware/odrive-interface.yaml)

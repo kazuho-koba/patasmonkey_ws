@@ -99,6 +99,14 @@ STARTはCore稼働中だけ受け付け、旧Coreや手動launchの同名走行n
 systemdのactiveだけで接続成功と判断せず、新しいODrive接続statusを待つ。
 接続待受timeoutでは走行用unitを停止し、遅れて有効になるprocessを残さない。
 
+停止時はsystemdのinactiveに加えて、ROS graphから走行nodeが消えるまで
+STOPPINGを維持する（最大`shutdown_timeout_sec`）。異常終了後はDDSに古い
+node情報が残ることがあるため、次のSTARTも最大`startup_timeout_sec`まで
+消失を待つ。期限内に消えないnodeは重複起動の原因として拒否し、手動launchを
+勝手に停止しない。failed状態の管理unitは停止処理をやり直してから確認する。
+systemd状態照会のprocess起動失敗・timeoutは最大3回再試行し、開始/停止命令は
+自動再発行しない。開始失敗と停止確認失敗は両方をエラーに残す。
+
 ODriveはIDLEでゼロ速度を設定し、接続後に届いた新しい生`/cmd_vel_joy`のゼロ指令を
 確認するまでclosed-loopを要求しない。車両制約による変換後のゼロは中立判定に使わない。
 USB再接続時にも同じ確認を要求する。停止時は各軸へゼロ速度とIDLEを要求してから終了する。

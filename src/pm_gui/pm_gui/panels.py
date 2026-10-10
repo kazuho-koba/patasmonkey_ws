@@ -688,6 +688,123 @@ class VehicleEnableButton(QPushButton):
         painter.drawText(self.rect(), Qt.AlignCenter, self.text())
 
 
+class BatteryGauge(QWidget):
+    """電池外形と10区画の残量を描く。未受信は灰色で、空電池と区別する。"""
+
+    def __init__(self):
+        super().__init__()
+        self.percent = None
+        self.color = PALETTE['muted']
+        self.setMinimumSize(50, 60)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        width = max(24.0, min(58.0, self.width()-16.0))
+        height = max(30.0, min(110.0, self.height()-14.0))
+        body = QRectF((self.width()-width)/2.0, (self.height()-height)/2.0+4.0,
+                      width, height)
+        color = QColor(self.color)
+        painter.setPen(QPen(color, 2))
+        painter.setBrush(QColor(PALETTE['background']))
+        painter.drawRect(body)
+        painter.fillRect(QRectF(body.center().x()-width*0.15, body.top()-6.0,
+                                width*0.3, 6.0), color)
+        inner = body.adjusted(5.0, 5.0, -5.0, -5.0)
+        slot = inner.height()/10.0
+        for index in range(10):
+            rect = QRectF(inner.left(), inner.bottom()-(index+1)*slot+1.0,
+                          inner.width(), max(1.0, slot-2.0))
+            painter.fillRect(rect, QColor('#344b5b'))
+            if self.percent is not None:
+                fraction = max(0.0, min(1.0, self.percent/10.0-index))
+                filled = QRectF(rect.left(), rect.bottom()-rect.height()*fraction,
+                                rect.width(), rect.height()*fraction)
+                painter.fillRect(filled, color)
+        if self.percent is None:
+            painter.setPen(QColor(PALETTE['text']))
+            painter.drawText(body, Qt.AlignCenter, '?')
+
+
+class BatteryPanel(QGroupBox):
+    """左下の共通電源表示。電圧警告はSOCと独立し、staleを残量ゼロにしない。"""
+
+    def __init__(self, config):
+        super().__init__('BATTERY')
+        battery = config.get('battery', {})
+        self.stale_timeout = float(battery.get('stale_timeout_sec', 3.0))
+        self.setMinimumWidth(96)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(5, 4, 5, 4)
+        layout.setSpacing(2)
+        self.gauge = BatteryGauge()
+        layout.addWidget(self.gauge, 1)
+        self.percent = QLabel('≈ --%')
+        self.percent.setAlignment(Qt.AlignCenter)
+        font = QFont(self.percent.font())
+        font.setPointSize(18)
+        font.setBold(True)
+        self.percent.setFont(font)
+        layout.addWidget(self.percent)
+        self.voltage = QLabel('--.- V')
+        self.voltage.setAlignment(Qt.AlignCenter)
+        self.voltage.setStyleSheet('font-size:14px; font-weight:bold;')
+        layout.addWidget(self.voltage)
+        self.status = QLabel('データ待受')
+        self.status.setAlignment(Qt.AlignCenter)
+        self.status.setWordWrap(True)
+        self.status.setStyleSheet('font-size:11px;')
+        layout.addWidget(self.status)
+        model = QLabel('{}\n18V ×{}並列'.format(
+            battery.get('model', 'BL1860B'), battery.get('parallel_packs', 2)))
+        model.setAlignment(Qt.AlignCenter)
+        model.setStyleSheet('font-size:9px; color:'+PALETTE['muted'])
+        layout.addWidget(model)
+        self.setToolTip('停止中の電圧と走行中の正のIbusによる参考残量です。負電流は無視します。\n'
+                        '共通bus電圧だけでは各バッテリ・各セルの残量や安全性は判断できません。\n'
+                        '走行許可OFFなどで/motor_stateが止まるとSTALEになります。')
+
+    def refresh(self, snapshot):
+        item = snapshot.get('telemetry', {}).get('battery')
+        age = item.get('age') if item else None
+        fresh = age is not None and age <= self.stale_timeout
+        value = item['value'] if fresh else {}
+        percent = value.get('percent')
+        voltage = value.get('voltage_v')
+        level = value.get('level', 'STALE' if item else 'WAITING')
+        colors = {'REFERENCE': PALETTE['green'], 'LOW': PALETTE['yellow'],
+                  'CRITICAL': PALETTE['red'], 'HIGH': PALETTE['red']}
+        color = colors.get(level, PALETTE['muted'])
+        if level == 'REFERENCE' and percent is None:
+            color = PALETTE['muted']
+        self.percent.setText('≈ {:.0f}%'.format(percent) if percent is not None else '≈ --%')
+        self.percent.setStyleSheet('font-size:18pt; font-weight:bold; color:'+color)
+        self.voltage.setText('{:.2f} V'.format(voltage) if voltage is not None else '--.- V')
+        self.status.setText({
+            'REFERENCE': {
+                'COULOMB_COUNTING': '走行中 / 電流積算',
+                'WAIT_BASELINE': '停止基準待ち', 'CURRENT_INVALID': '電流無効 / 停止待ち',
+                'WAIT_SETTLE': '停止整定待ち',
+                'REST_ESTIMATE': '停止電圧の概算',
+            }.get(value.get('estimate_mode'), '電圧から概算'), 'LOW': '低電圧 / 交換目安',
+            'CRITICAL': '使用中断目安', 'HIGH': '電圧範囲外',
+            'INVALID': '電圧値が無効', 'STALE': 'STALE', 'WAITING': 'データ待受',
+        }.get(level, 'データ待受'))
+        self.status.setStyleSheet('font-size:11px; color:'+color)
+        tooltip = '最終受信から {:.1f}秒'.format(age) if age is not None else '未受信'
+        anchor = value.get('anchor_voltage_v')
+        if anchor is not None:
+            tooltip += '\n基準電圧 {:.2f} V / 容量 {:.1f} Ah'.format(
+                anchor, value.get('capacity_ah', 0.0))
+            tooltip += '\n基準更新後の走行消費 {:.4f} Ah'.format(value.get('consumed_ah', 0.0))
+        current = value.get('current_a')
+        if current is not None:
+            tooltip += '\nIbus {:.2f} A（負値は積算に使用しない）'.format(current)
+        self.status.setToolTip(tooltip)
+        self.gauge.percent, self.gauge.color = percent, color
+        self.gauge.update()
+
+
 class TelemetryPanel(QWidget):
     def __init__(self, config=None, backend=None):
         super().__init__()
@@ -695,11 +812,13 @@ class TelemetryPanel(QWidget):
         self.backend = backend
         self._vehicle_active = False
         root = QHBoxLayout(self)
+        self.battery_panel = BatteryPanel(config)
         attitude = QGroupBox('ATTITUDE')
         left = QVBoxLayout(attitude)
         self.canvas = AttitudeCanvas(config.get('attitude', {}))
         left.addWidget(self.canvas)
         self.attitude = QLabel('roll --   pitch --\nyaw --')
+        self.attitude.setWordWrap(True)
         left.addWidget(self.attitude)
         joystick_config = config.get('joystick', {})
         joystick_topic = config.get('topics', {}).get('joy', '/pm/joy')
@@ -746,6 +865,7 @@ class TelemetryPanel(QWidget):
         right.addWidget(self.speed)
         self.stick_mapping = QLabel('joystick設定を読み込み中')
         self.stick_mapping.setAlignment(Qt.AlignCenter)
+        self.stick_mapping.setWordWrap(True)
         self.stick_mapping.setStyleSheet('font-size:9px; color:' + PALETTE['muted'])
         right.addWidget(self.stick_mapping)
         axis_linear = int(joystick_config.get('axis_linear_x', -1))
@@ -779,10 +899,13 @@ class TelemetryPanel(QWidget):
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.setChildrenCollapsible(False)
         self.splitter.setHandleWidth(6)
+        # 左端に電池表示を追加し、姿勢/操縦の幅を少しずつ譲る。全体のresizeは維持する。
+        self.splitter.addWidget(self.battery_panel)
         self.splitter.addWidget(attitude)
         self.splitter.addWidget(joystick)
         self.splitter.setStretchFactor(0, 1)
-        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setStretchFactor(1, 3)
+        self.splitter.setStretchFactor(2, 4)
         root.addWidget(self.splitter)
 
     def _vehicle_clicked(self):
@@ -839,6 +962,7 @@ class TelemetryPanel(QWidget):
         return item['value'] if item and item['fresh'] else None
 
     def refresh(self, snapshot, config):
+        self.battery_panel.refresh(snapshot)
         self._refresh_vehicle(snapshot)
         odom = self._fresh(snapshot, 'odometry')
         if odom:
@@ -878,7 +1002,9 @@ class TelemetryPanel(QWidget):
             enable_pressed = (0 <= enable_i < len(buttons) and buttons[enable_i] != 0)
             turbo = (0 <= turbo_i < len(buttons) and buttons[turbo_i] != 0)
             enabled = not joy_cfg['require_enable_button'] or enable_pressed
-            mode = 'TURBO' if enabled and turbo else 'ENABLED' if enabled else 'DISABLED'
+            # teleop_twist_joyと同じ優先順。Turboボタン単独でも速度指令が有効になり、
+            # 通常enableボタンとの同時押しを必要としない。
+            mode = 'TURBO' if turbo else 'ENABLED' if enabled else 'DISABLED'
             raw_x = self._joy_axis(joy['axes'], joy_cfg['axis_angular_yaw'])
             raw_y = self._joy_axis(joy['axes'], joy_cfg['axis_linear_x'])
             # 表示符号だけ補正し、ROS Joy messageとteleop指令には手を加えない。

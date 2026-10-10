@@ -7,6 +7,7 @@
   <maintainer email="kazuho.kobayashi.ynu@gmail.com">kazuho</maintainer>
   <license>MIT</license>
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>pm_msgs</exec_depend>
   <exec_depend>pm_ui_common</exec_depend>
   <exec_depend>pm_mission</exec_depend>
   <exec_depend>std_msgs</exec_depend>
@@ -25,6 +26,7 @@
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>pm_robot_manager</exec_depend>
   <exec_depend>pm_teleop</exec_depend>
+  <test_depend>python3-pytest</test_depend>
   <export>
     <build_type>ament_python</build_type>
   </export>

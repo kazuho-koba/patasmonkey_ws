@@ -1,5 +1,15 @@
 # 制御・必須記録・任意記録を分離した起動
 
+## 遠隔カメラ表示
+
+OAK起動時は `oak_preview_node` も別プロセスで起動し、GUI向けに
+`/oak/preview/image/compressed` を最大5 Hz・幅160 px・JPEG quality50で配信します。
+`use_oak_preview:=false` で無効にできます。原画像／IMUのtopic、QoS、missionの
+保存範囲は変更していません。表示用JPEGは既定でbag保存しません。
+新しいpm_gui設定とdepthai_driverを両workspaceでbuild／sourceしてください。
+
+## 記録の分離
+
 OAK confidence・disparity・実効校正／設定JSONはmission側に追加しました。
 topic座標の違い、採用ground画素の分布解析、厳格閾値の再処理手順は
 [confidence記録・解析README](../pm_evaluation/README_depth_confidence.md)を参照してください。

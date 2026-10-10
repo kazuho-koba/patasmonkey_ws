@@ -8,12 +8,14 @@ from collections import deque
 
 import rclpy
 from nav_msgs.msg import Odometry
+from pm_msgs.msg import MotorState
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
-from sensor_msgs.msg import Image, Imu, Joy, MagneticField, NavSatFix
+from sensor_msgs.msg import Image, CompressedImage, Imu, Joy, MagneticField, NavSatFix
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
 from .magnetic_heading import magnetic_bearing
+from .battery import BatteryEstimator
 
 try:
     from ublox_msgs.msg import NavPVT
@@ -117,7 +119,18 @@ class RosBackend(Node):
             }
             for profile, services in self._bag_service_names.items()
         }
+        battery_config = config.get("battery", {})
+        self._battery_estimator = BatteryEstimator(battery_config)
+        self._battery_stationary_cmd_rps = float(
+            battery_config.get('stationary_command_rps', 0.001))
+        self._battery_stationary_vel_rps = float(
+            battery_config.get('stationary_velocity_rps', 0.1))
+        if any(not math.isfinite(v) or v < 0.0 for v in
+               (self._battery_stationary_cmd_rps, self._battery_stationary_vel_rps)):
+            raise ValueError('batteryの停止判定閾値は有限・非負のrpsで指定してください')
         self._telemetry_subscriptions = []
+        self._add_subscription(MotorState, topics.get("motor_state", "/motor_state"),
+                               self._motor_state_callback, qos=qos_profile_sensor_data)
         # 絶対方位はodometryの初期yawではなく、Witの磁気ベクトルから計算する。
         self._add_subscription(Imu, topics.get('wit_imu', '/wit/imu'),
                                self._wit_imu_callback, qos=qos_profile_sensor_data)
@@ -178,6 +191,21 @@ class RosBackend(Node):
     def _store(self, key, value):
         with self._lock:
             self._telemetry[key] = (value, time.monotonic())
+
+    def _motor_state_callback(self, message):
+        """共通busのV/Aを集約する。並列2個の残量・電流は個別には推定しない。"""
+        # 回転だけでは停止保持/引っ掛かり中の負荷を見落とすので、指令のゼロも要求する。
+        commands = (message.left_cmd_rps, message.right_cmd_rps)
+        velocities = (message.left_vel_rps, message.right_vel_rps)
+        stationary = (all(math.isfinite(v) and abs(v) <= self._battery_stationary_cmd_rps
+                          for v in commands)
+                      and all(math.isfinite(v) and abs(v) <= self._battery_stationary_vel_rps
+                              for v in velocities))
+        # 位置取得の代表時刻を積分にも使用し、bag再生速度による消費量の違いを防ぐ。
+        stamp = message.stamp.sec+message.stamp.nanosec*1e-9
+        self._store("battery", self._battery_estimator.update(
+            message.vbus_voltage, ibus_a=getattr(message, 'ibus_a', None),
+            stationary=stationary, sample_time=stamp if stamp != 0.0 else None))
 
     def _wheel_odometry_callback(self, message):
         """車体座標のvx [m/s]を保持する。指令値・融合odometryは使用しない。"""
@@ -271,11 +299,16 @@ class RosBackend(Node):
             subscription = self._camera_subscription
             if enabled and subscription is None:
                 topic = self._camera_config.get('topic', '/oak/color/image_raw')
+                transport = self._camera_config.get('transport', 'raw')
+                if transport not in ('raw', 'compressed'):
+                    self._camera_error = 'camera.transportはrawまたはcompressedを指定してください'
+                    return
                 # BEST_EFFORT subscriberはRELIABLE publisherとも互換で、古い画像の再送待ちを避ける。
                 qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1,
                                  reliability=ReliabilityPolicy.BEST_EFFORT)
                 self._camera_subscription = self.create_subscription(
-                    Image, topic, self._image_callback, qos)
+                    CompressedImage if transport == 'compressed' else Image,
+                    topic, self._image_callback, qos)
                 self._camera_subscription_started = time.monotonic()
             elif not enabled and subscription is not None:
                 self.destroy_subscription(subscription)
@@ -302,7 +335,12 @@ class RosBackend(Node):
                 bridge = CvBridge()
                 self._bridge = bridge
             # decodeはROS threadで行い、Qt timerは最新の小さな画像参照だけを描画する。
-            frame = bridge.imgmsg_to_cv2(message, desired_encoding='rgb8')
+            # 既存raw設定も維持する。通常はJetsonの専用JPEGだけを購読し、
+            # 原画像を遠隔へ配送させない。Qtへ渡す配列はいずれもRGB8に統一する。
+            if isinstance(message, CompressedImage):
+                frame = bridge.compressed_imgmsg_to_cv2(message, desired_encoding='rgb8')
+            else:
+                frame = bridge.imgmsg_to_cv2(message, desired_encoding='rgb8')
             frame = np.ascontiguousarray(frame)
             with self._lock:
                 self._camera_image = frame

@@ -427,6 +427,17 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                 LaunchConfiguration('oak_confidence_threshold'), value_type=int),
         }],
     )
+    # 遠隔GUIのraw画像配送がcamera本体を待たせないよう、JPEG配信は別プロセス。
+    # use_oak_preview:=falseで無効化できる。VIOとbagの原画像topic/QoSは変更しない。
+    oak_preview_node = Node(
+        package='depthai_driver', executable='oak_preview_node', name='oak_preview',
+        output='screen', condition=IfCondition(PythonExpression([
+            "'", use_oakd, "' == 'true' and '",
+            LaunchConfiguration('use_oak_preview'), "' == 'true'",
+        ])),
+        # 大画像の遠隔配送に弱い接続で、表示の更新頻度を優先する設定。
+        parameters=[{'publish_rate_hz': 5.0, 'max_width': 160, 'jpeg_quality': 50}],
+    )
     terrain_mapper_node = Node(
         package="pm_perception",
         executable="depth_elevation_mapper_node",
@@ -747,6 +758,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             actions=[
                 vehicle_launch,
                 oakd_vio_rgbd_node,
+                oak_preview_node,
                 terrain_mapper_node,
                 openvins_launch,
                 vio_odom_adapter_node,
@@ -771,6 +783,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
     ]
 
     return LaunchDescription([
+        DeclareLaunchArgument('use_oak_preview', default_value='true',
+                              description='別プロセスで遠隔GUI用の低帯域JPEGを配信する'),
         DeclareLaunchArgument('oak_publish_depth_confidence', default_value='true',
                               description='同sequenceのconfidence/disparityと校正設定を追加出力'),
         DeclareLaunchArgument('oak_confidence_threshold', default_value='240',

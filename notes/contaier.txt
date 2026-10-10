@@ -1,0 +1,2 @@
+# root で入る場合：
+docker exec -it --user 0:0 patasmonkey_foxy_dev bash
