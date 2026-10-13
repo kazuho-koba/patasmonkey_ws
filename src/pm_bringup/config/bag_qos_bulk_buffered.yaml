@@ -1,0 +1,43 @@
+# 分離writerの実測約0.9秒の停滞に、配送遅れ・処理時間の余裕を持たせる。
+# 画像・点群の履歴を約1.5秒分にする（従来1秒分から50%増）。
+# mainのQoS、publisher、センサ周期は変えない。欠測保証ではなく有界のRAM/遅延との交換。
+/oak/stereo/left/image_raw:
+  history: keep_last
+  depth: 30
+  reliability: reliable
+  durability: volatile
+/oak/stereo/right/image_raw:
+  history: keep_last
+  depth: 30
+  reliability: reliable
+  durability: volatile
+/oak/color/image_raw:
+  history: keep_last
+  depth: 15
+  reliability: reliable
+  durability: volatile
+/oak/depth/image_raw:
+  history: keep_last
+  depth: 15
+  reliability: reliable
+  durability: volatile
+/oak/stereo/confidence/image_raw:
+  history: keep_last
+  depth: 15
+  reliability: reliable
+  durability: volatile
+/oak/stereo/disparity/image_raw:
+  history: keep_last
+  depth: 15
+  reliability: reliable
+  durability: volatile
+/ov_msckf/points_msckf:
+  history: keep_last
+  depth: 30
+  reliability: reliable
+  durability: volatile
+/ov_msckf/points_slam:
+  history: keep_last
+  depth: 30
+  reliability: reliable
+  durability: volatile

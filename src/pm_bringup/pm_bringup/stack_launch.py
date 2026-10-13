@@ -18,6 +18,7 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Pyth
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
+from pm_bringup.dds_transport import launch_transport_actions
 
 
 def create_launch_description(legacy_recording=False, drive_default=True):
@@ -354,23 +355,28 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         PythonLaunchDescriptionSource(str(openvins_launch_file)),
         launch_arguments={
             "config_path": str(openvins_config_file),
+            "imu_history_depth": LaunchConfiguration("openvins_imu_history_depth"),
+            "imu_input_diagnostics": LaunchConfiguration("openvins_imu_input_diagnostics"),
             "rviz_enable": "false",
-            # DEBUGログには初期化判定など/rosoutへ出ない情報が含まれる。
-            "verbosity": "DEBUG",
-            "save_total_state": "true",
+            # 毎画像のDEBUG/INFOログを常時pipeへ流すと、launch側の整形・保存も増える。
+            # 通常は異常警告を残し、初期化等の詳細調査時だけ引数でDEBUGへ戻す。
+            # native状態・timingは別の明示引数でONにし、通常運用のI/Oを抑える。
+            "verbosity": LaunchConfiguration("openvins_verbosity"),
+            "save_total_state": LaunchConfiguration("openvins_save_total_state"),
             "filepath_est": PathJoinSubstitution(
                 [openvins_output_directory, "state_estimate.txt"]
             ),
             "filepath_std": PathJoinSubstitution(
                 [openvins_output_directory, "state_deviation.txt"]
             ),
-            "record_timing_information": "true",
+            "record_timing_information": LaunchConfiguration("openvins_record_timing"),
             "record_timing_filepath": PathJoinSubstitution(
                 [openvins_output_directory, "timing.txt"]
             ),
-            "console_log_path": PathJoinSubstitution(
-                [openvins_output_directory, "console.log"]
-            ),
+            "console_log_path": PythonExpression([
+                "'", openvins_output_directory, "/console.log' if '",
+                LaunchConfiguration('openvins_console_log'), "' == 'true' else ''",
+            ]),
         }.items(),
         condition=IfCondition(use_openvins),
     )
@@ -397,6 +403,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         # poll_hzや通信設定は既存configのまま保持する。
         parameters=[str(imu_config_file), {
             "timing_diagnostics": LaunchConfiguration("wit_timing_diagnostics"),
+            "recover_small_overrun": LaunchConfiguration("wit_recover_small_overrun"),
             "timing_csv": PathJoinSubstitution([
                 str(bag_output_directory), bag_name, "wit_timing.csv",
             ]),
@@ -421,6 +428,12 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         output="screen",
         condition=IfCondition(use_oakd),
         parameters=[{
+            'timing_diagnostics': ParameterValue(
+                LaunchConfiguration('oak_timing_diagnostics'), value_type=bool),
+            'timing_max_samples': ParameterValue(
+                LaunchConfiguration('oak_timing_max_samples'), value_type=int),
+            'timing_csv': PathJoinSubstitution([
+                str(bag_output_directory), bag_name, 'oak_publish_timing.csv']),
             'publish_depth_confidence': ParameterValue(
                 LaunchConfiguration('oak_publish_depth_confidence'), value_type=bool),
             'confidence_threshold': ParameterValue(
@@ -506,9 +519,12 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             'align_output_orientation_to_initial_tf': True,
             'invert_relative_rotation': True,
 
-            # 診断用パラメータ
-            'enable_diagnostics': True,
-            'diagnostics_interval_sec': 0.1,
+            # 詳細な多行診断はodometryの変換・publishには不要。
+            # 通常OFFとし、必要時だけ周期[秒]とともに明示して有効化する。
+            'enable_diagnostics': ParameterValue(
+                LaunchConfiguration('vio_adapter_diagnostics'), value_type=bool),
+            'diagnostics_interval_sec': ParameterValue(
+                LaunchConfiguration('vio_adapter_diagnostics_interval'), value_type=float),
 
             # このadapterはOdometryだけをpublishする。`odom -> base_link` TFは
             # robot_localizationがpublishする。
@@ -693,6 +709,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             bag_name,
             "-s",
             "mcap",
+            "--qos-profile-overrides-path",
+            str(Path(get_package_share_directory('pm_bringup'))/'config/bag_qos_mission_buffered.yaml'),
             "--max-bag-size",
             "1000000000",
             *bag_topics,
@@ -722,10 +740,18 @@ def create_launch_description(legacy_recording=False, drive_default=True):
     dump_openvins_parameters_process = ExecuteProcess(
         cmd=[
             "ros2", "param", "dump", "/ov_msckf/run_subscribe_msckf",
+            # 1回のsnapshotのために常駐daemonを生成しない。比較時だけ従来方式へ戻せる。
+            PythonExpression([
+                "'--no-daemon' if '", LaunchConfiguration('openvins_parameter_dump_no_daemon'),
+                "' == 'true' else '--spin-time=0.5'",
+            ]),
             "--output-dir", openvins_output_directory,
         ],
         output="screen",
-        condition=IfCondition(use_openvins),
+        condition=IfCondition(PythonExpression([
+            "'", use_openvins, "' == 'true' and '",
+            LaunchConfiguration('openvins_parameter_snapshot'), "' == 'true'",
+        ])),
     )
 
     runtime_actions = ([rosbag_record_process, TimerAction(
@@ -782,7 +808,16 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         ),
     ]
 
-    return LaunchDescription([
+    return LaunchDescription(launch_transport_actions() + [
+        # native診断は調査時だけONにする。ROS出力・異常警告は維持する。
+        DeclareLaunchArgument('openvins_save_total_state', default_value='false',
+                              description='native状態・標準偏差ファイルを保存する'),
+        DeclareLaunchArgument('openvins_record_timing', default_value='false',
+                              description='native処理時間ファイルを保存する'),
+        DeclareLaunchArgument('openvins_console_log', default_value='false',
+                              description='追加consoleファイルを保存する。通常警告は維持'),
+        DeclareLaunchArgument('openvins_parameter_snapshot', default_value='false',
+                              description='起動後の追加ROS parameter dumpを保存する'),
         DeclareLaunchArgument('use_oak_preview', default_value='true',
                               description='別プロセスで遠隔GUI用の低帯域JPEGを配信する'),
         DeclareLaunchArgument('oak_publish_depth_confidence', default_value='true',
@@ -793,6 +828,14 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             "wit_timing_diagnostics", default_value="false",
             description="Witの読み取り・publish・周期遅延を終了時にCSV保存する",
         ),
+        # 1周期未満の遅延では従来のdeadlineを維持し、次周期で位相を回復する。
+        # 1周期以上の遅延では再同期するため、取り逃した分を無制限に連続取得しない。
+        DeclareLaunchArgument('wit_recover_small_overrun', default_value='true',
+                              description='Witの小さな周期超過を回復する。falseで従来方式'),
+        DeclareLaunchArgument('oak_timing_diagnostics', default_value='false',
+                              description='OAKのpoll・publish・batch省略数を終了時にCSV保存'),
+        DeclareLaunchArgument('oak_timing_max_samples', default_value='150000',
+                              description='OAK診断の有限履歴sample数。超過はevictedに記録'),
         DeclareLaunchArgument(
             "wit_timing_max_samples", default_value="60000",
             description="Wit周期診断の保持件数。超過時は古い記録を破棄する",
@@ -817,6 +860,19 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             default_value="true",
             description="Start OpenVINS",
         ),
+        # 約126 HzのIMUに対し、実測181.6 msのVIO受信空白は約23件分。
+        # 32件（約254 ms）で有限の余裕を持たせる。追加subscriberや積分緩和はしない。
+        # 実センサ欠測や長時間の受信停止は修復できず、比較時は5へ戻せる。
+        DeclareLaunchArgument("openvins_imu_history_depth", default_value="32"),
+        DeclareLaunchArgument("openvins_imu_input_diagnostics", default_value="false"),
+        DeclareLaunchArgument("openvins_verbosity", default_value="WARNING",
+                              description="OpenVINS console詳細度。通常はWARNING、調査時はDEBUG"),
+        DeclareLaunchArgument("vio_adapter_diagnostics", default_value="false",
+                              description="VIO座標変換の詳細多行console診断。推定出力とは独立"),
+        DeclareLaunchArgument("vio_adapter_diagnostics_interval", default_value="1.0",
+                              description="VIO詳細console診断の出力間隔[秒]"),
+        DeclareLaunchArgument("openvins_parameter_dump_no_daemon", default_value="true",
+                              description="パラメータ保存だけで常駐ROS 2 daemonを生成しない"),
         DeclareLaunchArgument("use_joy", default_value="true",
                               description="操縦入力を監視するjoy nodeを起動する"),
         DeclareLaunchArgument(

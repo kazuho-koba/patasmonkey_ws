@@ -1,0 +1,144 @@
+# missionの短時間停滞を吸収する既定QoS。debugは従来のbag_qos.yamlを使用する。
+# 実測の約0.5～0.7秒の停滞を基に、画像は約1秒、軽量高レートtopicは1～2秒分。
+# RELIABLE publisherが確認済みのtopicのみ明示する。未知のtopicは自動QoSを維持。
+# 履歴は欠測保証ではなく、一時的なRAM・待ち時間増加との交換条件である。
+/oak/stereo/recording_snapshot:
+  history: keep_last
+  depth: 1
+  reliability: reliable
+  durability: transient_local
+/tf_static:
+  history: keep_all
+  depth: 1
+  reliability: reliable
+  durability: transient_local
+/robot_description:
+  history: keep_last
+  depth: 1
+  reliability: reliable
+  durability: transient_local
+/oak/stereo/left/image_raw:
+  history: keep_last
+  depth: 20
+  reliability: reliable
+  durability: volatile
+/oak/stereo/right/image_raw:
+  history: keep_last
+  depth: 20
+  reliability: reliable
+  durability: volatile
+/oak/color/image_raw:
+  history: keep_last
+  depth: 10
+  reliability: reliable
+  durability: volatile
+/oak/depth/image_raw:
+  history: keep_last
+  depth: 10
+  reliability: reliable
+  durability: volatile
+/oak/stereo/confidence/image_raw:
+  history: keep_last
+  depth: 10
+  reliability: reliable
+  durability: volatile
+/oak/stereo/disparity/image_raw:
+  history: keep_last
+  depth: 10
+  reliability: reliable
+  durability: volatile
+/oak/color/camera_info:
+  history: keep_last
+  depth: 10
+  reliability: reliable
+  durability: volatile
+/oak/depth/camera_info:
+  history: keep_last
+  depth: 10
+  reliability: reliable
+  durability: volatile
+/oak/imu/data:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile
+/wit/imu:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile
+/wit/mag:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile
+/ov_msckf/odomimu:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile
+/odometry/local:
+  history: keep_last
+  depth: 100
+  reliability: reliable
+  durability: volatile
+/odometry/global:
+  history: keep_last
+  depth: 20
+  reliability: reliable
+  durability: volatile
+/ov_msckf/points_msckf:
+  history: keep_last
+  depth: 20
+  reliability: reliable
+  durability: volatile
+/ov_msckf/points_slam:
+  history: keep_last
+  depth: 20
+  reliability: reliable
+  durability: volatile
+/tf:
+  history: keep_last
+  depth: 500
+  reliability: reliable
+  durability: volatile
+/oak/diagnostics/left_frame:
+  history: keep_last
+  depth: 40
+  reliability: reliable
+  durability: volatile
+/oak/diagnostics/right_frame:
+  history: keep_last
+  depth: 40
+  reliability: reliable
+  durability: volatile
+/oak/diagnostics/color_frame:
+  history: keep_last
+  depth: 20
+  reliability: reliable
+  durability: volatile
+/oak/diagnostics/depth_frame:
+  history: keep_last
+  depth: 20
+  reliability: reliable
+  durability: volatile
+/oak/diagnostics/confidence_frame:
+  history: keep_last
+  depth: 20
+  reliability: reliable
+  durability: volatile
+/oak/diagnostics/disparity_frame:
+  history: keep_last
+  depth: 20
+  reliability: reliable
+  durability: volatile
+/oak/diagnostics/imu_packet:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile
+/diagnostics:
+  history: keep_last
+  depth: 30
+  reliability: reliable
+  durability: volatile

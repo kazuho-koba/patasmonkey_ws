@@ -1,5 +1,22 @@
 # OpenVINS検証走行の記録
 
+## 周期・配送遅延のA/B診断
+
+`wit_recover_small_overrun:=true`（既定）はWitの小さなdeadline超過を回復します。
+従来方式は小さな遅延でも次回の基準時刻を後ろへずらすため、平均取得周波数が下がります。
+変更後は1周期未満の遅延だけ次周期で回復し、1周期以上の遅延は再同期します。
+Jetsonのcore＋mission bag試験では、定常40秒の実取得が98.90 Hzから99.85 Hzに
+改善しました。ただし非リアルタイムOSなので、常に厳密な100 Hzや無欠測を保証しません。
+`wit_recover_small_overrun:=false`で従来方式へ戻せます。`wit_timing_diagnostics:=true`で
+取得周期・read・publishを比較し、起動直後と定常区間を別集計してください。
+
+`oak_timing_diagnostics:=true`でOAKのpoll・topic別publish所要時間とRGB-Dの
+取得batch内省略数を、同じ試行ディレクトリの`oak_publish_timing.csv`へ正常停止時に
+保存します。pm_coreでは`~/.ros/pm_core_sessions/<bag_name>`、旧bag一括launchでは
+bagディレクトリが保存先です。計測は既定OFFで、topic/QoSと最新RGB-D選択は変更しません。
+終了時保存に追加SIGINTを重ねないでください。時間計測自体の負荷を考慮し、
+A/Bとも同じ診断設定を使用してください。
+
 起動系と必須/任意bagを分離する新構成は[README_recording.md](README_recording.md)を参照。
 本書の一括launchは互換用として維持している。
 
@@ -131,6 +148,19 @@ python3 ~/ros2_ws/src/hwt905_rs485_driver/tools/analyze_imu_timing.py ~/patasmon
 以下は40秒を3回記録し、操縦・モータ系を無効にして比較します。
 画像bagも保存するため空き容量を確認し、SSH制御接続は最後まで維持してください。
 
+起動時のparameter dumpは既定で`--no-daemon`を使用し、一回のsnapshotのための
+常駐ROS 2 daemon生成を避けます。比較時のみ
+`openvins_parameter_dump_no_daemon:=false`で従来方式へ戻せます。
+これは外部GUI等が別途生成するdaemonを停止する機能ではありません。
+
+OpenVINSのIMU購読欠測を調べる場合は、
+`openvins_imu_history_depth:=64 openvins_imu_input_diagnostics:=true`を追加します。
+Patasmonkey共通launchの履歴深さの既定は32件、診断の既定はOFFです。
+OpenVINS単独launchの既定値は別なので、共通launch以外では明示してください。
+BEST_EFFORTと画像QoSは変更せず、
+native consoleの`[IMU_INPUT_GAP]`とbagのIMU header stampを照合します。
+64件は125 Hzで約512 ms分の比較用設定で、運用推奨値として確定していません。
+
 ```bash
 python3 ~/ros2_ws/src/hwt905_rs485_driver/tools/run_imu_startup_trials.py --mode bringup --output /tmp/wit_startup_bringup
 ```
@@ -139,3 +169,42 @@ python3 ~/ros2_ws/src/hwt905_rs485_driver/tools/run_imu_startup_trials.py --mode
 `wit_timing.json`に起動節目・取得時間を残し、出力先の`comparison.json`へ
 0〜5秒、5〜10秒、10〜20秒、20秒以降の周波数・長い間隔・エラーをまとめます。
 時刻基準はPython node初期化開始です。センサ内部の測定時刻ではありません。
+
+## console診断の負荷を通常走行から切り離す
+
+通常のcore/mission起動は`openvins_verbosity:=WARNING`、
+`vio_adapter_diagnostics:=false`とする。従来はOpenVINSのDEBUGと、VIO変換の
+約20行の診断を0.1秒ごとに常時出していた。consoleのpipe転送・launch側の整形と
+ファイル保存の負荷を減らす変更であり、VIOの積分、画像処理、QoS、bag対象topic、
+native状態/timing保存は変えない。異常警告・エラーは残す。
+
+詳細な初期化判定や座標変換を調べるときは、従来相当へ明示的に戻せる。
+
+```bash
+ros2 launch pm_bringup pm_core.launch.py \
+  openvins_verbosity:=DEBUG vio_adapter_diagnostics:=true \
+  vio_adapter_diagnostics_interval:=0.1
+```
+
+単なるログ削減を、欠測やVIO停止の根治と解釈してはいけない。
+比較試験ではGUI・bag・計測条件を揃え、停止済みbagのheaderと診断情報を照合する。
+
+## IMU購読履歴の有限な受信余裕
+
+VIO入力が181.6 ms空いた停止再現では、その区間のIMUがbagには保存されていた。
+約126 Hzで約23件分に相当するため、共通launchは32件（約254 ms）の履歴を採用する。
+5件は約40 msしかなく、今回観測した受信停滞をカバーしない。32件の比較試験2回で
+VIO継続を確認したが、過負荷の根治・任意の長時間停止への保証ではない。
+27件の追加CDR payloadは概ね9 KiB（DDS内部管理領域は別）で、画像queue・
+記録cache・RAM bagは増やさない。実センサ欠測や消えた積分端点を補間でごまかさず、
+既存の安全検査と非復帰ラッチを維持する。
+従来条件へは`openvins_imu_history_depth:=5`で戻せる。
+# 追加診断は既定OFF
+
+通常起動はUDPv4＋SHM 2 MiB/participant。OpenVINSのnative状態・処理時間・
+追加consoleファイル・parameter dumpは、それぞれ
+`openvins_save_total_state`、`openvins_record_timing`、`openvins_console_log`、
+`openvins_parameter_snapshot`を`true`にしたときだけ保存する。
+以下に記すnativeファイル一覧は診断を有効にした場合のもので、通常は作成されない。
+通常ROSトピックとOAKのセンサmetadata、運用警告・再現用設定保存は維持する。
+詳細は`README_recording.md`の「通常運用のDDS・診断既定」を参照。

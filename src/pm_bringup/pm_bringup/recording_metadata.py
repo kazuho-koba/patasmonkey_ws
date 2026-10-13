@@ -138,8 +138,9 @@ def installed_inventory(destination):
     from ament_index_python.packages import get_package_prefix, PackageNotFoundError
     result = {}
     destination = Path(destination)
-    for name in ('pm_bringup','pm_config','pm_description','pm_perception','pm_localization',
+    for name in ('pm_bringup','pm_recording','pm_config','pm_description','pm_perception','pm_localization',
                  'pm_control','depthai_driver','ov_msckf','robot_localization',
+                 'rosbag2_storage_mcap','mcap_vendor',
                  'hwt905_rs485_driver','ublox_gps','ntrip_client'):
         try:
             prefix = Path(get_package_prefix(name))
@@ -148,6 +149,10 @@ def installed_inventory(destination):
             if executable_dir.is_dir():
                 files += [p for p in executable_dir.iterdir() if p.is_file()]
             files += list(prefix.glob('lib/python*/site-packages/'+name+'/**/*.py'))
+            # recorderの実storage実装も識別する。overlay選択をsource commit
+            # だけで推定せず、今回ロードされるpluginとMCAP libraryのhashを残す。
+            if name in ('rosbag2_storage_mcap', 'mcap_vendor'):
+                files += [p for p in prefix.glob('lib/lib*mcap*.so') if p.is_file()]
             hashes = []
             for file in files:
                 # バイナリは再コピーせずhashだけ。Python実装は実行時内容をコピーする。

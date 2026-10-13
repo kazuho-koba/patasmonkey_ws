@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>pm_recording</name>
+  <version>0.1.0</version>
+  <description>Foxyの標準transportを用いた単一bag非同期保存</description>
+  <maintainer email="kazuho.kobayashi.ynu@gmail.com">kazuho</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>rcl</depend>
+  <depend>fastrtps</depend>
+  <depend>rmw_fastrtps_shared_cpp</depend>
+  <depend>rmw_dds_common</depend>
+  <depend>rosbag2_cpp</depend>
+  <depend>rosbag2_transport</depend>
+  <depend>rosbag2_storage</depend>
+  <depend>yaml_cpp_vendor</depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

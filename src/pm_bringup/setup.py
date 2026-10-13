@@ -19,8 +19,9 @@ setup(
         # launch ファイルをインストール
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
+        (os.path.join('share', package_name, 'config'), glob('config/*.xml')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'mcap'],
     zip_safe=True,
     maintainer='kazuho',
     maintainer_email='kazuho.kobayashi.ynu@gmail.com',
@@ -37,6 +38,7 @@ setup(
             'pm_bringup.capture_vio_trial_metadata:main',
             'core_manifest = pm_bringup.core_manifest:main',
             'record_trial = pm_bringup.record_trial:main',
+            'verify_bag_integrity = pm_bringup.bag_integrity:main',
         ],
     },
 )

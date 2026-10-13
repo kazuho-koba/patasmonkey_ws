@@ -8,8 +8,9 @@ JetsonでもRGB-D playbackを実行可能に保つ。
 """
 
 import argparse
-import glob
+import math
 from pathlib import Path
+import re
 import time
 from typing import Dict, Iterable, List, Tuple, Type
 
@@ -46,22 +47,43 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("bag", type=Path)
     parser.add_argument("--topic", action="append", required=True)
     parser.add_argument("--rate", type=float, default=1.0)
+    parser.add_argument("--duration", type=float, default=None,
+                        help="先頭の選択messageからの再生時間[bag秒]。省略時は全件")
+    parser.add_argument("--drain-seconds", type=float, default=0.0,
+                        help="最後のpublish後、publisherを維持する秒数。既定0で従来動作")
     return parser.parse_args()
+
+
+def ordered_mcap_files(bag: Path) -> List[Path]:
+    """連番を数値として比較し、分割bagを記録順に読む。
+
+    辞書順ではbag_10がbag_2より先になり、clockが逆行する。metadataのない
+    センサ時刻派生bagにも使えるよう、ファイル名の数値部分で自然順序を作る。
+    """
+    return sorted(bag.glob("*.mcap"), key=lambda path: [
+        (1, int(part)) if part.isdigit() else (0, part)
+        for part in re.split(r"(\d+)", path.name)])
 
 
 def iter_records(bag: Path, topics: List[str]) -> Iterable[Tuple[int, str, bytes]]:
     """画像dataを保持せず、MCAP file順に選択recordをyieldする。"""
-    for mcap_path in sorted(glob.glob(str(bag / "*.mcap"))):
+    for mcap_path in ordered_mcap_files(bag):
         with open(mcap_path, "rb") as stream:
-            for _, channel, record in make_reader(stream).iter_messages():
+            # MCAP側でtopicを絞り、再生しないRGB-D/点群のmessageをPythonへ展開しない。
+            # 選択topicの順序・時刻・内容は変えず、再生中のCPU/I/O負荷だけを抑える。
+            for _, channel, record in make_reader(stream).iter_messages(topics=topics):
                 if channel.topic in topics:
                     yield record.log_time, channel.topic, record.data
 
 
 def main() -> None:
     args = parse_args()
-    if args.rate <= 0.0:
+    if not math.isfinite(args.rate) or args.rate <= 0.0:
         raise SystemExit("--rate must be positive")
+    if args.duration is not None and (not math.isfinite(args.duration) or args.duration <= 0.0):
+        raise SystemExit("--durationは有限の正の秒数で指定してください")
+    if not math.isfinite(args.drain_seconds) or args.drain_seconds < 0.0:
+        raise SystemExit("--drain-secondsは有限の非負の秒数で指定してください")
     # 明示的なwhitelistによりFoxyでのdeserializeを予測可能にし、replay commandがcontrol
     # topicを誤ってpublishすることを防ぐ。
     unknown = sorted(set(args.topic) - set(MESSAGE_TYPES))
@@ -96,6 +118,10 @@ def main() -> None:
             if first_time is None:
                 first_time = log_time
                 wall_start = time.monotonic()
+            # 壁時計ではなくbag時間で打ち切るため、rateを変えても同じ入力区間になる。
+            # 最初の選択messageが基準であり、未選択topicを含むbag開始時刻ではない。
+            if args.duration is not None and (log_time - first_time) * 1e-9 > args.duration:
+                break
             elapsed = (log_time - first_time) * 1e-9 / args.rate
             delay = wall_start + elapsed - time.monotonic()
             if delay > 0.0:
@@ -108,6 +134,11 @@ def main() -> None:
             publishers[topic].publish(deserialize_message(data, MESSAGE_TYPES[topic]))
         if first_time is None:
             raise SystemExit("No selected messages found")
+        # publishの戻りは全subscriberへの到達保証ではない。短い記録比較では、
+        # 最終burst直後にpublisherを破棄して送信側の未配送を欠測と誤認しないよう、
+        # middlewareが配送する時間を与える。固定待ちはACK保証ではなく比較用対策。
+        if args.drain_seconds > 0.0:
+            time.sleep(args.drain_seconds)
     finally:
         node.destroy_node()
         rclpy.shutdown()

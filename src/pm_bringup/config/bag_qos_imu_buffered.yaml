@@ -1,0 +1,27 @@
+# 比較試験用。標準設定の遅延参加topicを保持し、bagのIMU受信履歴だけを増やす。
+# OAK 125 Hzで約1.6秒、Wit 100 Hzで約2秒分。処理停滞自体や完全無欠測は保証しない。
+# OpenVINSやsensor publisherのQoSは変更しない。通常のbag_qos.yamlとは別に選択する。
+/oak/stereo/recording_snapshot:
+  history: keep_last
+  depth: 1
+  reliability: reliable
+  durability: transient_local
+/tf_static:
+  history: keep_all
+  reliability: reliable
+  durability: transient_local
+/robot_description:
+  history: keep_last
+  depth: 1
+  reliability: reliable
+  durability: transient_local
+/oak/imu/data:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile
+/wit/imu:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile
