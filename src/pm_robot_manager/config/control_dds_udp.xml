@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 小さい管理・制御messageはUDPv4を使う。長時間運用でSHM経路が破損しても、
+     ODrive接続statusとSTART/STOPの通信を画像・bagのSHM経路に依存させない。 -->
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <transport_descriptors>
+    <transport_descriptor>
+      <transport_id>pm_control_udp</transport_id><type>UDPv4</type>
+    </transport_descriptor>
+  </transport_descriptors>
+  <participant profile_name="pm_control_udp" is_default_profile="true">
+    <rtps>
+      <userTransports><transport_id>pm_control_udp</transport_id></userTransports>
+      <useBuiltinTransports>false</useBuiltinTransports>
+    </rtps>
+  </participant>
+</profiles>

@@ -28,6 +28,7 @@
   <!-- 起動対象のノードたち -->
   <exec_depend>pm_teleop</exec_depend>
   <exec_depend>pm_control</exec_depend>
+  <exec_depend>pm_robot_manager</exec_depend>
   <exec_depend>pm_description</exec_depend>
   <exec_depend>pm_config</exec_depend>
   <exec_depend>pm_perception</exec_depend>

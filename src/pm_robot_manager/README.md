@@ -125,3 +125,19 @@ Coreとbagと走行用unitを正常停止した後、従来の
 このスクリプトはManagerだけを再起動し、走行用unitはenableも起動もしない。
 旧unit/drop-inが独自の起動設定を持つ場合は、走行nodeを自動起動していないことを確認する。
 GUI側は`pm_gui`を反映する。開発PCのmockでは実機やsystemdを操作しない。
+
+## 接続status待受timeoutと制御DDS経路
+
+`pm_robot_manager`と`pm_drive.launch.py`は、既定で本packageの
+`config/control_dds_udp.xml`を使い、Fast DDSのUDPv4経路で管理/制御messageを交換する。
+SHM経路が不調でも、同じホスト上のODrive接続statusを確認できるようにするための設定。
+ROS_DOMAIN_ID、topic/service、QoS、画像/bagのDDS設定は変更しない。
+Managerは`rclpy.init()`前、走行launchは子node起動前に設定する。
+専用設定の明示指定には`PM_ROBOT_MANAGER_DDS_PROFILE`環境変数と
+`drive_dds_profile`launch引数を使う。
+
+ODriveが接続済みでもstatusが届かなければSTARTはtimeoutし、走行unitを停止する。
+接続確認を省略したり、timeoutだけを無制限に延長したりはしない。
+修正コードのビルド/sourceだけでは稼働中のManagerは更新されないため、
+Managerだけを`sudo systemctl restart pm-robot-manager.service`で再起動する。
+走行unitは自動起動せず、次の明示STARTで新しいDDS設定を使う。

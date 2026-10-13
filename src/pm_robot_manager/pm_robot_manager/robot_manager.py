@@ -2,6 +2,7 @@
 """systemd管理下のCore、走行許可、bag launchを独立して操作するnode。"""
 
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -10,6 +11,7 @@ import time
 import traceback
 
 import rclpy
+from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
@@ -930,8 +932,17 @@ class RobotManager(Node):
 
 
 def main(args=None):
+    # DDS participant生成より前に制御専用のUDP経路を選ぶ。親shell/Core/bagの環境は
+    # 変更しない。独自設定が必要な場合は専用環境変数で明示的に指定できる。
+    profile = Path(os.environ.get('PM_ROBOT_MANAGER_DDS_PROFILE') or
+                   str(Path(get_package_share_directory('pm_robot_manager')) /
+                       'config/control_dds_udp.xml')).expanduser().resolve()
+    if not profile.is_file():
+        raise RuntimeError('Robot Manager DDS設定が存在しません: '+str(profile))
+    os.environ['FASTRTPS_DEFAULT_PROFILES_FILE'] = str(profile)
     rclpy.init(args=args)
     node = RobotManager()
+    node.get_logger().info('管理・制御DDS設定: '+str(profile))
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
