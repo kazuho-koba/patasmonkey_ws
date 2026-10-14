@@ -30,6 +30,8 @@ mission:
   - /rtcm
   - /rxmrtcm
   - /ov_msckf/odomimu
+  # 保護停止の理由を1 Hz＋状態変化時に保存する。画像/IMUの追加購読probeは不要。
+  - /ov_msckf/diagnostics/health
   - /ov_msckf/points_msckf
   - /ov_msckf/points_slam
   - /odometry/local

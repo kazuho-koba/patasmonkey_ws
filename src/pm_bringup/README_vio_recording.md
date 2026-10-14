@@ -208,3 +208,39 @@ VIO継続を確認したが、過負荷の根治・任意の長時間停止へ�
 以下に記すnativeファイル一覧は診断を有効にした場合のもので、通常は作成されない。
 通常ROSトピックとOAKのセンサmetadata、運用警告・再現用設定保存は維持する。
 詳細は`README_recording.md`の「通常運用のDDS・診断既定」を参照。
+# OAK時計変換の切替と監視
+
+共通launchの `oak_timestamp_mode` は既定 `host_clock`（現在時計の対応付け）です。
+`legacy_first_message` は従来の最初のデータ基準へ戻すための選択肢です。
+試験方式は現在のDepthAI時計とROS時計を対応付け、全OAK画像・IMUで共有します。
+depth/confidence/disparityのHeader対応とRGB/CameraInfoの対応は変更しません。
+生のdevice timestampやaccel/gyro個別timestampは診断側にそのまま残します。
+
+```bash
+# モータ・joystick・teleopなしのセンサ試験
+ros2 launch pm_bringup pm_core.launch.py oak_timestamp_mode:=host_clock \
+  use_vehicle_interface:=false use_joy:=false use_teleop:=false
+```
+
+ロールバックは同じ引数を `oak_timestamp_mode:=legacy_first_message` にして再起動します。
+設定の動的切替は行いません。実機カメラのsimulated timeや実行中のROS時計ジャンプは
+この試験方式の検証対象外です。実効方式・オフセットはdevice_infoとbag provenanceに残ります。
+
+時計のずれ監視は既定ON、既存device_info診断で5秒ごとに記録します。Headerは自動補正しません。
+`oak_clock_monitor_enabled:=false` で監視だけOFFにできます。
+`oak_clock_warn_threshold_ms:=5.0` は時計差変化の警告閾値、
+`oak_clock_max_reference_span_ms:=1.0` は時計読み取り幅の信頼上限です。
+どちらも正の有限値で、VO許容誤差として実証した値ではありません。
+診断のWARNは時計差超過と測定不確実を区別し、復帰後も累積回数・最大差を残します。
+診断topicは既存bag対象なのでtopic一覧の追加は不要です。
+
+## OpenVINS保護状態の軽量記録
+
+mission bagは `/ov_msckf/diagnostics/health` を常時記録します。
+OpenVINS側の対応版が必要です。DiagnosticArrayの状態は`initializing`／`running`／
+`reset_required`で、1 Hz heartbeatと状態変化時の通知により、記録を途中から開始しても
+保護状態を確認できます。必要だったIMU区間と判定時buffer端点も保持します。
+過去bagの状態を遡って補完する機能ではありません。自動リセットも行いません。
+診断が途絶えた場合と、ERROR状態が届いた場合は区別してください。
+running表示だけではVO更新の継続や精度を保証しないため、VO出力の鮮度も確認します。
+高レートの画像・IMU購読probeを増やさず、診断は数百bytes〜約1 KB/件の低容量です。

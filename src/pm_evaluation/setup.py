@@ -17,7 +17,7 @@ setup(
         ),
         (
             "share/" + package_name,
-            ["package.xml", "README_depth_confidence.md", "README_height_candidates.md"],
+            ["package.xml", "README_depth_confidence.md", "README_height_candidates.md", "README_dataset_quality.md"],
         ),
     ],
     install_requires=[
@@ -39,6 +39,7 @@ setup(
             "reprocess_depth_confidence = pm_evaluation.cli.reprocess_depth_confidence:main",
             "compare_odometry_sources = pm_evaluation.cli.compare_odometry_sources:main",
             "analyze_bag_frequencies = pm_evaluation.cli.analyze_bag_frequencies:main",
+            "analyze_dataset_quality = pm_evaluation.cli.analyze_dataset_quality:main",
             "analyze_mapper_depth_delivery = pm_evaluation.cli.analyze_mapper_depth_delivery:main",
             "analyze_oak_bag_diagnostics = pm_evaluation.cli.analyze_oak_bag_diagnostics:main",
             "plot_bag_trajectories = pm_evaluation.cli.plot_bag_trajectories:main",

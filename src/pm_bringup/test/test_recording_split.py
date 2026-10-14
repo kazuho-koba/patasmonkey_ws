@@ -42,6 +42,8 @@ def test_profiles_are_disjoint_and_cover_legacy_topics():
     """旧topicを落とさず上位追加とwheel昇格を確認する。"""
     profiles = yaml.safe_load((ROOT/'config/bag_profiles.yaml').read_text())
     mission, debug = set(profiles['mission']), set(profiles['debug'])
+    # 高レートの追加probeではなく、軽量な保護状態をmissionに常時保存する。
+    assert '/ov_msckf/diagnostics/health' in mission
     assert len(mission) == len(profiles['mission'])
     assert len(debug) == len(profiles['debug'])
     assert not mission & debug

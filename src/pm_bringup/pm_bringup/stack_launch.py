@@ -428,6 +428,14 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         output="screen",
         condition=IfCondition(use_oakd),
         parameters=[{
+            # 全OAK streamの時刻変換を一括選択。旧方式へ即時ロールバック可能。
+            'timestamp_mode': LaunchConfiguration('oak_timestamp_mode'),
+            'clock_monitor_enabled': ParameterValue(
+                LaunchConfiguration('oak_clock_monitor_enabled'), value_type=bool),
+            'clock_warn_threshold_ms': ParameterValue(
+                LaunchConfiguration('oak_clock_warn_threshold_ms'), value_type=float),
+            'clock_max_reference_span_ms': ParameterValue(
+                LaunchConfiguration('oak_clock_max_reference_span_ms'), value_type=float),
             'timing_diagnostics': ParameterValue(
                 LaunchConfiguration('oak_timing_diagnostics'), value_type=bool),
             'timing_max_samples': ParameterValue(
@@ -832,6 +840,14 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         # 1周期以上の遅延では再同期するため、取り逃した分を無制限に連続取得しない。
         DeclareLaunchArgument('wit_recover_small_overrun', default_value='true',
                               description='Witの小さな周期超過を回復する。falseで従来方式'),
+        DeclareLaunchArgument('oak_timestamp_mode', default_value='host_clock',
+                              description='OAK時計変換: host_clock / legacy_first_message（旧方式）'),
+        DeclareLaunchArgument('oak_clock_monitor_enabled', default_value='true',
+                              description='5秒ごとに時計差を監視。Headerは自動補正しない'),
+        DeclareLaunchArgument('oak_clock_warn_threshold_ms', default_value='5.0',
+                              description='固定時計差からの変化量の警告閾値[ms]'),
+        DeclareLaunchArgument('oak_clock_max_reference_span_ms', default_value='1.0',
+                              description='監視時計読み取り幅の信頼上限[ms]'),
         DeclareLaunchArgument('oak_timing_diagnostics', default_value='false',
                               description='OAKのpoll・publish・batch省略数を終了時にCSV保存'),
         DeclareLaunchArgument('oak_timing_max_samples', default_value='150000',

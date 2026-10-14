@@ -1,0 +1,80 @@
+# 保存レートの暫定品質基準。VO精度・画像鮮明度・厳密な同期の保証ではない。
+version: 1
+window_sec: 10.0
+step_sec: 1.0
+# 重複する時間窓の合格が3回続いたら確認する。独立した30秒の観測ではない。
+consecutive_windows: 3
+topics:
+  /wit/imu:
+    required: true
+    expected_hz: 100.0
+    tolerance_ratio: 0.01
+    clock: record
+    max_gap_sec: 0.03
+    header: true
+    max_delay_sec: 0.1
+  /oak/stereo/left/image_raw:
+    required: true
+    expected_hz: 20.0
+    tolerance_ratio: 0.01
+    clock: record
+    max_gap_sec: 0.1
+    header: true
+    max_delay_sec: 0.1
+  /oak/stereo/right/image_raw:
+    required: true
+    expected_hz: 20.0
+    tolerance_ratio: 0.01
+    clock: record
+    max_gap_sec: 0.1
+    header: true
+    max_delay_sec: 0.1
+  /oak/imu/data:
+    required: false
+    # 約127Hzという実測だけでは仕様を確定しない。設定・機種確認後に指定する。
+    expected_hz: null
+    clock: record
+    header: true
+    max_gap_sec: 0.03
+    max_delay_sec: 0.1
+  /oak/color/image_raw:
+    required: false
+    expected_hz: 10.0
+    tolerance_ratio: 0.01
+    clock: record
+    header: true
+    max_gap_sec: 0.2
+  /oak/depth/image_raw:
+    required: false
+    expected_hz: 10.0
+    tolerance_ratio: 0.01
+    clock: record
+    header: true
+    max_gap_sec: 0.2
+  /fix:
+    required: false
+    expected_hz: 1.0
+    # 低レートは件数±1%ではなく、鮮度・間隔で確認する。fix品質は別の検査。
+    rate_check: false
+    clock: record
+    header: true
+    max_gap_sec: 1.5
+  /wheel/odometry:
+    required: false
+    expected_hz: 30.0
+    tolerance_ratio: 0.01
+    clock: record
+    header: true
+    max_gap_sec: 0.1
+  /ov_msckf/odomimu:
+    required: false
+    expected_hz: null
+    clock: record
+    header: true
+    max_gap_sec: 0.1
+stereo:
+  left: /oak/stereo/left/image_raw
+  right: /oak/stereo/right/image_raw
+  required: true
+  max_delta_sec: 0.001
+  min_match_ratio: 0.99
