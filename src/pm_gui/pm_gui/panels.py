@@ -1021,8 +1021,14 @@ class TelemetryPanel(QWidget):
         # stale/非有限値を0 km/hと誤表示せず、受信待ち表示へ戻す。
         wheel_odometry = self._fresh(snapshot, 'wheel_odometry')
         vx = wheel_odometry.get('vx') if wheel_odometry else None
-        self.speed.setText('{:.1f} km/h'.format(vx * 3.6)
-                           if vx is not None and math.isfinite(vx) else '--.- km/h')
+        speed_kmh = vx * 3.6 if vx is not None and math.isfinite(vx) else None
+        # 表示だけの片側不感帯。-0.01 km/h以上の微小な負値をゼロにする。
+        # 閾値より負側の値は符号を保持し、小数1桁の丸めで-0.0になることも許容する。
+        # 元のwheel odometryと速度制御経路には変更を加えない。
+        if speed_kmh is not None and -0.01 <= speed_kmh <= 0.0:
+            speed_kmh = 0.0
+        speed_text = '{:.1f}'.format(speed_kmh) if speed_kmh is not None else None
+        self.speed.setText(speed_text + ' km/h' if speed_text is not None else '--.- km/h')
         self.speed.setStyleSheet('font-weight:bold; color:' + mode_color)
         self.speed.setToolTip('ホイールodometry vx × 3.6（後退は負値）'
                               if vx is not None else 'ホイールodometry受信待ち / STALE')

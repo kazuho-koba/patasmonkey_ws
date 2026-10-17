@@ -7,6 +7,7 @@ from std_msgs.msg import Bool, String
 from pm_msgs.msg import MotorState
 from rclpy.time import Time
 from .odrive_controller import MotorController
+from .motor_polling import FeedbackCache, PollingTiming
 import math
 import sys
 import json
@@ -184,6 +185,14 @@ class VehicleInterfaceNode(Node):
         # 走行用launchだけが中立インターロックを使用する。Core起動では本nodeを起動しない。
         self.declare_parameter('require_neutral_on_start', False)
         self.declare_parameter('vehicle_status_topic', '/pm/vehicle/status')
+        # 実状態の追加USB読み取りは受入試験用。通常運用の負荷は変えない。
+        self.declare_parameter('motor_state_diagnostics', False)
+        # 位置は常に30Hzで実測。速度・電流だけ低頻度化でき、既定30Hzは従来動作。
+        self.declare_parameter('motor_feedback_hz', 30.0)
+        self.declare_parameter('motor_polling_timing_csv', '')
+        self._feedback_cache = FeedbackCache(float(self.get_parameter('motor_feedback_hz').value))
+        timing_path = str(self.get_parameter('motor_polling_timing_csv').value)
+        self._polling_timing = PollingTiming(timing_path) if timing_path else None
         self.require_neutral = bool(self.get_parameter('require_neutral_on_start').value)
         self._drive_armed = not self.require_neutral
         self._emergency_stop_active = False
@@ -255,6 +264,7 @@ class VehicleInterfaceNode(Node):
     def connect_odrive(self):
         """Connect/Re-Connect to ODrive and initialize both motors."""
         try:
+            self._feedback_cache.reset()
             self._drive_armed = not self.require_neutral and not self._emergency_stop_active
             self._neutral_received_at = None
             self.get_logger().info("connecting to ODrive...")
@@ -613,6 +623,12 @@ class VehicleInterfaceNode(Node):
         if not self.odrive_connected:
             return
 
+        timing = self._polling_timing
+        start = time.perf_counter() if timing else None
+        wall_ns = time.time_ns() if timing else None
+        position_end = feedback_end = voltage_end = None
+        refreshed = False
+        status = 'read_error'
         try:
             msg = MotorState()
 
@@ -643,23 +659,23 @@ class VehicleInterfaceNode(Node):
 
             msg.left_pos_turns = left_pos_turns
             msg.right_pos_turns = right_pos_turns
+            if timing:
+                position_end = time.perf_counter()
 
             # 速度指令値
             msg.left_cmd_rps = float(self.left_cmd_rps)
             msg.right_cmd_rps = float(self.right_cmd_rps)
 
             # モータ回転速度（実績）
-            msg.left_vel_rps = float(
-                self.left_motor_sign * self.left_motor.get_velocity()
-            )
-            msg.right_vel_rps = float(
-                self.right_motor_sign * self.right_motor.get_velocity()
-            )
-
-            # 左右軸が共有するODrive全体のDC入力電流を、30 Hzのpublishごとに1回読む。
-            # 消費/回生の符号をそのまま保持し、motor_signを掛けたり左右加算したりしない。
-            # stampは上記の位置取得代表時刻であり、電流の厳密な個別取得時刻ではない。
-            msg.ibus_a = float(self.left_motor.get_bus_current())
+            # 制御指令はこのfeedbackを使わない。低頻度指定時は直近の速度・電流を
+            # 保持するが、位置は上で毎回実測する。stampは位置の代表時刻のまま。
+            values, refreshed = self._feedback_cache.get(lambda: (
+                float(self.left_motor_sign * self.left_motor.get_velocity()),
+                float(self.right_motor_sign * self.right_motor.get_velocity()),
+                float(self.left_motor.get_bus_current())))
+            msg.left_vel_rps, msg.right_vel_rps, msg.ibus_a = values
+            if timing:
+                feedback_end = time.perf_counter()
 
             # 電源電圧
             # ODriveからの実読出しは1 Hzに抑え、それ以外の周期では直近値を再利用する。
@@ -673,14 +689,30 @@ class VehicleInterfaceNode(Node):
                 self._last_vbus_update_time = now
 
             msg.vbus_voltage = self._vbus_voltage
+            if timing:
+                voltage_end = time.perf_counter()
 
             # publish
             self.motor_state_pub.publish(msg)
+            status = 'ok'
 
             pass
 
         except Exception as e:
             self.mark_odrive_disconnected(e)
+        finally:
+            if timing:
+                timing.add(wall_ns, start, position_end, feedback_end, voltage_end,
+                           time.perf_counter(), refreshed, status)
+
+    def destroy_node(self):
+        """通常の停止処理後に診断CSVを保存し、制御中のファイルI/Oを避ける。"""
+        if self._polling_timing is not None:
+            try:
+                self._polling_timing.save()
+            except OSError as exc:
+                self.get_logger().error('モータ読取り診断の保存失敗: '+str(exc))
+        return super().destroy_node()
 
     def emergency_stop_callback(self, msg):
         """緊急停止は再起動までラッチする。GUIの走行許可とは別の安全経路。"""
@@ -716,11 +748,26 @@ class VehicleInterfaceNode(Node):
     def publish_vehicle_status(self):
         """Managerへ接続・中立待ち・緊急停止を通知。実際の回転有無とは区別する。"""
         message = String()
-        message.data = json.dumps({
+        status = {
             'connected': self.odrive_connected,
             'armed': self._drive_armed and self.odrive_connected,
             'emergency_stop': self._emergency_stop_active,
-        })
+        }
+        # ODriveを所有する本ノード内でのみ実状態を読む。別プロセスから
+        # USBを開くと競合するため、試験時だけ既存2 Hz通知に検証値を追加する。
+        # armedはソフトウェアの許可であり、実際のclosed-loop成立とは異なる。
+        if self.get_parameter('motor_state_diagnostics').value and self.odrive_connected:
+            try:
+                status['axes'] = [
+                    {'current_state': int(motor.axis.current_state),
+                     'error': int(motor.axis.error),
+                     'input_vel': float(motor.axis.controller.input_vel)}
+                    for motor in (self.left_motor, self.right_motor)
+                ]
+            except Exception as exc:
+                # 読み取り失敗をenabledと誤認しない。通常制御への指令は行わない。
+                status['motor_state_read_error'] = str(exc)
+        message.data = json.dumps(status)
         self._status_pub.publish(message)
 
     def print_parameters(self):
