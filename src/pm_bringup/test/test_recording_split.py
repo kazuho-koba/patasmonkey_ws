@@ -11,6 +11,28 @@ from pm_bringup.record_trial import parameter_value
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_metadata_timing_launch_default_and_override():
+    """終了後収集を既定にし、従来方式へ明示復帰できることを確認する。"""
+    from launch import LaunchContext
+    from launch.actions import DeclareLaunchArgument
+    from pm_bringup.bag_launch import create_bag_launch
+    for selected in (None, 'during_recording'):
+        context = LaunchContext()
+        if selected:
+            context.launch_configurations['metadata_capture_timing'] = selected
+        for action in create_bag_launch('mission').entities:
+            if isinstance(action, DeclareLaunchArgument):
+                action.execute(context)
+        assert context.launch_configurations['metadata_capture_timing'] == (selected or 'after_recording')
+
+
+def test_deferred_metadata_is_after_recorder_wait():
+    """センサやmotorを起動せず、writer終了待ちの後に重い処理があることを確認する。"""
+    text = (ROOT/'pm_bringup/record_trial.py').read_text()
+    assert text.index('recorder.wait()') < text.index("args.metadata_capture_timing == 'after_recording'")
+    assert 'post_recording_only_not_start_snapshot' in text
+
+
 def test_core_console_diagnostics_are_opt_in_and_reversible():
     """センサを起動せずlaunch引数を評価し、詳細ログへの復帰経路を検査する。"""
     from launch import LaunchContext

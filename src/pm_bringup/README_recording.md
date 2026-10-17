@@ -327,3 +327,69 @@ Wit/OAK timing、OpenVINS IMU gap、mapper callback/executor、VIO adapterの詳
 既定OFFでは今回のhook libraryだけ除去し、他のpreload libraryは維持する。
 通常のROS出力、センサmetadata、健全性ゲートの警告、bag保存完了・件数検査、
 再現用provenanceは運用データとして維持する。sidecar、async writerは既定OFFのまま。
+
+## メタデータ収集時期の比較
+
+mission recorderの `metadata_capture_timing` は既定 `after_recording`（終了後収集）です。
+`during_recording` を明示すると従来の記録中収集へ戻せます。
+
+```bash
+ros2 launch pm_bringup mission_bag.launch.py metadata_capture_timing:=after_recording
+```
+
+終了後方式では、writer終了を待ってからGit状態・インストール済みソース・ノードパラメータ・
+参照設定ファイルを収集します。録画コマンド、QoS、DDS設定など軽量な録画条件は従来どおり
+記録開始時に保存します。録画中は追加のmetadata node・パラメータ巡回を起動しません。
+記録開始時の情報と取り違えないため、recording.jsonにpost_recording_only_not_start_snapshotという
+scopeを明記し、取得日時付きのパラメータsnapshotとmetadata_deferred_phase.jsonを保存します。
+終了時snapshotを開始時の状態と同一と保証する機能ではありません。
+
+終了時のノード設定を残すには、**bagを停止した後もcoreを継続稼働させてください**。
+coreを同時に停止すると、パラメータやカメラの校正snapshotを取得できない場合があります。
+GUIの全停止では安全上vehicleを先に停止するため、車両nodeの終了時parameterは取得できない
+場合があります。core由来の参照設定ファイルは保存できますが、動的な車両設定の開始時保証とは別です。
+設定ファイルやソースが記録中に変更された場合、保存されるのは終了時のファイルです。
+本番で厳密な開始時状態が必要なら、事前snapshotとの併用・変更履歴の検査が別途必要です。
+
+終了処理は従来より長くなる場合があります。GUI/systemdのSTOPPING中に収集とbag検証を行い、
+メタデータ収集の失敗はcompletion.jsonのmetadata_snapshot_errorへ保存します。
+bag本体のclose・件数検査を省略しません。従来動作への復帰はduring_recordingを指定してください。
+
+# Wit IMUの接続先とCPU優先度
+
+## USB–RS485アダプタの切替
+
+IMUの接続先はCP2102のby-id固定名を既定とします。共通launchの
+`wit_port`で接続先のみを上書きでき、通信速度230400 baud、slave ID 80は保持します。
+従来のCH341へ戻す場合は接続後に`ls -l /dev/serial/by-id/`で実際のパスを
+確認し、例えば`wit_port:=/dev/ttyUSB0`を起動引数に加えます。
+両方を同時接続しても自動選択はしません。番号は再接続で変化し得るため、
+旧アダプタもby-id名を指定する方が確実です。
+ドライバ単体起動ではYAMLの`port`またはROSの`-p port:=...`で切り替えます。
+
+## CPU優先度の設定
+
+共通起動構成（pm_coreおよびpm_bag_global_localization）はWit IMUだけを
+`nice -n -5`で起動します。`wit_nice:=0`で従来の優先度へ戻せます。
+他のノードや記録プロセス、ドライバ単体起動には適用しません。
+niceは相対指定なので、親がnice=0の場合の実効値が-5です。
+リアルタイムスケジューリングではなく、100 Hzの保証でもありません。
+
+負のniceには権限が必要です。権限不足時は`nice`が警告して元の優先度で起動します。
+Jetsonで`ulimit -e`が0なら、そのままでは-5になりません。
+管理者がPAMログイン向けに`/etc/security/limits.d/90-pm-nice.conf`等へ
+以下を設定し、再ログインしてから起動する方法があります。
+
+```text
+nvidia soft nice -5
+nvidia hard nice -5
+```
+
+systemd起動はPAM設定だけでは変わらないため、対象unit側の`LimitNICE=25`が
+別途必要です。既存の起動プロセスには遡及しません。
+システム全体やPython実行ファイルへの権限付与は避けてください。
+起動後は次の読み取り専用コマンドで実効値を確認します。
+
+```bash
+ps -C hwt905_imu_node -o pid,ni,args
+```

@@ -399,9 +399,15 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         executable="hwt905_imu_node",
         name="hwt905_imu_node",
         output="screen",
+        # IMUだけの通常スケジューリング優先度を上げ、他ノードは変更しない。
+        # niceは相対値。通常のnice=0の親から-5にする。権限不足時はnice自身が
+        # 警告し、元の優先度で実行するため、センサ起動そのものは妨げない。
+        prefix=["nice -n ", LaunchConfiguration("wit_nice")],
         # 診断を有効化した試行だけ、終了時に同じbagディレクトリへCSVを保存する。
         # poll_hzや通信設定は既存configのまま保持する。
         parameters=[str(imu_config_file), {
+            # 接続先だけを切替え、baudやslave_id等の通信条件は保持する。
+            "port": LaunchConfiguration("wit_port"),
             "timing_diagnostics": LaunchConfiguration("wit_timing_diagnostics"),
             "recover_small_overrun": LaunchConfiguration("wit_recover_small_overrun"),
             "timing_csv": PathJoinSubstitution([
@@ -832,6 +838,14 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                               description='同sequenceのconfidence/disparityと校正設定を追加出力'),
         DeclareLaunchArgument('oak_confidence_threshold', default_value='240',
                               description='StereoDepth生成時のconfidence閾値0..255（小ほど厳格）'),
+        DeclareLaunchArgument(
+            "wit_nice", default_value="-5",
+            description="Witプロセスのnice増分。通常の親nice=0から-5、0で無効化",
+        ),
+        DeclareLaunchArgument(
+            "wit_port", default_value="/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0",
+            description="Witのシリアル接続先。旧アダプタなら/dev/ttyUSB0等へ切替",
+        ),
         DeclareLaunchArgument(
             "wit_timing_diagnostics", default_value="false",
             description="Witの読み取り・publish・周期遅延を終了時にCSV保存する",

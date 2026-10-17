@@ -1,6 +1,8 @@
 hwt905_imu_node:
   ros__parameters:
-    port: /dev/ttyUSB0
+    # CP2102の固定名。ttyUSB番号は抜き差しで変わるため使用しない。
+    # 旧アダプタへの切替は共通launchのwit_port引数で上書きする。
+    port: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
     baud: 230400
     poll_hz: 100.0
     frame_id: wit_imu_link

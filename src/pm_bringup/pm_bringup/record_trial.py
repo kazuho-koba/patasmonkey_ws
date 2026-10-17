@@ -277,6 +277,9 @@ def main(argv=None):
     parser.add_argument('--workspace',required=True)
     parser.add_argument('--external-workspace',required=True)
     parser.add_argument('--storage',default='mcap')
+    parser.add_argument('--metadata-capture-timing', choices=['during_recording', 'after_recording'],
+                        default='after_recording',
+                        help='mission再現情報の収集時期。afterは記録終了時のsnapshotで開始時の保証ではない')
     parser.add_argument('--writer-backend', choices=['standard', 'async'], default='standard',
                         help='単一bag保存経路。asyncは有界FIFOでstorage writeを別threadへ渡す')
     parser.add_argument('--writer-queue-bytes', type=int, default=64*1024*1024,
@@ -442,6 +445,9 @@ def main(argv=None):
         provenance = output/'provenance'
         provenance.mkdir()
         manifest = {'profile':args.profile,'started_at_utc':utc_now(), 'command':command,
+                    'metadata_capture_timing': args.metadata_capture_timing,
+                    'metadata_scope': ('recording_and_end' if args.metadata_capture_timing == 'during_recording'
+                                       else 'post_recording_only_not_start_snapshot'),
                     'topics':topics,'hostname':socket.gethostname(),'platform':platform.platform(),
                     'mcap_preset_profile': args.mcap_preset_profile,
                     'writer_backend': args.writer_backend,
@@ -473,7 +479,7 @@ def main(argv=None):
         shutil.copy2(share/'config/bag_profiles.yaml',provenance/'bag_profiles.yaml')
         # 標準設定ではなく今回実際に使用した設定を保存し、A/B条件の取り違えを防ぐ。
         shutil.copy2(qos_path,provenance/'bag_qos.yaml')
-        if args.profile == 'mission':
+        if args.profile == 'mission' and args.metadata_capture_timing == 'during_recording':
             node = ParameterSnapshots(provenance,args.profile)
             atomic_json(provenance/'versions.json',snapshot_versions(
                 provenance/'git',args.workspace,args.external_workspace))
@@ -514,6 +520,30 @@ def main(argv=None):
             imu_result = verify_recorder(imu_output, imu_child)
             if imu_output.is_dir():
                 atomic_json(imu_output/'completion.json', imu_result)
+        if (args.profile == 'mission' and args.metadata_capture_timing == 'after_recording'
+                and output.is_dir() and (output/'provenance').is_dir()):
+            try:
+                # writerが閉じてからGit・ソース収集・ROS問い合わせを開始する。
+                # coreは継続稼働が必要。記録開始時情報と偽らず終了時のscopeを明記する。
+                phase_start = time.monotonic()
+                phase_utc = utc_now()
+                provenance = output/'provenance'
+                node = ParameterSnapshots(provenance, args.profile)
+                atomic_json(provenance/'versions.json', snapshot_versions(
+                    provenance/'git', args.workspace, args.external_workspace))
+                atomic_json(provenance/'installed_packages.json', installed_inventory(provenance/'installed_sources'))
+                # 後から参加したmetadata nodeのgraphとtransient-local校正情報を取得する。
+                # センサやモータへの設定・制御commandは送らない。
+                until = time.monotonic()+2.0
+                while time.monotonic() < until:
+                    rclpy.spin_once(node, timeout_sec=.05)
+                atomic_json(provenance/'metadata_deferred_phase.json', {
+                    'started_at_utc': phase_utc, 'scope': 'post_recording_only',
+                    'pre_parameter_capture_duration_sec': time.monotonic()-phase_start,
+                    'warning': '終了時のsnapshot。記録中の設定・ソース変更は自動検知しません'})
+            except Exception as error:
+                # メタデータの収集失敗でbag本体の検証・完了証明を省略しない。
+                snapshot_error = str(error)
         if node is not None:
             try:
                 node.capture(refresh=True)

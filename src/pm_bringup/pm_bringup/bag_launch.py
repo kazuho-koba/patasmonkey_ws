@@ -15,7 +15,8 @@ def create_bag_launch(profile):
             'bag_directory', 'bag_name', 'workspace', 'external_workspace', 'storage',
             'mission_bag', 'status_file', 'polling_interval_ms', 'qos_profile_overrides_path',
             'max_bag_size_bytes', 'imu_sidecar', 'bulk_sidecar', 'max_cache_messages',
-            'writer_backend', 'writer_queue_bytes', 'writer_queue_items', 'mcap_preset_profile')}
+            'writer_backend', 'writer_queue_bytes', 'writer_queue_items', 'mcap_preset_profile',
+            'metadata_capture_timing')}
         if values['imu_sidecar'].lower() not in ('true', 'false'):
             raise RuntimeError('imu_sidecarはtrueまたはfalseを指定してください')
         if profile != 'mission' and values['imu_sidecar'].lower() == 'true':
@@ -48,6 +49,7 @@ def create_bag_launch(profile):
             '--writer-queue-bytes', values['writer_queue_bytes'],
             '--writer-queue-items', values['writer_queue_items'],
             '--mcap-preset-profile', values['mcap_preset_profile'],
+            '--metadata-capture-timing', values['metadata_capture_timing'],
             '--qos-profile-overrides-path', values['qos_profile_overrides_path'],
             '--dds-profile', LaunchConfiguration('dds_profile').perform(context),
             *(['--dds-receive-diagnostics'] if
@@ -70,6 +72,8 @@ def create_bag_launch(profile):
         DeclareLaunchArgument('workspace', default_value=str(workspace)),
         DeclareLaunchArgument('external_workspace', default_value=str(external)),
         DeclareLaunchArgument('storage', default_value='mcap'),
+        DeclareLaunchArgument('metadata_capture_timing', default_value='after_recording',
+                              description='missionの再現情報: during_recording / after_recording（終了時snapshot）'),
         DeclareLaunchArgument('writer_backend', default_value='standard',
                               description='standardまたはasync。asyncも単一bagへ保存する'),
         DeclareLaunchArgument('writer_queue_bytes', default_value=str(64*1024*1024),
