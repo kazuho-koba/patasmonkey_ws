@@ -843,8 +843,10 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             description="Witプロセスのnice増分。通常の親nice=0から-5、0で無効化",
         ),
         DeclareLaunchArgument(
-            "wit_port", default_value="/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0",
-            description="Witのシリアル接続先。旧アダプタなら/dev/ttyUSB0等へ切替",
+            "wit_port", default_value="/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0",
+            # CP2102へ戻すときの固定名。引数でも同じ値へ上書きできる。
+            # default_value="/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0",
+            description="Witの固定シリアル接続先。アダプタ交換時はby-id名を指定",
         ),
         DeclareLaunchArgument(
             "wit_timing_diagnostics", default_value="false",

@@ -2,6 +2,8 @@
 Type=Application
 Name=Patasmonkey UGV Operator Console
 Comment=コンテナ内のpm_guiを起動
-Exec=@PM_GUI_WRAPPER@
+Exec="@PM_GUI_WRAPPER@"
+Icon=@PM_GUI_ICON@
 Terminal=false
-Categories=Robotics;Utility;
+StartupNotify=false
+Categories=Utility;

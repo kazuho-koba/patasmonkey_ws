@@ -359,13 +359,18 @@ bag本体のclose・件数検査を省略しません。従来動作への復帰
 
 ## USB–RS485アダプタの切替
 
-IMUの接続先はCP2102のby-id固定名を既定とします。共通launchの
+IMUの接続先は旧CH340/CH341系の
+`/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0`を既定とします。共通launchの
 `wit_port`で接続先のみを上書きでき、通信速度230400 baud、slave ID 80は保持します。
 従来のCH341へ戻す場合は接続後に`ls -l /dev/serial/by-id/`で実際のパスを
 確認し、例えば`wit_port:=/dev/ttyUSB0`を起動引数に加えます。
 両方を同時接続しても自動選択はしません。番号は再接続で変化し得るため、
 旧アダプタもby-id名を指定する方が確実です。
 ドライバ単体起動ではYAMLの`port`またはROSの`-p port:=...`で切り替えます。
+CP2102のby-id名はYAMLとlaunchにコメントで残しています。CP2102へ戻す場合は
+`wit_port:=/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0`
+で切り替えられます。同じシリアル番号なしアダプタを複数接続するとby-id名が
+衝突し得るため、この固定名は現在の1台接続を前提としています。
 
 ## CPU優先度の設定
 

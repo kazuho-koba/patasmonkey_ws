@@ -22,6 +22,32 @@ Foxy container内でworkspaceをbuildし、overlayをsourceした後に起動し
 ros2 launch pm_gui operator_console.launch.py
 ```
 
+### ホストのターミナルから起動
+
+開発containerが起動中の状態で、ホストPC側から実行する。
+
+```bash
+cd ~/Projects/patasmonkey_ws
+PM_GUI_ROS_DOMAIN_ID=0 ./scripts/pm_gui_container.sh
+```
+
+### デスクトップのアイコンから起動
+
+ホストPCで一度だけ実行すると、Desktopとアプリ一覧へランチャーを登録する。
+ユーザー所有のファイルとして登録するため、sudoは不要。
+
+```bash
+python3 scripts/install_pm_gui_desktop.py
+```
+
+Desktopの「Patasmonkey GUI」をダブルクリックする。
+初回に必要なら右クリックから「起動を許可」を選択する。
+containerは事前に起動しておく。アイコンからの起動もRobot Coreや走行許可は自動起動しない。
+container名、ROS_DOMAIN_ID、GUI設定は既存wrapperと共通の
+`~/.config/patasmonkey/pm_gui.env`で変更できる。
+起動ログは`${XDG_STATE_HOME:-~/.local/state}/patasmonkey/pm_gui_*.log`へ保存する。
+workspaceを移動した場合はインストールコマンドを再実行する。
+
 実機なしのmanager mockは次のように起動できます。mock manager操作とrosbag replay topic監視を同じwindowで利用できます。
 
 ```bash
