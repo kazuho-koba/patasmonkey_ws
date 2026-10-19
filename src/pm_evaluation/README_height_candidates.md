@@ -295,3 +295,38 @@ start-secondsはtraceの最初の採用depthからの秒数。その前の画像
 候補の箱は今回frameだけ、hazardは過去の評価保持も含む。青い線は候補高さ平均で、
 黒解除に使う最大平面残差平均とは別。白も部分unknownを含み、安全保証ではない。
 人工例は説明用で実センサ性能を示さない。車体は暫定寸法の目安で実URDFではない。
+
+## ground短期推定から三指標を再計算する試験
+
+`tools/evaluate_ground_temporal_terrain.py`は、通常mapperを変更せず、
+同じground候補のN1／N3・5平均／N3・5中央値を入力に平面を再fitして三指標を計算する。
+ここでground候補は**各セルの最下点群で局所平面と整合するもの**で、3×3局所平面そのものではない。
+候補抽出・ground gateは元の独立frameで一度だけ決め、平滑化後に候補を取り直さない。
+
+```bash
+python3 src/pm_evaluation/tools/evaluate_ground_temporal_terrain.py \
+  bags/rosbag2_2026_07_26-09_17_38 \
+  --mapper-trace notes/reports/perception/20261003_100000_depth融合_stride比較_assets/stride4/trace/mapper_trace.jsonl \
+  --reference notes/reports/perception/20261008_003027_obstacle移動平均解除_assets \
+  --output /tmp/ground_temporal_new
+
+python3 src/pm_evaluation/tools/test_ground_temporal_scenarios.py \
+  --output /tmp/ground_synthetic_new
+
+python3 src/pm_evaluation/tools/summarize_ground_temporal.py /tmp/ground_temporal_new
+```
+
+runtime overlayとsource treeのPYTHONPATHは上のデモと同じ。既存出力directoryは使わない。
+比較用`raw_frame`は従来の独立frame三指標。obstacleは全方式で従来N3確認・解除系列を共有。
+`--reference`を指定すると、raw対照の全370通過footprint列が前回N3と一致しなければ停止する。
+現在画像でground候補があるセルだけ使い、過去セルの穴埋めと平滑化の効果を混ぜない。
+窓未充足時は利用可能な観測を使う。履歴にTTLはなく、窓の実年齢・充填率を診断する。
+
+`summary.json`は黒率・cue別原因・unknown・全cue既知率、平面残差、近傍高さ差と履歴差、
+CPU／メモリを保存する。`footprints.csv`・`frames.csv`・`black_cells.csv`に判定と出典を残す。
+`audit.json`は同stampでの対比較・共通obstacle・方式間の有効mask一致を確認した結果。
+隣接差や履歴不一致は継ぎ目のproxyで、実世界の真値誤差を確定する量ではない。
+
+人工例では、既知ground対応のoracleと既存gate／対応を使うgatedを分ける。
+段差高さを保持してもground gateで境界がunknownになったり、現在のstep cueが物理段差高と
+一致しなかったりするため、黒率低下だけを改善と扱わない。実物段差の検出保証ではない。
