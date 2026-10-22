@@ -1,0 +1,18 @@
+# まず現在の状態を見てください。
+$ nmcli device status
+$ rfkill list
+$ lspci -nnk | grep -A3 -i network
+
+# rfkill で Wi-Fi が Soft blocked: yes なら、
+$ sudo rfkill unblock wifi
+
+
+# その後wifiアダプターを再起動します
+$ sudo systemctl restart NetworkManager
+
+# 確認
+$ nmcli radio wifi
+$ nmcli device status
+
+# Wi-Fiが disabled なら、
+$ nmcli radio wifi on
