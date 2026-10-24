@@ -3,16 +3,13 @@
 <package format="3">
   <name>pm_config</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Patasmonkeyの各ノードが共有するYAML設定</description>
   <maintainer email="kazuho.kobayashi.ynu@gmail.com">kazuho</maintainer>
   <license>TODO: License declaration</license>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <export>
-    <build_type>ament_python</build_type>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>
