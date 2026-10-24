@@ -12,10 +12,13 @@ map:
   tile_cache_dir: ~/.cache/pm_gui/osm
   offline_tiles_dir: ""
   attribution: © OpenStreetMap contributors
-  # 位置未受信時は世界表示。手動指定、読み込み、GNSS受信で目的地へ移動する。
-  latitude: 0.0
-  longitude: 0.0
-  zoom: 3
+  # 武蔵浦和駅付近を初期表示。GNSS受信で勝手に移動せず「UGV位置へ」で移動する。
+  latitude: 35.8461
+  longitude: 139.6466
+  center_on_first_fix: false
+  # Qtのlogical DPIを目安に初期縮尺を決める。zoomはこの指定がない場合の値。
+  initial_scale_denominator: 20000.0
+  zoom: 15
   vehicle_zoom: 17
   # tile取得はZ19まで、表示・経路編集はZ26まで。以降は既存tileを拡大する。
   tile_max_zoom: 19

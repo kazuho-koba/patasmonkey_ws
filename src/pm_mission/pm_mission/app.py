@@ -36,6 +36,9 @@ class MissionWindow(QMainWindow):
         self.selected = -1
         self.pending = None
         self.last_fingerprint = self.last_request_id = None
+        self._uploaded_fingerprint = None
+        self._document_fingerprint = None
+        self._submission_error = ''
         self._first_fix = True
         self._refreshing = False
         self.resize(1250, 820)
@@ -52,8 +55,8 @@ class MissionWindow(QMainWindow):
         title.setStyleSheet('font-size:18px; font-weight:bold; color:#f4d35e;')
         root.addWidget(title)
         controls = QHBoxLayout()
-        for label, callback in [('新規', self.new), ('読み込み', self.load),
-                                ('保存', self.save), ('名前を付けて保存', lambda: self.save(True))]:
+        for label, callback in [('新規経路', self.new), ('経路をロード', self.load),
+                                ('経路を保存', self.save), ('名前を付けて保存', lambda: self.save(True))]:
             button = QPushButton(label)
             button.clicked.connect(lambda checked=False, fn=callback: fn())
             controls.addWidget(button)
@@ -61,12 +64,18 @@ class MissionWindow(QMainWindow):
         self.name.setMaxLength(200)
         self.name.textEdited.connect(self.rename)
         controls.addWidget(self.name, 1)
-        self.send_button = QPushButton('UGVへ送信（保存のみ）')
+        self.send_button = QPushButton('UGVへ読み込み（送付）')
         self.send_button.clicked.connect(self.send)
         controls.addWidget(self.send_button)
         root.addLayout(controls)
         self.connection = QLabel('受信nodeを検索中')
         root.addWidget(self.connection)
+        self.file_info = QLabel()
+        self.file_info.setWordWrap(True)
+        root.addWidget(self.file_info)
+        self.upload_state = QLabel('UGV未送付')
+        self.upload_state.setWordWrap(True)
+        root.addWidget(self.upload_state)
         self.map = MissionMap(config['map'])
         self.map.add_point.connect(self.add)
         self.map.move_point.connect(self.move)
@@ -116,7 +125,7 @@ class MissionWindow(QMainWindow):
             edit_controls.addWidget(button)
         edit_controls.addWidget(QLabel('点は線分で接続。背景dragでpan／ホイールでzoom。'))
         root.addLayout(edit_controls)
-        self.status = QLabel('経路を作成してください。送信しても走行は開始しません。')
+        self.status = QLabel('経路をロード、または地図上で新規作成 → 編集・保存 → UGVへ読み込み。走行は開始しません。')
         self.status.setWordWrap(True)
         root.addWidget(self.status)
         events.position.connect(self.position)
@@ -159,12 +168,51 @@ class MissionWindow(QMainWindow):
         self._refreshing = False
         self.map.set_route(points, self.selected)
         self.setWindowTitle(('＊ ' if self.dirty else '')+self.document['name']+' / Mission Planner')
+        self._document_updated()
 
     def rename(self, name):
         self.document['name'] = name
         self.document['revision'] += 1
         self.dirty = True
         self.setWindowTitle('＊ '+name+' / Mission Planner')
+        self._document_updated()
+
+    @staticmethod
+    def _fingerprint(document):
+        """受領した版と編集中の版を区別し、別経路を受領済みと表示しない。"""
+        return hashlib.sha256(json.dumps(document, sort_keys=True).encode()).hexdigest()
+
+    def _document_updated(self):
+        """経路の変更時だけ検証/hashを更新し、定期pollで大量の点を再検証しない。"""
+        self._document_fingerprint = self._fingerprint(self.document)
+        try:
+            document = validate(self.document, for_submission=True)
+            # 緯度等の整数/小数表記は検証時に正規化されるため、送付snapshotと揃える。
+            self._document_fingerprint = self._fingerprint(document)
+            self._submission_error = ''
+        except (ValueError, TypeError, KeyError) as error:
+            self._submission_error = str(error)
+        self.poll()
+
+    def _route_info(self):
+        path = self.path or '新規経路（未保存）'
+        self.file_info.setText('編集ファイル: '+path+(' / 未保存の変更あり' if self.dirty else ''))
+        same_pending = self.pending and self.pending['fingerprint'] == self._document_fingerprint
+        if same_pending:
+            text, color = 'この経路をUGVへ送付中 / 受領確認待ち', '#f4d35e'
+        elif self._uploaded_fingerprint == self._document_fingerprint:
+            text, color = 'この経路はUGV受領済み（保存完了・走行未開始）', '#7ac943'
+        else:
+            text, color = ('この編集内容はUGV未送付', '#91a6b2')
+            if self.pending:
+                text += ' / 以前の編集内容を送付中'
+        self.upload_state.setText(text)
+        self.upload_state.setStyleSheet('color:'+color)
+
+    def _status(self, text):
+        """ロード/保存の表示へ、過去の送付成功・失敗の色を持ち越さない。"""
+        self.status.setText(text)
+        self.status.setStyleSheet('color:#f0f3bd')
 
     def add(self, latitude, longitude):
         points = self.document['waypoints']
@@ -245,7 +293,8 @@ class MissionWindow(QMainWindow):
 
     def position(self, latitude, longitude):
         self.map.vehicle = (latitude, longitude)
-        if self._first_fix and not self.document['waypoints']:
+        if (self._first_fix and not self.document['waypoints']
+                and self.config['map'].get('center_on_first_fix', True)):
             self.map.set_center(latitude, longitude)
             self.map.set_zoom(int(self.config['map'].get('vehicle_zoom', 17)))
         self._first_fix = False
@@ -269,6 +318,7 @@ class MissionWindow(QMainWindow):
             self.selected = -1
             self.name.setText(self.document['name'])
             self.refresh()
+            self._status('新規経路を作成しました。地図クリックで経路点を追加できます。')
 
     def load(self):
         if not self.discard_or_save():
@@ -287,7 +337,7 @@ class MissionWindow(QMainWindow):
                 point = document['waypoints'][0]
                 self.map.set_center(point['latitude'], point['longitude'])
                 self.map.set_zoom(int(self.config['map'].get('vehicle_zoom', 17)))
-            self.status.setText('読み込み: '+path)
+            self._status('経路をロード: '+path)
         except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as error:
             self.fail(str(error))
 
@@ -305,7 +355,7 @@ class MissionWindow(QMainWindow):
             save_document(path, self.document)
             self.path, self.dirty = path, False
             self.refresh()
-            self.status.setText('保存: '+path)
+            self._status('経路を保存: '+path)
             return True
         except (OSError, ValueError, TypeError, KeyError) as error:
             self.fail(str(error))
@@ -316,22 +366,27 @@ class MissionWindow(QMainWindow):
             return
         try:
             document = validate(self.document, True)
-            fingerprint = hashlib.sha256(json.dumps(document, sort_keys=True).encode()).hexdigest()
+            fingerprint = self._fingerprint(document)
             if fingerprint != self.last_fingerprint:
                 self.last_request_id = str(uuid.uuid4())
                 self.last_fingerprint = fingerprint
-            self.pending = (self.last_request_id, time.monotonic(), document['revision'], document['name'])
+            # 送付snapshotの識別情報を保持し、送付中に編集/別fileを開いても混同しない。
+            self.pending = {'request_id': self.last_request_id, 'started': time.monotonic(),
+                            'revision': document['revision'], 'name': document['name'],
+                            'fingerprint': fingerprint}
             self.backend.submit(document, self.last_request_id)
-            self.status.setText('UGV側の受領・保存完了を待っています…')
+            self._status('UGVへ読み込み中。受領・保存完了を待っています…')
         except (ValueError, TypeError, KeyError, RuntimeError) as error:
             self.pending = None
             self.fail(str(error))
         self.poll()
 
     def receipt(self, request_id, accepted, detail):
-        if self.pending is None or request_id != self.pending[0]:
+        if self.pending is None or request_id != self.pending['request_id']:
             return
-        revision, mission_name = self.pending[2], self.pending[3]
+        revision, mission_name = self.pending['revision'], self.pending['name']
+        if accepted:
+            self._uploaded_fingerprint = self.pending['fingerprint']
         self.pending = None
         self.status.setText(('受領済み: ' if accepted else '受領失敗: ')+mission_name
                             +' / revision '+str(revision)+'\n'+detail)
@@ -340,12 +395,19 @@ class MissionWindow(QMainWindow):
 
     def poll(self):
         ready = self.backend.client.service_is_ready()
-        self.connection.setText(('受信node接続済み' if ready else '受信node未接続')+' / '+self.config['upload_service'])
-        if self.pending and time.monotonic()-self.pending[1] > float(self.config['upload_timeout_sec']):
+        # WindowはUI設定全体、backendはros節だけを持つ。階層を取り違えると
+        # 起動直後の定期pollでKeyErrorになり、送付操作へ進めなくなる。
+        service = self.config['ros']['upload_service']
+        self.connection.setText(('UGV経路受信node接続済み' if ready else 'UGV経路受信node未接続')+' / '+service)
+        if self.pending and time.monotonic()-self.pending['started'] > float(self.config['upload_timeout_sec']):
             self.pending = None
             self.status.setText('受領確認timeout。UGV側で保存済みの可能性があります。同じ経路は安全に再送できます。')
             self.status.setStyleSheet('color:#ff9f1c')
-        self.send_button.setEnabled(ready and self.pending is None)
+        reason = (self._submission_error or ('UGVの受信nodeが未接続です' if not ready else '')
+                  or ('別の送付の受領確認待ちです' if self.pending else ''))
+        self.send_button.setEnabled(ready and self.pending is None and not self._submission_error)
+        self.send_button.setToolTip(reason or 'UGVへ経路を保存し、受領完了を確認します。走行は開始しません。')
+        self._route_info()
 
     def fail(self, message):
         self.status.setText(message)

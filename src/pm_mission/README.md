@@ -34,8 +34,30 @@ ros2 launch pm_mission mission_receiver.launch.py
 ros2 launch pm_mission mission_receiver.launch.py config:=/path/to/receiver.yaml
 ```
 
-receiverのsystemd登録や既存Core launchへの追加は今回行っていません。
+`pm_bringup/pm_core.launch.py`は受信箱を既定で起動します。
+Coreが稼働していれば、motor enableとは独立して経路を受け取れます。
+受信箱を別途手動起動する場合は、Core側を`use_mission_receiver:=false`にして重複を避けます。
+設定変更には`mission_receiver_config:=/path/to/receiver.yaml`を使います。
+受信箱単体でのsystemd登録は行っていません。
 receiverは`rclpy`とYAML/modelだけを使用し、Qt windowを起動しません。
+
+## GUIでの操作順
+
+1. Operator Consoleの **MISSION PLANNER** を押すと、標準のPlanner launchで独立windowが開く。
+2. **経路をロード** で既存YAMLを開くか、**新規経路** で地図クリックから作成する。
+3. 地図上の点をdragしたり、一覧の座標・属性・待機秒・順番を編集する。
+4. 必要に応じて **経路を保存**。ローカル保存とUGV送付は独立した操作。
+5. **UGVへ読み込み（送付）** を押し、受信nodeの永続保存完了の応答を待つ。
+
+現在のファイル、ローカルの未保存変更、UGVへの未送付/送付中/受領済みを別々に表示する。
+受領済みの経路を編集すると、その新しい内容は未送付になる。
+送付中に編集や別ファイルへの切替を行っても、応答は送付時の名前・revisionに対して表示する。
+空の経路、START/GOALが未設定、受信nodeが未接続などの場合は送付ボタンを無効にし、
+理由をtooltipに表示する。編集とローカル保存はUGV未接続でも利用可能。
+受領確認timeout後は未確認状態を維持し、送付済みとは表示しない。
+
+この段階の「UGVへ読み込み」は **検証・保存・受領応答** までを指す。
+走行開始、経路追従、motor enableやcmd_vel送信は行わない。
 
 ## 編集
 
@@ -104,3 +126,21 @@ pan・scale barは同じ表示zoomで計算します。高zoomのtileは要求�
 保存する緯度経度をtileのpixelに丸めることはありません。
 画像拡大は地図情報の詳細や地図自体の位置精度を増やしません。
 道路幅や地図とRTK位置のずれは別途確認が必要です。
+
+### 反映範囲
+
+Plannerを使うPCではpm_missionとpm_guiを更新する（pm_msgs/pm_ui_commonも導入済みであること）。
+UGV側ではpm_missionとpm_bringupを更新する。
+稼働中Coreにはファイル更新だけで受信nodeが追加されないため、次のCore起動で反映する。
+今回のUploadMission/Mission/MissionWaypointのROS interfaceに変更はない。
+
+### 起動時の位置・縮尺
+
+標準設定は武蔵浦和駅付近（35.8461, 139.6466）、約1:20,000相当から開始する。
+`map.initial_scale_denominator`とQtのlogical DPIから初期zoomを計算し、整数zoomの
+タイルを端数倍率で描画する。96dpiでは地上分解能が約5.29m/pixelとなる。
+実際の物理縮尺はモニターやOSのDPI設定に依存するため、地図上のスケールバーも参照する。
+起動時にGNSSで別の場所へ移動しないよう、`map.center_on_first_fix: false`を標準とする。
+UGVの位置表示は継続し、移動したい場合は「UGV位置へ」を使う。
+既存経路をロードした場合の経路への移動は維持する。
+[駅付近の座標参考](https://mapfan.com/spots/SCH%2CJ%2C6L)

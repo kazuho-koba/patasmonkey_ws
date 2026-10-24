@@ -13,6 +13,9 @@ operator_console:
       debug_bag_start_service: /pm/robot_manager/debug_bag/start
       debug_bag_stop_service: /pm/robot_manager/debug_bag/stop
       stale_timeout_sec: 3.0
+    mission_planner:
+      # 空ならpm_missionの標準設定。Mission Plannerボタンから独立起動する。
+      config: ""
     topics:
       stale_timeout_sec: 2.0
       odometry: /odometry/global

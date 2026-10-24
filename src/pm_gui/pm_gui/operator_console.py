@@ -9,7 +9,7 @@ import threading
 
 import rclpy
 import yaml
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_prefix, get_package_share_directory
 from PyQt5.QtCore import QProcess, QTimer, Qt
 from PyQt5.QtGui import QFont, QFontDatabase
 from PyQt5.QtWidgets import (
@@ -185,11 +185,18 @@ class OperatorWindow(QMainWindow):
     def _open_mission_planner(self):
         """独立processを起動し、Console終了時もプランナーを終了させない。"""
         try:
-            get_package_share_directory('pm_mission')
-            arguments = ['run', 'pm_mission', 'mission_planner']
+            share = get_package_share_directory('pm_mission')
+            executable = os.path.join(get_package_prefix('pm_mission'), 'lib',
+                                      'pm_mission', 'mission_planner')
+            if not os.access(executable, os.X_OK):
+                raise RuntimeError('pm_missionをビルドしてください。実行ファイルがありません: '+executable)
             config = self.config.get('mission_planner', {}).get('config', '')
-            if config:
-                arguments += ['--config', os.path.expanduser(config)]
+            config = os.path.abspath(os.path.expanduser(config)) if config else os.path.join(
+                share, 'config', 'mission.yaml')
+            if not os.path.isfile(config):
+                raise RuntimeError('Mission Planner設定がありません: '+config)
+            # 単体CLIと同じlaunch入口に統一し、Consoleの終了とは独立させる。
+            arguments = ['launch', 'pm_mission', 'mission_planner.launch.py', 'config:='+config]
             started, _pid = QProcess.startDetached('ros2', arguments)
             if not started:
                 raise RuntimeError('mission_planner processを起動できませんでした')

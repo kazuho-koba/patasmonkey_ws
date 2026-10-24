@@ -42,7 +42,18 @@ class MissionMap(QWidget):
         # 既存画像だけを拡大し、点の座標変換は表示zoomの精度を維持する。
         self.tile_max_zoom = max(1, min(30, int(config.get('tile_max_zoom', 19))))
         self.max_zoom = max(self.tile_max_zoom, min(30, int(config.get('max_zoom', 26))))
-        self.zoom = max(1, min(self.max_zoom, int(config.get('zoom', 3))))
+        zoom = float(config.get('zoom', 3))
+        scale = config.get('initial_scale_denominator')
+        if scale is not None:
+            # 1:NのNからm/logical pixelへ換算。緯度による地上分解能の違いも考慮する。
+            # 実際の画面寸法はOSのDPI設定に依存するため、物理縮尺の厳密保証ではない。
+            scale = float(scale)
+            if not math.isfinite(scale) or scale <= 0.0:
+                raise ValueError('initial_scale_denominatorは正の有限値で指定してください')
+            meters_per_pixel = scale * 0.0254 / max(1, self.logicalDpiX())
+            zoom = math.log2(2 * math.pi * 6378137 * math.cos(math.radians(self.center[0]))
+                             / (256 * meters_per_pixel))
+        self.zoom = max(1.0, min(float(self.max_zoom), zoom))
         self.points = []
         self.selected = -1
         self.vehicle = None
@@ -63,7 +74,8 @@ class MissionMap(QWidget):
         self.update()
 
     def set_zoom(self, value):
-        self.zoom = max(1, min(self.max_zoom, int(value)))
+        # 初期縮尺を整数zoomへ丸めず、＋／−やホイールでも同じ倍率を維持する。
+        self.zoom = max(1.0, min(float(self.max_zoom), float(value)))
         self.update()
 
     def pixel(self, latitude, longitude):
@@ -128,7 +140,8 @@ class MissionMap(QWidget):
         painter.fillRect(self.rect(), QColor('#d7d9d3'))
         cx, cy = world_pixel(*self.center, self.zoom)
         left, top = cx-self.width()/2, cy-self.height()/2
-        tile_zoom = min(self.zoom, self.tile_max_zoom)
+        # XYZ tile自体は整数zoomで要求し、端数zoomは描画倍率で表現する。
+        tile_zoom = min(math.floor(self.zoom), self.tile_max_zoom)
         enlargement = 2**(self.zoom-tile_zoom)
         tile_pixels = 256 * enlargement
         first_x, last_x = math.floor(left/tile_pixels), math.floor((left+self.width())/tile_pixels)
@@ -177,8 +190,8 @@ class MissionMap(QWidget):
                                                 'km' if distance >= 1000 else 'm'))
         painter.drawLine(QPointF(14, 41), QPointF(14+width, 41))
         painter.fillRect(0, self.height()-26, self.width(), 26, QColor(16, 24, 32, 220))
-        zoom_text = 'Z{}'.format(self.zoom)
+        zoom_text = 'Z{:g}'.format(round(self.zoom, 2))
         if enlargement > 1:
-            zoom_text += ' / tile Z{} ×{}（画像拡大）'.format(tile_zoom, enlargement)
+            zoom_text += ' / tile Z{} ×{:g}（画像拡大）'.format(tile_zoom, round(enlargement, 2))
         painter.drawText(8, self.height()-8, self.provider.attribution+' | '
                          +self.provider.source_summary+' | '+zoom_text)

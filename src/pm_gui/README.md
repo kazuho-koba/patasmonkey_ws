@@ -258,3 +258,14 @@ GUI表示のために制御nodeを自動起動することはない。
 - [Murataの参考セル仕様](https://www.murata.com/-/media/webrenewal/products/batteries/cylindrical/datasheet/us18650vtc5-product-datasheet.ashx?cvid=20250324010000000000&la=en)
 - [電圧推定の負荷依存性](https://www.ti.com/document-viewer/lit/html/SSZT786/GUID-5DD8C3D9-BCBE-467B-90E5-FAA672AAC15D)
 - [ODrive firmware0.5.6のDC bus電流定義](https://raw.githubusercontent.com/odriverobotics/ODrive/fw-v0.5.6/Firmware/odrive-interface.yaml)
+
+## Mission Plannerの呼び出しと経路送付
+
+タイトル行の **MISSION PLANNER** は`pm_mission/mission_planner.launch.py`を
+独立processとして起動する。設定ファイルと実行ファイルの存在を確認し、未ビルドや
+設定パスの誤りはConsole内で案内する。`mission_planner.config`が空なら標準設定を使う。
+Planner内の **経路をロード** / **新規経路** / **経路を保存** /
+**UGVへ読み込み（送付）** を使用する。
+ローカル編集・保存とUGV受領状態は別に表示され、受領済みの内容を編集すると未送付になる。
+UGV側は更新後のpm_coreがmission_receiverを起動し、経路を検証・保存して受領を応答する。
+送付しても走行は開始しない。詳細はpm_mission/README.mdを参照。
