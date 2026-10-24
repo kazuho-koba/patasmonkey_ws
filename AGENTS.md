@@ -71,6 +71,9 @@ folder `perception` for both session records and reports. Use:
 - `notes/codex_sessions/perception/YYYYMMDD_HHMMSS_<brief-description>.md`
 - `notes/reports/perception/<report-name>.md`
 
+経路計画のworkstreamは `notes/codex_sessions/planner/` と
+`notes/reports/planner/` を使う。対話ログ用に `notes/sessions/` は作成しない。
+
 Keep report figures and other required assets beside their report. Do not mix
 records or reports from different sessions. These records, reports, and their
 assets are local-only; do not add them to Git or publish them. For each completed

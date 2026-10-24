@@ -1,0 +1,47 @@
+はい、ノートPCでも起動できます。ただし、同じネットワークにいることに加え、ノートPCにもGUI実行用のDocker環境が必要です。
+
+  開発PCのショートカットは開発PC内の絶対パスを参照しています。コピーして使うより、ノートPC上で登録スクリプトを実行し直してください。
+
+  ## 前提
+
+  • ノートPCにrepositoryと必要なROS workspaceを配置済み。
+  • patasmonkey_foxy_devコンテナ内でpm_guiと依存packageをビルド済み。
+  • コンテナは--network hostで作成され、ROS通信がlocalhost限定になっていない。
+  • Jetsonと同じROS_DOMAIN_IDを使用する。現在の構成では0です。
+
+  以下はすべてノートPCのホスト側（コンテナ外）で実行します。
+
+  ## 1. 共通設定：最初に一度
+
+  ~/.config/patasmonkey/pm_gui.envを作成し、以下を保存してください。既存ファイルがある場合は該当行を更新します。
+
+  PM_GUI_CONTAINER=patasmonkey_foxy_dev
+  PM_GUI_ROS_DOMAIN_ID=0
+  PM_GUI_CONFIG=/workspaces/patasmonkey_ws/src/pm_gui/config/gui.yaml
+
+  これで、コマンド起動とデスクトップ起動が同じ実機用設定を使います。
+
+  ## 2. コマンドによる起動
+
+  コンテナが停止している場合は、先に起動します。
+ 
+  docker start patasmonkey_foxy_dev
+  続いてGUIを起動します。
+
+  cd ~/Projects/patasmonkey_ws
+  ./scripts/pm_gui_container.sh
+
+  workspaceを別の場所に配置した場合は、cd先を変更してください。
+
+  ## 3. デスクトップから起動
+
+  ノートPCで一度だけ登録します。
+
+  cd ~/Projects/patasmonkey_ws
+  python3 scripts/install_pm_gui_desktop.py
+
+  以後は、コンテナを起動した状態で、デスクトップの**「Patasmonkey GUI」をダブルクリック**してください。初回に必要なら右クリックして「起動を許可」を選びます。
+
+  アイコンはコンテナを自動起動しません。 また、GUI起動だけではRobot Coreやモーターは自動起動しません。
+
+  なお、既存のdocker/foxy-dev/run.shには--gpus allがあるため、NVIDIA GPU非搭載のノートPCでは、コンテナを新規作成する際に起動設定の調整が必要です。GUI自体はNVIDIA GPU必須ではありません。

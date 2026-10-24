@@ -1,0 +1,4 @@
+# workspace直下で実行するcolcon buildに適用する。Jetsonへのデプロイにも含める。
+# 設定専用pm_configのYAMLをsrcへのリンクとして配置し、値の変更時の再ビルドを省く。
+build:
+  symlink-install: true
