@@ -726,7 +726,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             "--qos-profile-overrides-path",
             str(Path(get_package_share_directory('pm_bringup'))/'config/bag_qos_mission_buffered.yaml'),
             "--max-bag-size",
-            "1000000000",
+            "2000000000",
             *bag_topics,
         ],
         cwd=str(bag_output_directory),

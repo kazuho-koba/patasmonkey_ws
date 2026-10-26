@@ -21,7 +21,7 @@ ros2 launch pm_bringup mission_bag.launch.py \
 
 - FIFOは既定64 MiBかつ8192 item。byte上限はCDR payload合計で、書込み中1件を含む。
   ROS/DDS、object overhead、MCAP内部bufferは別にRAMを使う。
-- 保存先は1つのbag directory。通常の1 GB分割による複数MCAPはあり得る。
+- 保存先は1つのbag directory。通常の2 GB（2000000000 byte）分割による複数MCAPはあり得る。
 - 既定容量は初期比較用の有限予算。画像の約1秒規模のburstを想定するが、
   messageサイズと入力帯域次第で保持時間は変わる。実測peak_bytesを見て評価する。
   GUIあり試験では64 MiB、128 MiBで容量超過を観測し、192 MiBでもitem上限に

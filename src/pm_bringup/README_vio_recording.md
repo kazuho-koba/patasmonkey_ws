@@ -42,19 +42,23 @@ ros2 launch pm_bringup pm_bag_global_localization.launch.py \
 ## 停止中の初期化と従来のjerk待ちの切替
 
 このlaunchが使用する`pm_config/config/oak_d_s2/estimator_config1.yaml`では、
-`try_zupt: true`で停止中の静的初期化＋ZUPT（ゼロ速度更新）を有効にする。
-画像とIMUを約3秒以上取得し、静止条件を満たせば、手でjerkを加えずに初期化する。
-起動時はセンサユニット・車体を静止させ、ログの`successful initialization`を
-確認してから動かす。特徴点不足や振動が大きい場合は、初期化までの時間が延びる。
+既定の`try_zupt: false`で従来のjerk待ちを使用する。
+起動時はセンサユニット・車体を静止させ、画像とIMUの静止データを取得してから
+短いjerkを加える。ログの`successful initialization`を確認してから走行する。
+初期化窓は3秒で、前半の静止と後半の励起を確認するため、窓が埋まる前のjerkは
+検出されない場合がある。特徴点不足や振動が大きい場合も初期化までの時間が延びる。
 
-`zupt_only_at_beginning: true`のため、通常のVIO更新へ移行した後にはZUPTを
+停止中の静的初期化＋ZUPT（ゼロ速度更新）を使う場合だけ、同じYAMLを
+`try_zupt: true`へ切り替える。この場合は静止条件を満たすとjerkなしで初期化する。
+
+停止中初期化を選ぶ場合は`zupt_only_at_beginning: true`のため、通常のVIO更新へ移行した後にはZUPTを
 再投入しない。初期静止区間ではZUPTが通常の特徴更新を代替するため、
 点群に新しい特徴が追加されない場合がある。初期化成功ログとodometryも確認する。
-現在のZUPT受入れ判定は画像視差中心（`zupt_chi2_multipler: 0`、
+この方式のZUPT受入れ判定は画像視差中心（`zupt_chi2_multipler: 0`、
 `zupt_max_disparity: 0.5` pixel）なので、起動直後の低速移動を避ける。
 
-従来の方式へ戻すには同じYAMLの`try_zupt: false`だけを変更する。
-`zupt_only_at_beginning`はtrueのままでよい。`init_dyn_use: false`と
+`try_zupt: false`ではZUPTを使用せず、`zupt_only_at_beginning`は無視されるため
+trueのままでよい。`init_dyn_use: false`と
 `init_imu_thresh: 0.2`は両方式で維持する。停止初期化では閾値がIMU変動の上限、
 jerk待ちでは静止から励起へ移る判定値になる。閾値を0にしない。
 切替操作はYAMLだけで行い、追加launch引数は使わない。

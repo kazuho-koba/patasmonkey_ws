@@ -124,7 +124,7 @@ def test_bag_diagnostic_arguments_keep_existing_defaults():
             action.execute(context)
     assert context.launch_configurations['polling_interval_ms'] == '100'
     assert context.launch_configurations['qos_profile_overrides_path'] == ''
-    assert context.launch_configurations['max_bag_size_bytes'] == '1000000000'
+    assert context.launch_configurations['max_bag_size_bytes'] == '2000000000'
     assert context.launch_configurations['imu_sidecar'] == 'false'
     assert context.launch_configurations['bulk_sidecar'] == 'false'
     assert context.launch_configurations['max_cache_messages'] == '0'

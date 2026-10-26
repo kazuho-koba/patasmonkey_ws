@@ -25,10 +25,11 @@ feat_rep_msckf: "GLOBAL_3D"
 feat_rep_slam: "ANCHORED_MSCKF_INVERSE_DEPTH"
 feat_rep_aruco: "ANCHORED_MSCKF_INVERSE_DEPTH"
 
-# 初期化方式の切替: trueは停止中に初期化＋ZUPT、falseは従来のjerk待ち。
+# 初期化方式の切替: false（既定）は従来のjerk待ち、trueは停止中に初期化＋ZUPT。
 # trueでも無条件に初期化せず、画像の静止判定とIMU加速度変動の上限を確認する。
-# 起動後は車体を静止させ、初期化完了後に動かす。閾値を0にして待機を省略しない。
-try_zupt: true
+# jerk待ちでは静止データを取得後に短く励起し、初期化完了を確認してから走行する。
+# 閾値を0にして待機を省略しない。
+try_zupt: false
 zupt_chi2_multipler: 0 # 0ではZUPTの受入れを画像視差で判定する。
 zupt_max_velocity: 0.1
 zupt_noise_multiplier: 10

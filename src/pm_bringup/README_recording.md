@@ -187,7 +187,7 @@ recorder停止時点までコピーするため、coreがその後も稼働し�
 既存topicの取得周期は変えませんが、起動が遅いtopicの購読開始は最大約1秒遅れます。
 `qos_profile_overrides_path:=/絶対パス/比較設定.yaml`ではbag側の購読QoSだけを
 比較できます。空なら従来の`config/bag_qos.yaml`を使用します。
-`max_bag_size_bytes`は分割サイズ[byte]です（既定1000000000）。0で分割を無効化し、
+`max_bag_size_bytes`は分割サイズ[byte]です（既定2000000000、10進の2 GB）。0で分割を無効化し、
 分割/close処理による停滞を比較できます。無分割では長時間試行の1ファイルが大きく
 なるため、通常運用へ変更する前に保存容量・破損時の復旧・取り扱いを検討してください。
 実行commandと実際に使用したQoS YAMLはprovenanceへ保存します。

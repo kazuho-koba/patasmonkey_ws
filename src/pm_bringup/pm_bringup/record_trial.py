@@ -288,8 +288,8 @@ def main(argv=None):
                         help='async専用FIFOのitem上限。messageとtopic登録/削除を含む')
     parser.add_argument('--mcap-preset-profile', choices=['default', 'none', 'zstd_fast_crc'],
                         default='default', help='Foxy overlayのMCAP可逆圧縮。defaultは従来動作')
-    parser.add_argument('--max-bag-size', type=int, default=1000000000,
-                        help='bag分割サイズ[byte]。0で分割無効、既定1 GB')
+    parser.add_argument('--max-bag-size', type=int, default=2000000000,
+                        help='bag分割サイズ[byte]。0で分割無効、既定2 GB（10進）')
     parser.add_argument('--polling-interval', type=int, default=100,
                         help='未発行topicを再探索する間隔[ms]。取得周期ではない')
     parser.add_argument('--max-cache-size', type=int, default=0,
