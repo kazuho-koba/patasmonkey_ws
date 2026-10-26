@@ -1,0 +1,58 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Fixed Frame: planner_preview
+    Background Color: 245; 245; 245
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: 1m Grid
+      Enabled: true
+      Cell Size: 1
+      Plane Cell Count: 100
+    - Class: rviz_default_plugins/Path
+      Name: Mission polyline (not validated)
+      Enabled: true
+      Color: 150; 150; 150
+      Topic:
+        Value: /pm/planner/preview/mission_polyline
+        Durability Policy: Transient Local
+    - Class: rviz_default_plugins/Path
+      Name: Geometry checked reference (not drive permission)
+      Enabled: true
+      Color: 0; 100; 255
+      Topic:
+        Value: /pm/planner/preview/reference_path
+        Durability Policy: Transient Local
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Waypoints
+      Enabled: true
+      Topic:
+        Value: /pm/planner/preview/markers
+        Durability Policy: Transient Local
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Target and current pose
+      Enabled: true
+      Topic:
+        Value: /pm/planner/preview/progress_markers
+        Durability Policy: Transient Local
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Scale: 70
+      Target Frame: <Fixed Frame>
+      X: 2.5
+      Y: 3.0
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+Window Geometry:
+  Width: 1400
+  Height: 900
+  Displays:
+    collapsed: false

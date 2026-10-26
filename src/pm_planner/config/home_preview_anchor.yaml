@@ -1,0 +1,11 @@
+# 仮想preview専用。最初のhome waypointを「明示的に」原点とした例。
+# 実機map／odomとの整合を保証しない。既存localizationへこのanchorを設定しない。
+latitude: 35.8403250977535
+longitude: 139.63883757591248
+altitude: 0.0
+frame_id: planner_preview
+x: 0.0
+y: 0.0
+z: 0.0
+east_yaw_rad: 0.0
+alignment_verified: false

@@ -1,0 +1,34 @@
+/**:
+  ros__parameters:
+    # Stage 1に速度出力機能はない。perceptionや既存coreもこのlaunchでは起動しない。
+    mission_file: ""
+    coordinate_mode: navsat  # navsat / manual。manualはanchor_fileの明示が必要。
+    anchor_file: ""
+    planning_frame: map
+    # /fromLLのmap_pointというfield名からframeを決めない。実navsat出力で確認して指定。
+    navsat_world_frame: ""
+    navsat_service: /fromLL
+    navsat_odom_topic: /odometry/gps
+    gnss_topic: /fix/gated
+    pose_topic: /odometry/local
+    base_frame: base_link
+    pose_timeout_sec: 0.5
+    gnss_timeout_sec: 2.5
+    service_timeout_sec: 3.0
+    max_projection_tilt_rad: 0.05
+    spacing_m: 0.1
+    corner_allowance_m: 0.3  # 通常filletが元PASS点から離れてよい距離。回廊幅ではない。
+    # 通常filletで接続できないPASSは、元点を通る対称3円弧にする。回廊・環境判定なし。
+    sharp_turn_strategy: symmetric_bulb  # symmetric_bulb / reject（従来の拒否方針）
+    # 正確に180度の場合だけ左右が定まらないためこの設定で選ぶ。他は経路の向きに従う。
+    uturn_direction: counterclockwise  # counterclockwise / clockwise
+    pass_radius_m: 0.5
+    stop_radius_m: 0.25
+    start_radius_m: 0.5
+    max_deviation_m: 1.0
+    max_advance_m: 2.0
+    max_pose_gap_sec: 1.0
+    jump_slack_m: 0.3
+    stop_speed_mps: 0.03
+    heading_tolerance_rad: 0.52
+    max_segment_m: 500.0

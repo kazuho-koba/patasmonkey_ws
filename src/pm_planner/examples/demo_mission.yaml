@@ -1,0 +1,10 @@
+# 人工の小さな経路。実世界での走行を指示するものではない。
+schema_version: 1
+coordinate_system: WGS84
+mission_id: 00000000-0000-4000-8000-000000000001
+name: Stage 1 preview demo
+revision: 1
+waypoints:
+  - {waypoint_id: 00000000-0000-4000-8000-000000000011, latitude: 35.8403250977535, longitude: 139.63883757591248, attribute: start, pause_sec: 0.0, note: ''}
+  - {waypoint_id: 00000000-0000-4000-8000-000000000012, latitude: 35.8403250977535, longitude: 139.638900, attribute: pass, pause_sec: 0.0, note: ''}
+  - {waypoint_id: 00000000-0000-4000-8000-000000000013, latitude: 35.840380, longitude: 139.638900, attribute: goal, pause_sec: 0.0, note: ''}
