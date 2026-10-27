@@ -144,3 +144,6 @@ UGV側ではpm_missionとpm_bringupを更新する。
 UGVの位置表示は継続し、移動したい場合は「UGV位置へ」を使う。
 既存経路をロードした場合の経路への移動は維持する。
 [駅付近の座標参考](https://mapfan.com/spots/SCH%2CJ%2C6L)
+
+日本語fontの選択はConsoleと同じpm_ui_common.fontsを利用する。
+古いコンテナで日本語が□になる場合は、pm_gui/docs/laptop_setup.mdのfont導入手順を実施する。

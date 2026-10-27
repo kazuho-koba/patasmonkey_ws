@@ -269,3 +269,9 @@ Planner内の **経路をロード** / **新規経路** / **経路を保存** /
 ローカル編集・保存とUGV受領状態は別に表示され、受領済みの内容を編集すると未送付になる。
 UGV側は更新後のpm_coreがmission_receiverを起動し、経路を検証・保存して受領を応答する。
 送付しても走行は開始しない。詳細はpm_mission/README.mdを参照。
+
+## 野外実験用ノートPCでの更新
+
+ホスト/コンテナの作業分担、日本語font導入、再ビルドとアイコン起動は
+[ノートPC手順](docs/laptop_setup.md)を参照。
+Mission Plannerの起動戻り値はPyQt5のbool/tuple両方を扱い、起動後に誤ったunpackエラーを出さない。

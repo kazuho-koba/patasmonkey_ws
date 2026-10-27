@@ -13,7 +13,7 @@ import rclpy
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtGui import QFont, QFontDatabase
+from pm_ui_common.fonts import configure_japanese_font
 from PyQt5.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMainWindow, QMessageBox,
@@ -429,9 +429,7 @@ def main(args=None):
     with open(os.path.expanduser(parsed.config), encoding='utf-8') as stream:
         config = yaml.safe_load(stream)
     application = QApplication(sys.argv[:1])
-    families = set(QFontDatabase().families())
-    if 'Noto Sans CJK JP' in families:
-        application.setFont(QFont('Noto Sans CJK JP', 10))
+    configure_japanese_font(application)
     rclpy.init(args=ros_args)
     events = Events()
     backend = MissionBackend(config['ros'], events)

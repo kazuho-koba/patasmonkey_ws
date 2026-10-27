@@ -27,11 +27,14 @@ if ! docker container inspect "${PM_GUI_CONTAINER}" >/dev/null 2>&1; then
     exit 1
 fi
 
+# ホストのlocaleに依存させず、GUI・子Plannerの日本語path/ログをUTF-8で扱う。
 exec docker exec \
     --user "${PM_GUI_USER}" \
     --env HOME="${PM_GUI_HOME}" \
     --env DISPLAY="${DISPLAY:-}" \
     --env QT_X11_NO_MITSHM=1 \
+    --env LANG=C.UTF-8 \
+    --env LC_ALL=C.UTF-8 \
     --env PM_GUI_ROS_WS="${PM_GUI_ROS_WS}" \
     --env PM_GUI_WS="${PM_GUI_WS}" \
     --env PM_GUI_CONFIG="${PM_GUI_CONFIG}" \

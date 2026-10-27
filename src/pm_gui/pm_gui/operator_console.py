@@ -11,7 +11,7 @@ import rclpy
 import yaml
 from ament_index_python.packages import get_package_prefix, get_package_share_directory
 from PyQt5.QtCore import QProcess, QTimer, Qt
-from PyQt5.QtGui import QFont, QFontDatabase
+from pm_ui_common.fonts import configure_japanese_font
 from PyQt5.QtWidgets import (
     QApplication, QGridLayout, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
     QPushButton, QSplitter, QVBoxLayout, QWidget,
@@ -197,7 +197,10 @@ class OperatorWindow(QMainWindow):
                 raise RuntimeError('Mission Planner設定がありません: '+config)
             # 単体CLIと同じlaunch入口に統一し、Consoleの終了とは独立させる。
             arguments = ['launch', 'pm_mission', 'mission_planner.launch.py', 'config:='+config]
-            started, _pid = QProcess.startDetached('ros2', arguments)
+            # PyQt5の2引数版はbool、版/overloadによっては(bool, pid)を返す。
+            # 起動済みなのにunpack例外で「失敗」と表示しないよう結果を正規化する。
+            result = QProcess.startDetached('ros2', arguments)
+            started = result[0] if isinstance(result, tuple) else result
             if not started:
                 raise RuntimeError('mission_planner processを起動できませんでした')
         except Exception as error:
@@ -347,12 +350,7 @@ def main(args=None):
     executor_thread = threading.Thread(target=rclpy.spin, args=(backend,), daemon=True)
     executor_thread.start()
     application = QApplication(sys.argv[:1])
-    # Docker imageに同梱した日本語fontを選び、Qt標準fontでの豆腐表示を防ぐ。
-    available_fonts = set(QFontDatabase().families())
-    for family in ('Noto Sans CJK JP', 'Noto Sans JP'):
-        if family in available_fonts:
-            application.setFont(QFont(family, 10))
-            break
+    configure_japanese_font(application)
     # signalからQt callbackへKeyboardInterruptを投げず、event loopを通常終了させる。
     signal.signal(signal.SIGINT, lambda _signum, _frame: application.quit())
     signal.signal(signal.SIGTERM, lambda _signum, _frame: application.quit())
