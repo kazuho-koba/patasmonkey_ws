@@ -248,12 +248,13 @@ metadata snapshot処理用にlaunchの強制停止待ちを長くしています
 CameraInfoは今回毎フレーム保存を維持し、固定値の間引きは実装していません。
 任意bagを止めてもdebugの生成/配信自体が必ず止まるわけではありません。
 
-### 必須：mission（52 topic）
+### 必須：mission
 
 | 分類 | topic（それぞれ個別に記録） |
 |---|---|
 | カメラ観測 | `/oak/stereo/left/image_raw`, `/oak/stereo/right/image_raw`, `/oak/color/image_raw`, `/oak/depth/image_raw`, `/oak/imu/data` |
-| 外部IMU | `/wit/imu`, `/wit/mag`, `/imu` |
+| 外部IMU | `/wit/imu`, `/wit/mag`, `/wit/mag_corrected`, `/imu` |
+
 | 車両実測・車輪入力 | `/motor_state`, `/wheel/odometry` |
 | GNSS | `/fix`, `/fix_velocity`, `/navpvt`, `/navrelposned`, `/navheading`, `/navstatus`, `/navstate`, `/navclock`, `/navsvin`, `/monhw` |
 | RTK | `/rtcm`, `/rxmrtcm` |
@@ -264,6 +265,15 @@ CameraInfoは今回毎フレーム保存を維持し、固定値の間引きは�
 | 実行時診断 | `/diagnostics`, `/rosout`, `/vio/vertical_gate/diagnostics`, `/vio/twist_gate/diagnostics`, `/gnss/fix_gate/diagnostics` |
 | parameter履歴 | `/parameter_events` |
 | 座標・geometry | `/tf`, `/tf_static`, `/oak/color/camera_info`, `/oak/depth/camera_info`, `/robot_description` |
+
+`/wit/mag_corrected`は`/wit/mag`のheader・frameを保持し、pm_configの
+`hwt905_mag_calibration.yaml`に記載した暫定biasと軸別scaleを別プロセスで
+適用した磁気ベクトルです。生の`/wit/mag`も保存します。既存ドライバが使う
+raw register単位であり、MagneticField型の標準単位Teslaには換算されません。
+方位offset・偏角や傾斜補償はベクトルに適用せず、GUIの方位計算時に適用します。
+水平面の静止データから求めた暫定値はz bias未同定で、回転・傾斜・実走行では
+未検証です。bag終了後の設定記録は終了時点の設定で、実行中に書き換えた場合
+ノード起動時の値と異なり得るため、記録中に校正ファイルを変更しないでください。
 
 ### 任意：debug（22 topic）
 

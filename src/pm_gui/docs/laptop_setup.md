@@ -46,11 +46,17 @@ fontがない場合は起動ログへ導入案内を出す。wrapperはUTF-8 loc
 **ホスト側：** rootでビルドせず、通常の開発ユーザーで入り直す。
 
 ```bash
-docker exec -it --user 1000:1000 --env HOME=/home/developer \
-  patasmonkey_foxy_dev bash --noprofile --norc
+docker exec -it --user 1000:1000 --env HOME=/tmp \
+  --workdir /workspaces/patasmonkey_ws \
+  patasmonkey_foxy_dev bash
 ```
 
 **開いたコンテナ内（一般ユーザー）：**
+
+古いコンテナには`/home/developer`が存在しないため、ビルド用shellのHOMEは
+存在する`/tmp`を使用する。workspaceの配置先やビルド成果物の保存先は変わらない。
+通常のBash設定を読み込み、カレントdirectoryを表示する。起動位置はworkspaceに指定する。
+ROS環境のsourceは以下の順で行う。
 
 ```bash
 source /opt/ros/foxy/setup.bash
@@ -105,3 +111,56 @@ PyQt5のQProcess.startDetachedの2引数版はboolを返す環境がある。
 従来は戻り値を(started, pid)へ分解していたため、子process起動後にunpack例外が発生していた。
 修正版はbool/tupleの両方を扱い、成功時に誤って警告しない。
 ros2/PyQtの入れ替えやJetsonの変更は不要。GUIとPlannerを閉じて起動し直す。
+
+## 「I have no name!」「cannot find name for group ID 1000」への対処
+
+数値UID/GIDだけで起動できても、古いコンテナに対応するpasswd/group登録がないと表示される。
+ホストから`docker exec -it --user root patasmonkey_foxy_dev bash`で入り、コンテナ内で実行する。
+
+```bash
+getent group 1000 >/dev/null || groupadd --gid 1000 developer
+getent passwd 1000 >/dev/null || useradd --uid 1000 --gid 1000 \
+  --create-home --home-dir /home/developer --shell /bin/bash developer
+mkdir -p /home/developer
+chown 1000:1000 /home/developer
+exit
+```
+
+workspaceへ再帰的なchownは行わない。以後はホスト側で次のように入る。
+
+```bash
+docker exec -it --user 1000:1000 --env HOME=/home/developer \
+  --workdir /workspaces/patasmonkey_ws patasmonkey_foxy_dev bash
+```
+
+コンテナ内の`whoami`がdeveloper、`id`でUID/GID 1000に名前が付き、`cd`でHOMEへ移動できればよい。
+変更は既存コンテナのstop/startでは保持される。コンテナを作り直す際は、
+developer作成処理を含む現在のDockerfileからビルドしたimageを利用する。
+
+## ament_cmakeConfig.cmakeが見つからない場合
+
+ビルド用のコンテナshellでFoxy本体、外部workspaceの順にsourceする。
+新規ユーザーの.bashrcはROS環境を自動sourceしない場合がある。
+
+```bash
+source /opt/ros/foxy/setup.bash
+source /workspaces/ros2_ws/install/setup.bash
+ls /opt/ros/foxy/share/ament_cmake/cmake/ament_cmakeConfig.cmake
+```
+
+Configファイル自体がない場合は、ホストからコンテナrootへ入る。
+
+```bash
+docker exec -it --user root --env HOME=/root patasmonkey_foxy_dev bash
+```
+
+コンテナrootで必要なビルド基盤を追加し、exitでホストへ戻る。
+
+```bash
+apt-get update
+apt-get install -y ros-foxy-ament-cmake
+exit
+```
+
+一般ユーザーで入り直し、ROS環境をsourceしてビルドを再実行する。
+同じエラーが残る場合は、失敗package名とそのstderrを確認する。

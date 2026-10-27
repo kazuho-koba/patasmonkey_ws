@@ -232,6 +232,8 @@ class RosBackend(Node):
         value = {'bearing': None, 'error': '', 'source': '/wit/mag',
                  'calibrated': bool(self._compass_config.get('calibrated', False))}
         try:
+            if self._compass_config.get('config_error'):
+                raise ValueError(self._compass_config['config_error'])
             if attitude is None or time.monotonic()-attitude[3] > self.topic_timeout:
                 raise ValueError('Wit姿勢が未受信・無効・stale')
             if not message.header.frame_id or message.header.frame_id != attitude[2]:

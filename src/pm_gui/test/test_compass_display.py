@@ -41,6 +41,18 @@ def test_callbacks_and_invalid():
     assert 'frame' in stub.values['magnetic_heading']['error']
 
 
+def test_missing_compass_config_does_not_show_uncalibrated_value():
+    stub = backend_stub()
+    stub._compass_config = {'config_error': '磁気校正設定の読込失敗'}
+    stub._wit_attitude = (0, 0, 'base_link', time.monotonic())
+    mag = MagneticField()
+    mag.header.frame_id = 'base_link'
+    mag.magnetic_field.x = 1.0
+    RosBackend._wit_mag_callback(stub, mag)
+    assert stub.values['magnetic_heading']['bearing'] is None
+    assert '読込失敗' in stub.values['magnetic_heading']['error']
+
+
 def test_panel_separates_odom_and_compass():
     app = QApplication.instance() or QApplication([])
     panel = TelemetryPanel({})

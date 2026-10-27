@@ -72,6 +72,11 @@
   depth: 200
   reliability: reliable
   durability: volatile
+/wit/mag_corrected:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile
 /ov_msckf/odomimu:
   history: keep_last
   depth: 200

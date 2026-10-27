@@ -304,6 +304,22 @@ def load_config(path):
     with open(path, 'r', encoding='utf-8') as stream:
         document = yaml.safe_load(stream) or {}
     config = document.get('operator_console', {}).get('ros__parameters', {})
+    compass = config.setdefault('compass', {})
+    if compass.get('calibration_file'):
+        try:
+            # GUIは生磁気を購読するため、発行ノードと同じ設定を一度だけ適用する。
+            share = get_package_share_directory(compass.get('calibration_package', 'pm_config'))
+            calibration_path = compass['calibration_file']
+            if not os.path.isabs(calibration_path):
+                calibration_path = os.path.join(share, calibration_path)
+            with open(calibration_path, 'r', encoding='utf-8') as stream:
+                calibration = yaml.safe_load(stream)['wit_mag_corrector']['ros__parameters']
+            compass.update(calibration)
+            compass['config_error'] = ''
+        except Exception as exc:
+            # 設定が見つからない場合、生値を校正済みと誤認しない。
+            compass['config_error'] = '磁気校正設定の読込失敗: {}'.format(exc)
+            print('[WARN] {}'.format(compass['config_error']), file=sys.stderr)
     joystick = config.setdefault('joystick', {})
     package_name = joystick.get('config_package', 'pm_teleop')
     teleop_file = joystick.get('teleop_config', 'config/teleop_twist_joy.yaml')

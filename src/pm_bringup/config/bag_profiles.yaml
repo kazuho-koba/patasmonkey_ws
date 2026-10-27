@@ -14,6 +14,7 @@ mission:
   - /oak/imu/data
   - /wit/imu
   - /wit/mag
+  - /wit/mag_corrected
   - /imu
   - /motor_state
   - /wheel/odometry  # レポートでは下位だが実走行で保存推奨の軽量EKF入力。

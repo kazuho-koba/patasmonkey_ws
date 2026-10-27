@@ -1,4 +1,11 @@
 # root で入る場合：
 docker exec -it --user 0:0 patasmonkey_foxy_dev bash
 
-# developerで入る場合：--user 0:0 をなしにすればいけるはず
+# developerで入る場合：--user 0:0 をなしにすればいけるはず?
+docker exec -it --user 1000:1000 --env HOME=/tmp \
+    --workdir /workspaces/patasmonkey_ws \
+    patasmonkey_foxy_dev bash
+
+docker exec -it --user 1000:1000 --env HOME=/home/developer \
+    --workdir /workspaces/patasmonkey_ws \
+    patasmonkey_foxy_dev bash

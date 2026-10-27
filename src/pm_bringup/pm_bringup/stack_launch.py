@@ -84,6 +84,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
     # configファイル等
     urdf_file = pm_description_share / "urdf" / "pm.urdf"
     imu_config_file = pm_config_share / "config" / "hwt905_imu.yaml"
+    mag_calibration_file = pm_config_share / "config" / "hwt905_mag_calibration.yaml"
     wheel_odom_config_file = pm_config_share / "config" / "wheel_odometry.yaml"
     vehicle_geometry_file = pm_config_share / "config" / "vehicle_geometry.yaml"
     vehicle_control_file = pm_config_share / "config" / "vehicle_control.yaml"
@@ -166,7 +167,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                 "arguments": redact(dict(context.launch_configurations)),
                 "runtime_directory": str(resolved_directory),
                 "configuration_paths": [str(path) for path in (
-                    urdf_file, imu_config_file, wheel_odom_config_file,
+                    urdf_file, imu_config_file, mag_calibration_file, wheel_odom_config_file,
                     vehicle_geometry_file, vehicle_control_file, openvins_config_file,
                     ekf_global_config_file, ekf_horizontal_config_file,
                     heading_initializer_config_file, gnss_fix_gate_config_file,
@@ -247,6 +248,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         "/wit/imu",
         "/wit/imu/heading_calibrated",
         "/wit/mag",
+        "/wit/mag_corrected",
         "/imu",
 
         # -------------------------------------------------------------
@@ -415,6 +417,14 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             ]),
             "timing_max_samples": LaunchConfiguration("wit_timing_max_samples"),
         }],
+    )
+    # 補正はIMU取得と別プロセスで行い、取得周期への影響を抑える。
+    mag_corrector_node = Node(
+        package="hwt905_rs485_driver",
+        executable="wit_mag_corrector",
+        name="wit_mag_corrector",
+        output="screen",
+        parameters=[str(mag_calibration_file)],
     )
     wheel_odometry_node = Node(
         package="pm_localization",
@@ -783,6 +793,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             period=3.0,
             actions=[
                 imu_node,
+                mag_corrector_node,
                 wheel_odometry_node,
                 ekf_local_node,
                 ekf_local_horizontal_node,

@@ -27,12 +27,9 @@ operator_console:
       wit_imu: /wit/imu
       wit_mag: /wit/mag
     compass:
-      # 北0度・時計回り。偏角0なら磁北基準。既存Witのraw磁気単位でbiasを指定。
-      bias: [0.0, 0.0, 0.0]
-      scale: [1.0, 1.0, 1.0]
-      offset_deg: 0.0
-      declination_deg: 0.0
-      calibrated: false
+      # 生topicを使い、補正ノードと同じpm_configの設定を一度だけ適用する。
+      calibration_package: pm_config
+      calibration_file: config/hwt905_mag_calibration.yaml
     battery:
       model: BL1860B
       parallel_packs: 2
