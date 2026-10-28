@@ -11,6 +11,7 @@ setup(
     packages=find_packages(exclude=["test"]),
     data_files=[
         ("share/" + package_name + "/config", glob("config/*.yaml")),
+        ("share/" + package_name + "/launch", glob("launch/*.launch.py")),
         (
             "share/ament_index/resource_index/packages",
             ["resource/" + package_name],
@@ -55,6 +56,12 @@ setup(
             "replay_ekf_bag = pm_evaluation.cli.replay_ekf_bag:main",
             "bag_clock_player = pm_evaluation.cli.bag_clock_player:main",
             "replay_separated_localization = pm_evaluation.cli.replay_separated_localization:main",
+            "replay_global_localization = pm_evaluation.cli.replay_global_localization:main",
+            "plot_global_localization_replay = pm_evaluation.cli.plot_global_localization_replay:main",
+            "audit_global_replay = pm_evaluation.cli.audit_global_replay:main",
+            "plot_global_replay_audit = pm_evaluation.cli.plot_global_replay_audit:main",
+            "analyze_localization_tf = pm_evaluation.cli.analyze_localization_tf:main",
+            "global_separated_composer = pm_evaluation.global_separated_composer:main",
             "plot_initialized_odometry_overlay = pm_evaluation.cli.plot_initialized_odometry_overlay:main",
         ],
     },

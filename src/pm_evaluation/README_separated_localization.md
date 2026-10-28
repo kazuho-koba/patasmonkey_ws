@@ -41,3 +41,39 @@ docker exec --user 1000:1000 --env HOME=/tmp patasmonkey_foxy_dev bash -lc '
 GNSS拘束global EKF、heading初期化、品質ゲートを含む実走行評価では、bagに
 `/fix`、`/fix/gated`、`/navpvt`、`/odometry/gps`、
 `/gnss/fix_gate/diagnostics`も記録して比較してください。
+
+## 磁気初期化を含むlocal/global再計算
+
+`replay_global_localization`は元bagの`/wit/imu`、`/wit/mag`、車輪、
+`/fix`、`/navpvt`、`/vio/odometry`を再生し、現在の補正ノード、停止判定、
+VIO/GNSSゲート、local/global EKF、navsatを別ROS domainで実行します。
+ハードウェアやモータ制御は起動しません。`--rate 1`は実時間相当です。
+設定YAML・ログ・再計算bagは指定出力先へ保存し、既存ディレクトリは上書きしません。
+
+```bash
+ros2 run pm_evaluation replay_global_localization <入力bag> \
+  --output-dir <新しい出力ディレクトリ> --rate 1
+ros2 run pm_evaluation plot_global_localization_replay <出力ディレクトリ> \
+  --basemap <同じ場所の既存basemap.npz>
+```
+
+描画は検証済み初期化後の軌跡を使い、local/globalには方位fitを行いません。
+VIOは独自の原点・向きを持つため初期yawだけをlocalに合わせます。VIO自体は
+記録済み`/vio/odometry`で、OpenVINSの再実行ではありません。
+地図背景は指定された同一地点のOSMキャッシュを使い、GNSSとの距離差は真値誤差
+ではなく参考比較です。別の試行から得た磁気校正値を古いbagに適用する場合、
+その期間の車体構成・磁気環境に適合する保証はありません。
+診断時は`audit_global_replay <出力ディレクトリ>`と
+`plot_global_replay_audit <出力ディレクトリ>`でglobal状態・入力のCSVと図を
+作れます。navsatの参照を比較する`--navsat-odom-topic /odometry/global`は
+オフライン専用の試験引数で、本番設定を変更しません。
+
+`analyze_localization_tf <出力ディレクトリ>`は、再生時に保存した`/tf`と
+GNSS・local・globalを近い時刻で照合し、座標変換のCSV、集計と図を作成します。
+記録後の出力値の比較であり、EKF内部の更新前innovationではありません。
+
+`--global-separated --navsat-odom-topic /odometry/global`は評価用構成です。
+global EKFの水平推定にlocal推定のroll・pitch・相対zを合成し、評価用ノードが
+`map→odom`を発行します。高度は地球基準ではなく、VIO高さゲートが閉じた後は
+保持値です。時刻が0.2秒以上離れたlocal/global値は合成しません。本番構成を
+変更するものではなく、この試験だけで実機での安全性を保証しません。

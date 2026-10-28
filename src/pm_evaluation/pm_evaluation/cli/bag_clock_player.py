@@ -8,6 +8,7 @@ JetsonでもRGB-D playbackを実行可能に保つ。
 """
 
 import argparse
+from collections import Counter
 import math
 from pathlib import Path
 import re
@@ -20,14 +21,19 @@ import rclpy
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.serialization import deserialize_message
 from rosgraph_msgs.msg import Clock
-from sensor_msgs.msg import CameraInfo, Image, Imu
+from sensor_msgs.msg import CameraInfo, Image, Imu, MagneticField, NavSatFix
 from tf2_msgs.msg import TFMessage
+from ublox_msgs.msg import NavPVT
 
 
 MESSAGE_TYPES: Dict[str, Type] = {
     "/wheel/odometry": Odometry,
     "/vio/odometry": Odometry,
     "/wit/imu": Imu,
+    # 地球基準の初期化と品質gateをbagから再現する。制御topicは含めない。
+    "/wit/mag": MagneticField,
+    "/fix": NavSatFix,
+    "/navpvt": NavPVT,
     # Mapper単独再生でも画像timestampに対応するdynamic TFを供給できるようにする。
     "/tf": TFMessage,
     "/tf_static": TFMessage,
@@ -113,6 +119,8 @@ def main() -> None:
     time.sleep(1.0)
     first_time = None
     wall_start = None
+    counts = Counter()
+    maximum_lateness = 0.0
     try:
         for log_time, topic, data in iter_records(args.bag, args.topic):
             if first_time is None:
@@ -126,12 +134,15 @@ def main() -> None:
             delay = wall_start + elapsed - time.monotonic()
             if delay > 0.0:
                 time.sleep(delay)
+            else:
+                maximum_lateness = max(maximum_lateness, -delay)
             sec, nanosec = divmod(log_time, 1_000_000_000)
             clock = Clock()
             clock.clock.sec = sec
             clock.clock.nanosec = nanosec
             clock_pub.publish(clock)
             publishers[topic].publish(deserialize_message(data, MESSAGE_TYPES[topic]))
+            counts[topic] += 1
         if first_time is None:
             raise SystemExit("No selected messages found")
         # publishの戻りは全subscriberへの到達保証ではない。短い記録比較では、
@@ -139,6 +150,8 @@ def main() -> None:
         # middlewareが配送する時間を与える。固定待ちはACK保証ではなく比較用対策。
         if args.drain_seconds > 0.0:
             time.sleep(args.drain_seconds)
+        print('再生件数: {}'.format(dict(counts)), flush=True)
+        print('最大スケジュール遅延: {:.3f} 秒'.format(maximum_lateness), flush=True)
     finally:
         node.destroy_node()
         rclpy.shutdown()
