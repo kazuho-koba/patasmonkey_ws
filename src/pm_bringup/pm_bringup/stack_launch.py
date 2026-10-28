@@ -3,6 +3,7 @@
 from datetime import datetime
 from pathlib import Path
 import json
+import yaml
 
 from launch import LaunchDescription
 from launch.actions import (
@@ -60,8 +61,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
     # rosbagを記録するかどうか
     record_bag = LaunchConfiguration("record_bag")
     bag_name = LaunchConfiguration("bag_name")
-    # legacy local EKFを既定とする。off-road向けにlocalizerを分離する場合は
-    # `localization_mode:=separated_offroad`を選ぶ。
+    # off-road向けの分離localizerが既定。比較時はlegacyへ戻せる。
     local_ekf_config = LaunchConfiguration("local_ekf_config")
     localization_mode = LaunchConfiguration("localization_mode")
 
@@ -85,7 +85,13 @@ def create_launch_description(legacy_recording=False, drive_default=True):
     urdf_file = pm_description_share / "urdf" / "pm.urdf"
     imu_config_file = pm_config_share / "config" / "hwt905_imu.yaml"
     mag_calibration_file = pm_config_share / "config" / "hwt905_mag_calibration.yaml"
+    # GUIと同一の真北offsetを用いる。bias/scaleは磁気補正ノードが適用済み。
+    with mag_calibration_file.open(encoding="utf-8") as calibration_stream:
+        mag_calibration = yaml.safe_load(calibration_stream)["wit_mag_corrector"]["ros__parameters"]
     wheel_odom_config_file = pm_config_share / "config" / "wheel_odometry.yaml"
+    with wheel_odom_config_file.open(encoding="utf-8") as wheel_stream:
+        legacy_wheel_yaw = bool(yaml.safe_load(wheel_stream)["wheel_odometry_node"]
+                                ["ros__parameters"].get("use_imu_initial_yaw", False))
     vehicle_geometry_file = pm_config_share / "config" / "vehicle_geometry.yaml"
     vehicle_control_file = pm_config_share / "config" / "vehicle_control.yaml"
 
@@ -249,6 +255,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         "/wit/imu/heading_calibrated",
         "/wit/mag",
         "/wit/mag_corrected",
+        "/localization/initialization/status",
+        "/odometry/gps/unverified",
         "/imu",
 
         # -------------------------------------------------------------
@@ -435,6 +443,10 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             str(vehicle_geometry_file),
             str(vehicle_control_file),
             str(wheel_odom_config_file),
+            # 分離推定ではwheel poseの旧IMU yaw初期化を使わない。
+            {"use_imu_initial_yaw": ParameterValue(PythonExpression([
+                str(legacy_wheel_yaw), " if '", localization_mode, "' == 'legacy' else False"
+            ]), value_type=bool)},
         ],
     )
     oakd_vio_rgbd_node = Node(
@@ -597,7 +609,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         condition=IfCondition(PythonExpression([
             "'", localization_mode, "' == 'separated_offroad'",
         ])),
-        remappings=[("odometry/filtered", "/odometry/local_horizontal")],
+        remappings=[("odometry/filtered", "/odometry/local_horizontal"),
+                    ("set_pose", "/localization/local/set_pose")],
     )
     attitude_height_observer_node = Node(
         package="pm_localization", executable="attitude_height_observer_node",
@@ -613,12 +626,15 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             "'", localization_mode, "' == 'separated_offroad'",
         ])),
     )
-    # stationary中にyawを一度seedするのはseparated profileだけである。また
-    # navsat_transformが使うcalibrated heading streamもpublishする。
+    # 分離profileでは静止時の補正磁気から両EKFを初期化し、GNSS軸を検証する。
     heading_initializer_node = Node(
         package="pm_localization", executable="heading_initializer_node",
         name="heading_initializer_node", output="screen",
-        parameters=[str(heading_initializer_config_file)],
+        parameters=[str(heading_initializer_config_file), {
+            "offset_deg": float(mag_calibration["offset_deg"]),
+            "declination_deg": float(mag_calibration["declination_deg"]),
+            "require_gnss": ParameterValue(use_gnss, value_type=bool),
+        }],
         condition=IfCondition(PythonExpression([
             "'", localization_mode, "' == 'separated_offroad'",
         ])),
@@ -682,12 +698,10 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         output="screen",
         parameters=[str(navsat_heading_initialized_config_file)],
         remappings=[
-            # heading initializerはroll/pitchとIMU rateを変えず、検証済みのyaw補正だけを
-            # orientationへ適用する。
-            ("imu", "/wit/imu/heading_calibrated"),
+            # manual datumを使うためIMU orientationはnavsatへ渡さない。
             ("gps/fix", "/fix/gated"),
             ("odometry/filtered", "/odometry/local"),
-            ("odometry/gps", "/odometry/gps"),
+            ("odometry/gps", "/odometry/gps/unverified"),
         ],
         condition=IfCondition(PythonExpression([
             "'", use_gnss, "' == 'true' and '", localization_mode,
@@ -717,7 +731,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         name="ekf_global_gnss_constrained_node",
         output="screen",
         parameters=[str(ekf_global_gnss_constrained_config_file)],
-        remappings=[("odometry/filtered", "/odometry/global")],
+        remappings=[("odometry/filtered", "/odometry/global"),
+                    ("set_pose", "/localization/global/set_pose")],
         condition=IfCondition(PythonExpression([
             "'", use_gnss, "' == 'true' and '", localization_mode,
             "' == 'separated_offroad'",
@@ -801,9 +816,16 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                 local_odometry_composer_node,
                 heading_initializer_node,
                 ntrip_client_node,
+                navsat_transform_separated_node,
+                ekf_global_gnss_constrained_node,
             ],
         ),
         # 6秒後: ODrive, 外界センサ系
+        # legacyの起動タイミングは従来どおり維持する。
+        TimerAction(
+            period=15.0,
+            actions=[navsat_transform_legacy_node, ekf_global_legacy_node],
+        ),
         TimerAction(
             period=6.0,
             actions=[
@@ -815,16 +837,6 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                 vio_odom_adapter_node,
                 vio_vertical_gate_node,
                 vio_twist_gate_node,
-            ],
-        ),
-        # GNSS座標変換とglobal EKFだけ遅らせる
-        TimerAction(
-            period=15.0,
-            actions=[
-                navsat_transform_legacy_node,
-                navsat_transform_separated_node,
-                ekf_global_legacy_node,
-                ekf_global_gnss_constrained_node,
             ],
         ),
         TimerAction(
@@ -1017,7 +1029,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         ),
         DeclareLaunchArgument(
             "localization_mode",
-            default_value="legacy",
+            default_value="separated_offroad",
             description=(
                 "legacy: one EKF; separated_offroad: horizontal EKF plus a "
                 "validated attitude/height observer, composed into /odometry/local"

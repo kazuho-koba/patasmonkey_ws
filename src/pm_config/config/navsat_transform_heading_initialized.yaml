@@ -4,10 +4,9 @@
 navsat_transform_node:
   ros__parameters:
     frequency: 10.0
-    delay: 3.0
+    delay: 0.0
 
-    # /wit/imu/heading_calibratedには検証済みの取付角・磁北から真北への補正を既に
-    # 適用している。ここで二重に補正してはならない。
+    # 真北補正はheading側で実施する。datumは地図東向き（ENU yaw=0）で指定する。
     magnetic_declination_radians: 0.0
     yaw_offset: 0.0
 

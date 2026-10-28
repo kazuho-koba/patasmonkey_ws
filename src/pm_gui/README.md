@@ -140,6 +140,12 @@ quaternionから求める相対姿勢であり、東西南北とは解釈しま�
 この磁気方位計算には入りません。取付軸が異なる場合は正しいframeへの軸変換を
 先に行ってください（offsetだけで軸反転や3D取付姿勢を直すことはできません）。
 
+姿勢欄には`/localization/initialization/status`の初期化状態・待機理由も表示します。
+`READY`はlocal/global EKFとGNSS座標変換の初期化処理を確認した状態です。
+補正値は暫定のため、`READY`は絶対方位の精度や走行安全を保証しません。車輪
+odometryが届かない場合やGNSS品質条件を満たさない場合は待機します。初期化中は
+車体を静止し、途中で動いてERRORになった場合はlocalizationを再起動します。
+
 `pm_config/config/hwt905_mag_calibration.yaml`にbias（磁気データと同じ単位）、
 軸別scale、方位offset、偏角を集約します。GUIは生の`/wit/mag`に一度だけ
 補正を適用し、同じ設定から`/wit/mag_corrected`も別ノードで生成します。

@@ -58,6 +58,7 @@ ekf_global_gnss_constrained_node:
 
     # GNSSを唯一のglobal位置観測とする。zはGNSS品質ゲート（ステップ5）がaltitudeの
     # 信頼性を評価できるまで除外する。
+    # 初期化nodeがdatumを検証した後にだけ公開される位置。
     odom2: /odometry/gps
     odom2_config: [
       true,  true,  false,

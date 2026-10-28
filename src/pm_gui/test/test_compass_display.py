@@ -53,6 +53,17 @@ def test_missing_compass_config_does_not_show_uncalibrated_value():
     assert '読込失敗' in stub.values['magnetic_heading']['error']
 
 
+def test_initialization_state_visible():
+    app = QApplication.instance() or QApplication([])
+    panel = TelemetryPanel({})
+    snapshot = {'telemetry': {'localization_initialization': {'fresh': True, 'value': {
+        'state': 'WAITING', 'reason': '車輪情報待ち'}}}}
+    panel.refresh(snapshot, {})
+    assert 'WAITING' in panel.attitude.text()
+    assert '車輪情報待ち' in panel.attitude.text()
+    panel.close()
+
+
 def test_panel_separates_odom_and_compass():
     app = QApplication.instance() or QApplication([])
     panel = TelemetryPanel({})

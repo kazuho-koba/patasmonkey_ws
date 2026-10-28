@@ -38,11 +38,30 @@ roll/pitchはWit orientationから、zは品質通過VIO zから別に観測し�
 
 ### headingとGNSS
 
-単一GNSSアンテナは停止時headingを測れません。そのため
-`heading_initializer_node`は、停止中のWit yawを円平均してlocal EKFへ一度だけ
-seedします。その後のyawは`wz`で伝播します。`yaw_correction_radians`は、車載後に
-実測した取付角・地磁気補正を入れる固定値であり、現在の`0.0`は校正済み値では
-ありません。
+単一GNSSアンテナは停止時headingを測れません。`heading_initializer_node`は
+`/wit/mag_corrected`を`/wit/imu`のroll/pitchで水平化し、`pm_config`の真北
+offsetを適用して、ROS ENU yaw（東0°、反時計回り正）を求めます。現行URDFの
+IMUとbaseの軸一致を確認できないと初期化を待ちます。磁気補正は暫定値で、
+回転・傾斜・実走行中の精度は未検証です。偏角を二重に加算しないでください。
+
+新鮮な車輪前後・旋回速度とIMU角速度から停止を確認した後、既定1秒の安定化を
+経て1秒の方位を円平均します（平均窓の上限3秒）。車輪情報がない場合は待機します。
+平均には最低100組の磁気・IMUサンプルが必要で、条件を満たすまで待機します。
+local/global EKFの`set_pose` serviceを分けて呼び、応答とそれぞれの出力yawを
+確認します。姿勢の位置とroll/pitchは最新出力を保持しますが、robot_localizationの
+仕様によりset_poseは内部の速度等をリセットするため、初期化中は静止が必要です。
+途中で動いたり停止情報が途絶えた場合はERRORを表示し、localizationの再起動を
+要求します。初期化後のyawは連続磁気方位を直接融合せず、各EKFの入力で更新します。
+
+GNSS datumは方位を東向きのENU座標軸として設定し、車体方位と混同しません。
+GNSS変換後の出力と、fromLLの東・北方向の変換を確認してから
+`/odometry/gps`をglobal EKFへ渡します。navsatが初期に仮datumで
+出力した値はglobal EKFに渡しません。初期化中は車体を静止してください。
+`/localization/initialization/status`に状態と理由を1 Hzで発行し、GUIの姿勢欄と
+mission bagにも記録します。`READY`は処理の成立を示し、暫定磁気校正の絶対精度を
+保証するものではありません。状態表示は走行指令を自動遮断しません。
+旧`/wit/imu/heading_calibrated`出力は互換用に残しますが、今回の初期化や
+navsatには使わず、`/wit/mag_corrected`の補正を適用したものでもありません。
 
 `gnss_fix_gate_node`は`/fix`と`/navpvt`を検査し、採用したfixだけを
 `/fix/gated`へ出します。navsat_transformとdatum初期化はこのtopicだけを使用します。
@@ -52,15 +71,16 @@ RTK FIXでない解も一律には捨てず、carrier solution・`h_acc`・入�
 ## 起動
 
 ```bash
-ros2 launch pm_bringup pm_bag_global_localization.launch.py \
-  localization_mode:=separated_offroad
+ros2 launch pm_bringup pm_core.launch.py
 ```
 
-起動時は停止を維持し、ログにheading seedとdatum設定の成功が出ることを確認して
-から走行します。GNSSは最初の連続正常3サンプルが通るまでglobal EKFへ入りません。
+既定が`separated_offroad`です。従来の構成は`localization_mode:=legacy`で選べます。
+起動時は停止を維持し、GUIまたはstatus topicで`READY`を確認してから走行します。
+GNSSは最初の連続正常3サンプルが通るまでglobal EKFへ入りません。
 
 ```bash
-ros2 topic hz /fix /fix/gated /odometry/gps
+ros2 topic echo /localization/initialization/status
+ros2 topic hz /odometry/gps
 ros2 topic echo --once /gnss/fix_gate/diagnostics
 ```
 
@@ -72,7 +92,8 @@ ros2 topic echo --once /gnss/fix_gate/diagnostics
 
 - `pm_config/config/ekf_local_horizontal_vio_twist.yaml`：水平EKF
 - `pm_config/config/ekf_global_gnss_constrained.yaml`：GNSS拘束global EKF
-- `pm_config/config/heading_initializer.yaml`：heading seedと固定yaw補正
+- `pm_config/config/heading_initializer.yaml`：停止・平均・初期化検証条件
+- `pm_config/config/hwt905_mag_calibration.yaml`：暫定磁気補正と真北offset
 - `pm_config/config/gnss_fix_gate.yaml`：GNSS採否・共分散下限
 - `pm_config/config/navsat_transform_heading_initialized.yaml`：datum待機型navsat
 

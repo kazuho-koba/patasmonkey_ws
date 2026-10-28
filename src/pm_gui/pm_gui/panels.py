@@ -969,8 +969,9 @@ class TelemetryPanel(QWidget):
             roll, pitch, yaw = odom['roll'], odom['pitch'], odom['yaw']
             self.attitude.setText(
                 'Roll: {:+.1f}°  Pitch: {:+.1f}°\n'
-                'Odom yaw: {:+.1f}°（地球方位ではない）'.format(
+                'Odom yaw: {:+.1f}°（{}基準）'.format(
                     math.degrees(roll), math.degrees(pitch), math.degrees(yaw),
+                    odom.get('frame_id') or '不明',
                 ))
             self.canvas.set_attitude(roll, pitch, yaw)
         else:
@@ -987,6 +988,13 @@ class TelemetryPanel(QWidget):
                 heading['bearing'], cardinal(heading['bearing']),
                 '補正設定済' if heading['calibrated'] else '未校正・参考値')
         self.attitude.setText(self.attitude.text()+'\n'+compass_text)
+        initialization = self._fresh(snapshot, 'localization_initialization')
+        if initialization is None:
+            initial_text = '位置初期化: 待受 / 状態不明'
+        else:
+            initial_text = '位置初期化: {} / {}'.format(
+                initialization.get('state', 'UNKNOWN'), initialization.get('reason', ''))
+        self.attitude.setText(self.attitude.text()+'\n'+initial_text)
         joy = self._fresh(snapshot, 'joy')
         joy_cfg = self.joystick_settings
         if joy_cfg['config_error']:

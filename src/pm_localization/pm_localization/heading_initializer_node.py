@@ -1,268 +1,471 @@
 #!/usr/bin/env python3
-"""起動時にIMU headingを一度校正し、local EKF yawをseedする。
-
-走行中にheadingを再seedすることは意図して行わない。実行中のheading resetでは
-navsat_transformとglobal localizationも同時に再初期化する必要があるため、
-自動補正ではなく運用者の操作として扱う。
-
-単一GNSSアンテナではdatum位置だけから車体headingは得られない。設定可能なyaw補正は
-実測した取付角・地磁気の固定補正値であり、停止時のサンプル平均は短期IMUノイズを
-低減するために使う。
-
-このnodeは固定yaw補正後のorientationを常時再publishする。起動window中だけ停止中の
-wheel速度でサンプル採用を許可し、円平均が十分に集中していれば``/set_pose``を一度、
-続いてgated fixが得られれば``/datum``を一度呼ぶ。その後のcallbackで自動再seedはしない。
-"""
-
+"""静止時の補正磁場から一度だけ両EKFを初期化し、GNSS変換を検証する。"""
+import copy
+import json
 import math
+from collections import deque
 
 import rclpy
-from geometry_msgs.msg import PoseWithCovarianceStamped
-from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from robot_localization.srv import SetDatum, SetPose
-from sensor_msgs.msg import Imu, NavSatFix
+from rclpy.qos import qos_profile_sensor_data
+from rclpy.time import Time
+from nav_msgs.msg import Odometry
+from robot_localization.srv import SetDatum, SetPose, FromLL
+from sensor_msgs.msg import Imu, MagneticField, NavSatFix
+from std_msgs.msg import String
+from tf2_ros import Buffer, TransformListener
 
 
-def wrap_pi(angle):
-    return math.atan2(math.sin(angle), math.cos(angle))
+def wrap_pi(x):
+    return math.atan2(math.sin(x), math.cos(x))
 
 
 def rpy_from_quaternion(q):
-    roll = math.atan2(
-        2.0 * (q.w * q.x + q.y * q.z),
-        1.0 - 2.0 * (q.x * q.x + q.y * q.y),
-    )
-    pitch = math.asin(max(-1.0, min(1.0, 2.0 * (q.w * q.y - q.z * q.x))))
-    yaw = math.atan2(
-        2.0 * (q.w * q.z + q.x * q.y),
-        1.0 - 2.0 * (q.y * q.y + q.z * q.z),
-    )
+    roll = math.atan2(2*(q.w*q.x+q.y*q.z), 1-2*(q.x*q.x+q.y*q.y))
+    pitch = math.asin(max(-1., min(1., 2*(q.w*q.y-q.z*q.x))))
+    yaw = math.atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z))
     return roll, pitch, yaw
 
 
 def quaternion_from_rpy(roll, pitch, yaw):
-    cr, sr = math.cos(roll * 0.5), math.sin(roll * 0.5)
-    cp, sp = math.cos(pitch * 0.5), math.sin(pitch * 0.5)
-    cy, sy = math.cos(yaw * 0.5), math.sin(yaw * 0.5)
-    return (
-        sr * cp * cy - cr * sp * sy,
-        cr * sp * cy + sr * cp * sy,
-        cr * cp * sy - sr * sp * cy,
-        cr * cp * cy + sr * sp * sy,
-    )
+    cr, sr = math.cos(roll/2), math.sin(roll/2)
+    cp, sp = math.cos(pitch/2), math.sin(pitch/2)
+    cy, sy = math.cos(yaw/2), math.sin(yaw/2)
+    return (sr*cp*cy-cr*sp*sy, cr*sp*cy+sr*cp*sy,
+            cr*cp*sy-sr*sp*cy, cr*cp*cy+sr*sp*sy)
+
+
+def magnetic_yaw(field, roll, pitch, offset_deg, declination_deg, min_horizontal=1.0):
+    """車体x前/y左/z上の磁場を水平化し、北0時計回りからENU yawへ変換。
+
+    入力fieldはbias/scale補正済みのraw register単位。offsetは真北基準を含む。
+    """
+    x, y, z = field
+    if not all(math.isfinite(v) for v in (x, y, z, roll, pitch, offset_deg, declination_deg)):
+        raise ValueError('磁気または姿勢が非有限')
+    hx = math.cos(pitch)*x + math.sin(pitch)*(math.sin(roll)*y + math.cos(roll)*z)
+    hy = math.cos(roll)*y - math.sin(roll)*z
+    if math.hypot(hx, hy) < min_horizontal:
+        raise ValueError('水平磁場が小さすぎる')
+    bearing = math.atan2(hy, hx) + math.radians(offset_deg + declination_deg)
+    return wrap_pi(math.pi/2 - bearing)
+
+
+def circular_mean(values):
+    """円平均と円標準偏差。±π境界の方向を正しく平均する。"""
+    s = sum(math.sin(v) for v in values) / len(values)
+    c = sum(math.cos(v) for v in values) / len(values)
+    return math.atan2(s, c), math.sqrt(max(0., -2*math.log(max(math.hypot(s, c), 1e-12))))
+
+
+def stamp_key(message):
+    return (message.header.stamp.sec, message.header.stamp.nanosec)
+
+
+def fresh_stamp(message, now, max_age):
+    """ROS clockとheader時刻の差を使い、古い値の繰返しや未来値を拒否する。"""
+    stamp = message.header.stamp.sec + message.header.stamp.nanosec*1e-9
+    return stamp > 0 and -.2 <= now-stamp <= max_age
 
 
 class HeadingInitializerNode(Node):
-    """Publish corrected orientation and perform one stationary yaw seed."""
-
+    """停止中に方位を取得し、応答と出力を確認して段階的に完了する。"""
     def __init__(self):
-        super().__init__("heading_initializer_node")
-        self.declare_parameter("input_imu_topic", "/wit/imu")
-        self.declare_parameter("output_imu_topic", "/wit/imu/heading_calibrated")
-        self.declare_parameter("wheel_odom_topic", "/wheel/odometry")
-        self.declare_parameter("gnss_fix_topic", "/fix")
-        self.declare_parameter(
-            "local_set_pose_service", "/set_pose"
-        )
-        self.declare_parameter("yaw_correction_radians", 0.0)
-        self.declare_parameter("stationary_speed_threshold_mps", 0.03)
-        self.declare_parameter("initial_sample_count", 100)
-        self.declare_parameter("max_initial_yaw_stddev_radians", 0.10)
-        self.declare_parameter("initialization_timeout_sec", 12.0)
-        self.declare_parameter("initial_yaw_variance", 0.05)
-        self.declare_parameter(
-            "navsat_set_datum_service", "/datum"
-        )
-
-        parameter = lambda name: self.get_parameter(name).value
-        self.input_imu_topic = str(parameter("input_imu_topic"))
-        self.output_imu_topic = str(parameter("output_imu_topic"))
-        self.wheel_odom_topic = str(parameter("wheel_odom_topic"))
-        self.gnss_fix_topic = str(parameter("gnss_fix_topic"))
-        self.local_set_pose_service = str(parameter("local_set_pose_service"))
-        self.yaw_correction = float(parameter("yaw_correction_radians"))
-        self.stationary_speed_threshold = float(
-            parameter("stationary_speed_threshold_mps")
-        )
-        self.initial_sample_count = int(parameter("initial_sample_count"))
-        self.max_initial_yaw_stddev = float(
-            parameter("max_initial_yaw_stddev_radians")
-        )
-        self.initial_yaw_variance = float(parameter("initial_yaw_variance"))
-        self.navsat_set_datum_service = str(parameter("navsat_set_datum_service"))
-
-        self.latest_speed = None
-        self.sin_sum = 0.0
-        self.cos_sum = 0.0
-        self.sample_count = 0
-        self.initialization_complete = False
-        self.initialization_timed_out = False
-        self.last_imu_stamp = None
+        super().__init__('heading_initializer_node')
+        defaults = dict(startup_settle_sec=1., average_duration_sec=1., average_max_sec=3.,
+                        input_timeout_sec=.5, wheel_timeout_sec=.5,
+                        stationary_speed_threshold_mps=.03,
+                        stationary_yaw_rate_threshold_rad_s=.05,
+                        max_initial_yaw_stddev_radians=.10, min_horizontal_field=1.,
+                        max_pitch_rad=1., initial_yaw_variance=.122,
+                        service_timeout_sec=5., verify_yaw_tolerance_rad=.15,
+                        odom_timeout_sec=1., offset_deg=0., declination_deg=0.,
+                        require_gnss=True, yaw_correction_radians=0.0,
+                        input_imu_topic='/wit/imu',
+                        output_imu_topic='/wit/imu/heading_calibrated',
+                        wheel_odom_topic='/wheel/odometry', gnss_fix_topic='/fix/gated',
+                        local_set_pose_service='/localization/local/set_pose',
+                        navsat_set_datum_service='/datum', initial_sample_count=100,
+                        initialization_timeout_sec=0.0)
+        for key, value in defaults.items():
+            self.declare_parameter(key, value)
+        self.p = {key: self.get_parameter(key).value for key in defaults}
+        if not 0 < self.p['average_duration_sec'] <= self.p['average_max_sec'] <= 3.0:
+            raise ValueError('平均時間は0秒より長く、最大3秒以内に設定してください')
+        if self.p['initial_sample_count'] < 1:
+            raise ValueError('initial_sample_countは1以上に設定してください')
+        self.started_at = self.now()
+        self.state = 'WAITING'
+        self.reason = '磁気・IMU・車輪の停止情報を待機'
+        self.error = ''
         self.seed_yaw = None
-        self.latest_fix = None
-        self.datum_sent = False
+        self.sample_std = None
+        self.stationary_since = None
+        self.samples = deque()
+        self.imu_cache = {}
+        self.mag_cache = {}
+        self.wheel = None
+        self.last_imu = None
+        self.last_mag = None
+        self.local = None
+        self.global_odom = None
+        self.fix = None
+        self.gps = None
+        self.pending = None
+        self.deadline = 0.
+        self.expected = None
+        self.verify_after = 0.
+        self.datum = None
+        self.ll_futures = []
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.frame_checked_at = 0.
+        self.checked_frame = ''
+        self.status_pub = self.create_publisher(String, '/localization/initialization/status', 10)
+        self.gps_pub = self.create_publisher(Odometry, '/odometry/gps', 10)
+        # 旧観測topicは互換性のため保持する。新しい初期化・navsatには使用しない。
+        self.legacy_imu_pub = self.create_publisher(Imu, self.p['output_imu_topic'], 50)
+        self.create_subscription(Imu, self.p['input_imu_topic'], self.imu_callback, qos_profile_sensor_data)
+        self.create_subscription(MagneticField, '/wit/mag_corrected', self.mag_callback, qos_profile_sensor_data)
+        self.create_subscription(Odometry, self.p['wheel_odom_topic'], self.wheel_callback, qos_profile_sensor_data)
+        self.create_subscription(Odometry, '/odometry/local_horizontal', self.local_callback, 20)
+        self.create_subscription(Odometry, '/odometry/global', self.global_callback, 20)
+        self.create_subscription(Odometry, '/odometry/gps/unverified', self.gps_callback, 10)
+        self.create_subscription(NavSatFix, self.p['gnss_fix_topic'], self.fix_callback, qos_profile_sensor_data)
+        self.local_service = self.create_client(SetPose, self.p['local_set_pose_service'])
+        self.global_service = self.create_client(SetPose, '/localization/global/set_pose')
+        self.datum_service = self.create_client(SetDatum, self.p['navsat_set_datum_service'])
+        self.fromll_service = self.create_client(FromLL, '/fromLL')
+        self.create_timer(.1, self.tick)
+        self.create_timer(1., self.publish_status)
 
-        self.publisher = self.create_publisher(Imu, self.output_imu_topic, 50)
-        self.create_subscription(Imu, self.input_imu_topic, self.imu_callback, 100)
-        self.create_subscription(
-            Odometry, self.wheel_odom_topic, self.wheel_callback, 20
-        )
-        self.create_subscription(NavSatFix, self.gnss_fix_topic, self.fix_callback, 10)
-        self.set_pose_client = self.create_client(
-            SetPose, self.local_set_pose_service
-        )
-        self.set_datum_client = self.create_client(
-            SetDatum, self.navsat_set_datum_service
-        )
-        timeout = float(parameter("initialization_timeout_sec"))
-        self.timeout_timer = self.create_timer(timeout, self.timeout_callback)
+    def now(self):
+        return self.get_clock().now().nanoseconds * 1e-9
 
-        self.get_logger().info(
-            "Heading initializer: correction=%+.4f rad; collecting %d "
-            "stationary IMU samples before local-EKF yaw seed" % (
-                self.yaw_correction, self.initial_sample_count
-            )
-        )
+    def set_state(self, state, reason):
+        changed = (state, reason) != (self.state, self.reason)
+        if state != self.state and state in ('LOCAL_SERVICE', 'GLOBAL_SERVICE', 'DATUM_SERVICE'):
+            self.deadline = self.now() + self.p['service_timeout_sec']
+        if changed:
+            self.get_logger().info('%s: %s' % (state, reason))
+        self.state, self.reason = state, reason
+        # 同じ状態を毎IMU sampleでpublishするとbagとDDSの負荷が増える。
+        # 状態変化時と1 Hz timerの両方で表示の鮮度を維持する。
+        if changed:
+            self.publish_status()
 
-    def wheel_callback(self, message):
-        self.latest_speed = abs(message.twist.twist.linear.x)
+    def fail(self, reason):
+        self.error = reason
+        self.set_state('ERROR', reason + '。localizationを再起動してください')
 
-    def fix_callback(self, message):
-        if (message.status.status < 0 or not all(math.isfinite(value) for value in (
-                message.latitude, message.longitude, message.altitude))):
+    def publish_status(self):
+        message = String()
+        message.data = json.dumps(dict(state=self.state, reason=self.reason, error=self.error,
+                                       seed_yaw_rad=self.seed_yaw, yaw_std_rad=self.sample_std,
+                                       require_gnss=bool(self.p['require_gnss'])),
+                                  ensure_ascii=False)
+        self.status_pub.publish(message)
+
+    def wheel_callback(self, msg):
+        self.wheel = (msg, self.now())
+
+    def local_callback(self, msg):
+        self.local = (msg, self.now())
+
+    def global_callback(self, msg):
+        self.global_odom = (msg, self.now())
+
+    def fix_callback(self, msg):
+        if msg.status.status >= 0 and all(math.isfinite(x) for x in (
+                msg.latitude, msg.longitude, msg.altitude)) and (
+                -90. <= msg.latitude <= 90. and -180. <= msg.longitude <= 180.):
+            self.fix = (msg, self.now())
+
+    def gps_callback(self, msg):
+        self.gps = (msg, self.now())
+        if self.state == 'READY':
+            self.gps_pub.publish(msg)
+
+    def imu_callback(self, msg):
+        now = self.now()
+        output = copy.deepcopy(msg)
+        roll, pitch, yaw = rpy_from_quaternion(msg.orientation)
+        q = quaternion_from_rpy(roll, pitch, wrap_pi(yaw+self.p['yaw_correction_radians']))
+        output.orientation.x, output.orientation.y, output.orientation.z, output.orientation.w = q
+        self.legacy_imu_pub.publish(output)
+        self.last_imu = (msg, now)
+        self.imu_cache[stamp_key(msg)] = msg
+        self.pair(stamp_key(msg))
+        if len(self.imu_cache) > 50:
+            self.imu_cache.pop(next(iter(self.imu_cache)))
+
+    def mag_callback(self, msg):
+        self.last_mag = (msg, self.now())
+        self.mag_cache[stamp_key(msg)] = msg
+        self.pair(stamp_key(msg))
+        if len(self.mag_cache) > 50:
+            self.mag_cache.pop(next(iter(self.mag_cache)))
+
+    def stationary(self):
+        """車輪の前後速度・旋回速度とIMU全角速度を鮮度付きで確認する。"""
+        now = self.now()
+        if self.wheel is None or now-self.wheel[1] > self.p['wheel_timeout_sec']:
+            return False, '新鮮な車輪odometry待ち（モータドライバ状態を確認）'
+        if self.last_imu is None or now-self.last_imu[1] > self.p['input_timeout_sec']:
+            return False, '新鮮なIMU待ち'
+        msg = self.wheel[0]
+        imu = self.last_imu[0]
+        if not fresh_stamp(msg, now, self.p['wheel_timeout_sec']):
+            return False, '車輪odometryのheader時刻が古いか未来'
+        if not fresh_stamp(imu, now, self.p['input_timeout_sec']):
+            return False, 'IMUのheader時刻が古いか未来'
+        speed = msg.twist.twist.linear.x
+        wz = msg.twist.twist.angular.z
+        gyro = imu.angular_velocity
+        vals = (speed, wz, gyro.x, gyro.y, gyro.z)
+        if not all(math.isfinite(v) for v in vals):
+            return False, '車輪速度または角速度が無効'
+        if (abs(speed) > self.p['stationary_speed_threshold_mps'] or
+                abs(wz) > self.p['stationary_yaw_rate_threshold_rad_s'] or
+                max(abs(gyro.x), abs(gyro.y), abs(gyro.z)) >
+                self.p['stationary_yaw_rate_threshold_rad_s']):
+            return False, '車体の移動・回転を検出'
+        return True, ''
+
+    def pair(self, key):
+        if key not in self.imu_cache or key not in self.mag_cache:
             return
-        self.latest_fix = message
-        self.try_set_navsat_datum()
+        imu, mag = self.imu_cache.pop(key), self.mag_cache.pop(key)
+        if self.state not in ('WAITING', 'COLLECTING'):
+            return
+        stationary, reason = self.stationary()
+        if not stationary:
+            self.stationary_since = None
+            self.samples.clear()
+            self.set_state('WAITING', reason)
+            return
+        if not fresh_stamp(mag, self.now(), self.p['input_timeout_sec']):
+            self.stationary_since = None
+            self.samples.clear()
+            self.set_state('WAITING', '磁気header時刻が古いか未来')
+            return
+        if not imu.header.frame_id or imu.header.frame_id != mag.header.frame_id:
+            self.stationary_since = None
+            self.samples.clear()
+            self.set_state('WAITING', '磁気とIMUのframeが不一致')
+            return
+        if imu.header.frame_id != self.checked_frame or self.now()-self.frame_checked_at > .5:
+            try:
+                transform = self.tf_buffer.lookup_transform('base_link', imu.header.frame_id, Time())
+                rotation = transform.transform.rotation
+                # 現行のGUI式はIMU軸とbase軸の一致が前提。異なる取り付けの
+                # 場合は未検証の軸変換を暗黙に適用せず初期化を保留する。
+                if math.sqrt(rotation.x**2+rotation.y**2+rotation.z**2) > .005:
+                    raise ValueError('IMU取付回転は未対応')
+                self.checked_frame = imu.header.frame_id
+                self.frame_checked_at = self.now()
+            except Exception as exc:
+                self.stationary_since = None
+                self.samples.clear()
+                self.set_state('WAITING', 'IMU取付TFを確認できません: {}'.format(exc))
+                return
+        q = imu.orientation
+        norm = math.sqrt(q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w)
+        if imu.orientation_covariance[0] < 0 or not math.isfinite(norm) or abs(norm-1) > .01:
+            self.stationary_since = None
+            self.samples.clear()
+            self.set_state('WAITING', 'IMU姿勢が無効')
+            return
+        roll, pitch, _ = rpy_from_quaternion(q)
+        try:
+            if abs(pitch) > self.p['max_pitch_rad']:
+                raise ValueError('pitchが許容範囲外')
+            field = mag.magnetic_field
+            yaw = magnetic_yaw((field.x, field.y, field.z), roll, pitch,
+                               self.p['offset_deg'], self.p['declination_deg'],
+                               self.p['min_horizontal_field'])
+        except ValueError as exc:
+            self.stationary_since = None
+            self.samples.clear()
+            self.set_state('WAITING', str(exc))
+            return
+        now = self.now()
+        if self.stationary_since is None:
+            self.stationary_since = now
+        if now-self.stationary_since < self.p['startup_settle_sec']:
+            self.set_state('WAITING', '停止・センサの安定化待ち')
+            return
+        self.samples.append((now, yaw))
+        while self.samples and now-self.samples[0][0] > self.p['average_max_sec']:
+            self.samples.popleft()
+        self.set_state('COLLECTING', '停止中の磁気方位を平均中')
+        if (now-self.samples[0][0] < self.p['average_duration_sec'] or
+                len(self.samples) < self.p['initial_sample_count']):
+            return
+        mean, std = circular_mean([v for _, v in self.samples])
+        if std > self.p['max_initial_yaw_stddev_radians']:
+            self.set_state('COLLECTING', '磁気方位のばらつきが大きいため待機')
+            return
+        self.seed_yaw, self.sample_std = mean, std
+        self.set_state('LOCAL_SERVICE', 'local EKFの初期化を待機')
 
-    def corrected_message(self, message):
-        roll, pitch, raw_yaw = rpy_from_quaternion(message.orientation)
-        corrected_yaw = wrap_pi(raw_yaw + self.yaw_correction)
-        qx, qy, qz, qw = quaternion_from_rpy(roll, pitch, corrected_yaw)
-        output = Imu()
-        output.header = message.header
-        output.orientation.x = qx
-        output.orientation.y = qy
-        output.orientation.z = qz
-        output.orientation.w = qw
-        # yaw以外のIMU fieldと共分散を全て保持する。このstreamはnavsat heading用で、
-        # roll/pitchや角速度を暗黙に変えてはならない。
-        output.orientation_covariance = message.orientation_covariance
-        output.angular_velocity = message.angular_velocity
-        output.angular_velocity_covariance = message.angular_velocity_covariance
-        output.linear_acceleration = message.linear_acceleration
-        output.linear_acceleration_covariance = message.linear_acceleration_covariance
-        return output, corrected_yaw
-
-    def imu_callback(self, message):
-        output, yaw = self.corrected_message(message)
-        self.publisher.publish(output)
-        self.last_imu_stamp = output.header.stamp
-        if self.initialization_complete or self.initialization_timed_out:
-            return
-        if self.latest_speed is None:
-            return
-        if self.latest_speed > self.stationary_speed_threshold:
-            # 動き出す前後のサンプルを混ぜない。混ぜると起動中の旋回がseed yawを
-            # 偏らせる。
-            self.reset_samples("wheel speed %.3f m/s is not stationary" % self.latest_speed)
-            return
-        self.sin_sum += math.sin(yaw)
-        self.cos_sum += math.cos(yaw)
-        self.sample_count += 1
-        if self.sample_count >= self.initial_sample_count:
-            self.seed_local_ekf()
-
-    def reset_samples(self, reason):
-        if self.sample_count:
-            self.get_logger().warn("Discarding heading samples: %s" % reason)
-        self.sin_sum = 0.0
-        self.cos_sum = 0.0
-        self.sample_count = 0
-
-    def timeout_callback(self):
-        if self.initialization_complete:
-            return
-        self.initialization_timed_out = True
-        self.timeout_timer.cancel()
-        self.get_logger().error(
-            "Heading seed was not applied within the startup window "
-            "(samples=%d, latest_speed=%s, set_pose_ready=%s). Keep the "
-            "vehicle stationary during initialization, then restart the "
-            "localization launch before driving." % (
-                self.sample_count,
-                "none" if self.latest_speed is None else "%.3f" % self.latest_speed,
-                self.set_pose_client.service_is_ready(),
-            )
-        )
-
-    def seed_local_ekf(self):
-        mean_yaw = math.atan2(self.sin_sum, self.cos_sum)
-        # 円統計は-pi/+piの境界をまたいでも正しい。算術平均ではその近傍で誤って
-        # 0付近のheadingになる。
-        concentration = math.hypot(self.sin_sum, self.cos_sum) / self.sample_count
-        # +/- pi近傍の角度にも頑健な円標準偏差。
-        stddev = math.sqrt(max(0.0, -2.0 * math.log(max(concentration, 1e-12))))
-        if stddev > self.max_initial_yaw_stddev:
-            self.reset_samples(
-                "heading standard deviation %.3f rad exceeds %.3f rad" % (
-                    stddev, self.max_initial_yaw_stddev
-                )
-            )
-            return
-        if not self.set_pose_client.service_is_ready():
-            self.get_logger().info("Waiting for local EKF set_pose service")
-            return
+    def pose_request(self, item, frame):
+        """最新poseの位置・tiltを保持してyawだけを置換する。速度はEKF側でリセット。"""
+        q = item.pose.pose.orientation
+        pos = item.pose.pose.position
+        values = (q.x, q.y, q.z, q.w, pos.x, pos.y, pos.z)
+        norm = math.sqrt(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w)
+        if (item.header.frame_id != frame or not all(math.isfinite(x) for x in values)
+                or abs(norm-1.0) > .01):
+            raise ValueError('EKFの姿勢・位置またはframeが不正')
+        pose = copy.deepcopy(item.pose)
+        roll, pitch, _ = rpy_from_quaternion(pose.pose.orientation)
+        q = quaternion_from_rpy(roll, pitch, self.seed_yaw)
+        pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w = q
+        pose.covariance[35] = float(self.p['initial_yaw_variance'])
         request = SetPose.Request()
-        pose = PoseWithCovarianceStamped()
-        # sensor stampを使うことで、全記録sensor messageごとに高頻度/clock timerを
-        # 処理しなくても、再生時のset_pose requestをEKFのsimulated timeに保てる。
-        pose.header.stamp = self.last_imu_stamp or self.get_clock().now().to_msg()
-        pose.header.frame_id = "odom"
-        qx, qy, qz, qw = quaternion_from_rpy(0.0, 0.0, mean_yaw)
-        pose.pose.pose.orientation.x = qx
-        pose.pose.pose.orientation.y = qy
-        pose.pose.pose.orientation.z = qz
-        pose.pose.pose.orientation.w = qw
-        pose.pose.covariance[0] = 1e-6
-        pose.pose.covariance[7] = 1e-6
-        pose.pose.covariance[14] = 1e6
-        pose.pose.covariance[21] = 1e6
-        pose.pose.covariance[28] = 1e6
-        pose.pose.covariance[35] = self.initial_yaw_variance
-        request.pose = pose
-        self.set_pose_client.call_async(request)
-        self.initialization_complete = True
-        self.seed_yaw = mean_yaw
-        self.timeout_timer.cancel()
-        self.get_logger().info(
-            "Seeded local EKF yaw once: %.3f rad (circular stddev %.3f rad)" % (
-                mean_yaw, stddev
-            )
-        )
-        self.try_set_navsat_datum()
+        request.pose.header.stamp = self.get_clock().now().to_msg()
+        request.pose.header.frame_id = frame
+        request.pose.pose = pose
+        return request
 
-    def try_set_navsat_datum(self):
-        """Release navsat_transform only after a valid stationary heading seed."""
-        if (not self.initialization_complete or self.latest_fix is None
-                or self.datum_sent or not self.set_datum_client.service_is_ready()):
+    def begin_call(self, client, request, state, reason):
+        self.pending = client.call_async(request)
+        self.deadline = self.now()+self.p['service_timeout_sec']
+        self.set_state(state, reason)
+
+    def poll_call(self, next_state, next_reason):
+        if not self.pending.done():
+            if self.now() > self.deadline:
+                self.fail('サービス応答timeout')
             return
-        # datum位置は品質ゲート済みfixから取る。orientationには同じ一回限りのlocal
-        # heading seedを使い、map変換とlocal odometryを一貫したyaw規約で開始する。
-        request = SetDatum.Request()
-        request.geo_pose.position.latitude = self.latest_fix.latitude
-        request.geo_pose.position.longitude = self.latest_fix.longitude
-        request.geo_pose.position.altitude = self.latest_fix.altitude
-        qx, qy, qz, qw = quaternion_from_rpy(0.0, 0.0, self.seed_yaw)
-        request.geo_pose.orientation.x = qx
-        request.geo_pose.orientation.y = qy
-        request.geo_pose.orientation.z = qz
-        request.geo_pose.orientation.w = qw
-        self.set_datum_client.call_async(request)
-        self.datum_sent = True
-        self.get_logger().info(
-            "Sent navsat datum after stationary heading initialization"
-        )
+        try:
+            self.pending.result()
+        except Exception as exc:
+            self.fail('サービス失敗: {}'.format(exc))
+            return
+        self.pending = None
+        self.verify_after = self.now()
+        self.deadline = self.now()+self.p['service_timeout_sec']
+        self.set_state(next_state, next_reason)
+
+    def verify_pose(self, item, next_state, reason):
+        if (item is not None and item[1] > self.verify_after and
+                fresh_stamp(item[0], self.now(), self.p['odom_timeout_sec'])):
+            _, _, yaw = rpy_from_quaternion(item[0].pose.pose.orientation)
+            if abs(wrap_pi(yaw-self.seed_yaw)) <= self.p['verify_yaw_tolerance_rad']:
+                self.set_state(next_state, reason)
+                return
+        if self.now() > self.deadline:
+            self.fail('EKF出力yawの反映を確認できません')
+
+    def tick(self):
+        now = self.now()
+        if self.state in ('WAITING', 'COLLECTING'):
+            timeout = self.p['initialization_timeout_sec']
+            if timeout > 0 and now-self.started_at > timeout:
+                self.fail('停止中の磁気方位を制限時間内に取得できません')
+                return
+            stationary, reason = self.stationary()
+            if not stationary or self.last_mag is None or now-self.last_mag[1] > self.p['input_timeout_sec']:
+                self.samples.clear()
+                self.stationary_since = None
+                self.set_state('WAITING', reason or '新鮮な補正磁気データ待ち')
+            return
+        if self.state in ('ERROR', 'READY'):
+            return
+        stationary, reason = self.stationary()
+        if not stationary:
+            self.fail('初期化途中に停止を確認できません: ' + reason)
+            return
+        if self.state == 'LOCAL_SERVICE':
+            if (self.local and now-self.local[1] < self.p['odom_timeout_sec'] and
+                    fresh_stamp(self.local[0], now, self.p['odom_timeout_sec']) and
+                    self.local_service.service_is_ready()):
+                try:
+                    request = self.pose_request(self.local[0], 'odom')
+                except ValueError as exc:
+                    self.fail(str(exc))
+                    return
+                self.begin_call(self.local_service, request, 'LOCAL_PENDING', 'local EKFの応答待ち')
+            elif now > self.deadline:
+                self.fail('local EKFのserviceまたは新鮮な出力がありません')
+        elif self.state == 'LOCAL_PENDING':
+            self.poll_call('LOCAL_VERIFY', 'local EKF出力を確認')
+        elif self.state == 'LOCAL_VERIFY':
+            self.verify_pose(self.local, 'GLOBAL_SERVICE' if self.p['require_gnss'] else 'READY',
+                             'global EKFの初期化待ち' if self.p['require_gnss'] else 'local初期化完了（GNSS無効）')
+        elif self.state == 'GLOBAL_SERVICE':
+            if (self.global_odom and now-self.global_odom[1] < self.p['odom_timeout_sec'] and
+                    fresh_stamp(self.global_odom[0], now, self.p['odom_timeout_sec']) and
+                    self.global_service.service_is_ready()):
+                try:
+                    request = self.pose_request(self.global_odom[0], 'map')
+                except ValueError as exc:
+                    self.fail(str(exc))
+                    return
+                self.begin_call(self.global_service, request, 'GLOBAL_PENDING', 'global EKFの応答待ち')
+            elif now > self.deadline:
+                self.fail('global EKFのserviceまたは新鮮な出力がありません')
+        elif self.state == 'GLOBAL_PENDING':
+            self.poll_call('GLOBAL_VERIFY', 'global EKF出力を確認')
+        elif self.state == 'GLOBAL_VERIFY':
+            self.verify_pose(self.global_odom, 'DATUM_SERVICE', '有効GNSSとdatum serviceを待機')
+        elif self.state == 'DATUM_SERVICE':
+            # 地図座標は東x/北y。datum yawに車体yawを設定すると地図自体が回転する。
+            if self.fix and now-self.fix[1] < 2.5 and self.datum_service.service_is_ready():
+                self.datum = self.fix[0]
+                req = SetDatum.Request()
+                req.geo_pose.position.latitude = self.datum.latitude
+                req.geo_pose.position.longitude = self.datum.longitude
+                req.geo_pose.position.altitude = self.datum.altitude
+                req.geo_pose.orientation.w = 1.0
+                self.begin_call(self.datum_service, req, 'DATUM_PENDING', 'GNSS datumの応答待ち')
+            elif self.fix and now-self.fix[1] < 2.5 and now > self.deadline:
+                self.fail('datum serviceが利用できません')
+        elif self.state == 'DATUM_PENDING':
+            self.poll_call('GPS_VERIFY', 'GNSS座標変換の出力を確認')
+        elif self.state == 'GPS_VERIFY':
+            if self.gps and self.gps[1] > self.verify_after and self.fromll_service.service_is_ready():
+                gps_position = self.gps[0].pose.pose.position
+                if (not all(math.isfinite(v) for v in (gps_position.x, gps_position.y)) or
+                        math.hypot(gps_position.x, gps_position.y) > 15.0):
+                    if now > self.deadline:
+                        self.fail('datum後のGNSS位置が原点付近ではありません')
+                    return
+                # 緯度経度を東・北へそれぞれ約10 m移して地図軸を確かめる。
+                lat, lon = self.datum.latitude, self.datum.longitude
+                if abs(math.cos(math.radians(lat))) < .01:
+                    self.fail('極域ではGNSS座標変換を検証できません')
+                    return
+                points = [(lat, lon), (lat, lon+10/(111320*math.cos(math.radians(lat)))),
+                          (lat+10/111320, lon)]
+                self.ll_futures = []
+                for la, lo in points:
+                    req = FromLL.Request()
+                    req.ll_point.latitude, req.ll_point.longitude = la, lo
+                    req.ll_point.altitude = self.datum.altitude
+                    self.ll_futures.append(self.fromll_service.call_async(req))
+                self.deadline = now+self.p['service_timeout_sec']
+                self.set_state('AXES_VERIFY', 'GNSSの東北座標軸を確認')
+            elif now > self.deadline:
+                self.fail('datum後のGNSS変換出力を確認できません')
+        elif self.state == 'AXES_VERIFY':
+            if all(f.done() for f in self.ll_futures):
+                try:
+                    points = [f.result().map_point for f in self.ll_futures]
+                    ex, ey = points[1].x-points[0].x, points[1].y-points[0].y
+                    nx, ny = points[2].x-points[0].x, points[2].y-points[0].y
+                    if math.hypot(points[0].x, points[0].y) > 1.0:
+                        raise ValueError('datumの地図原点が一致しません')
+                    if not (8 < ex < 12 and abs(ey) < 2 and 8 < ny < 12 and abs(nx) < 2):
+                        raise ValueError('東北方向が期待する地図軸と一致しません')
+                except Exception as exc:
+                    self.fail('GNSS座標軸検証失敗: {}'.format(exc))
+                    return
+                self.set_state('READY', 'local・global・GNSSの初期化と座標軸を確認')
+            elif now > self.deadline:
+                self.fail('GNSS座標軸検証の応答timeout')
 
 
 def main(args=None):
@@ -275,7 +478,3 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.shutdown()
-
-
-if __name__ == "__main__":
-    main()

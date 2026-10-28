@@ -136,6 +136,9 @@ class RosBackend(Node):
                                self._wit_imu_callback, qos=qos_profile_sensor_data)
         self._add_subscription(MagneticField, topics.get('wit_mag', '/wit/mag'),
                                self._wit_mag_callback, qos=qos_profile_sensor_data)
+        self._add_subscription(String, topics.get('localization_initialization',
+                               '/localization/initialization/status'),
+                               self._initialization_callback)
         self._add_subscription(Odometry, topics.get('odometry', '/odometry/global'),
                                self._odometry_callback)
         self._add_subscription(
@@ -211,6 +214,16 @@ class RosBackend(Node):
         """車体座標のvx [m/s]を保持する。指令値・融合odometryは使用しない。"""
         vx = float(message.twist.twist.linear.x)
         self._store('wheel_odometry', {'vx': vx if math.isfinite(vx) else None})
+
+    def _initialization_callback(self, message):
+        """初期化nodeの状態と理由を表示用snapshotへ保存する。"""
+        try:
+            value = json.loads(message.data)
+            if not isinstance(value, dict) or not isinstance(value.get('state'), str):
+                raise ValueError('状態形式が不正')
+        except (ValueError, TypeError) as exc:
+            value = {'state': 'ERROR', 'reason': '状態の受信失敗: {}'.format(exc)}
+        self._store('localization_initialization', value)
 
     def _wit_imu_callback(self, message):
         """磁気方位の傾斜補償用roll/pitchを保持。orientation yawは使用しない。"""

@@ -1,24 +1,27 @@
 # separated_offroad profile用の地球基準heading初期化。
 #
-# yaw_correction_radiansは座標規約を検証した後の/wit/imu ROS yawへ加える。ROS ENU
-# 規約（0=east、反時計回り正）における磁気偏角とWIT-to-base_link取付角の合成補正を
-# 表す。停止・再現性校正で実測値が得られるまで0.0のままにする。
+# 補正磁気ベクトルと共通の真北offsetからENU yawを求める。
+# offsetはhwt905_mag_calibration.yamlからlaunch経由で供給する。
 heading_initializer_node:
   ros__parameters:
-    input_imu_topic: /wit/imu
-    output_imu_topic: /wit/imu/heading_calibrated
-    wheel_odom_topic: /wheel/odometry
-    # datum seedにはglobal EKFが採用するものと同じGNSS streamだけを使う。
-    gnss_fix_topic: /fix/gated
-    # robot_localizationはこのserviceをEKF node名の下ではなくlaunch namespaceに作る。
-    local_set_pose_service: /set_pose
-    # ROS 2 Foxyのnavsat_transform_nodeはSetDatumを/datumとして公開する。
-    navsat_set_datum_service: /datum
-
-    yaw_correction_radians: 0.0
-    stationary_speed_threshold_mps: 0.03
-    # Witの公称100 Hzでは、これは1秒間の停止時平均に相当する。
+    # 安定化待ちと平均時間は別。継続1秒の静止後、最大3秒の窓で平均する。
+    startup_settle_sec: 1.0
+    average_duration_sec: 1.0
+    average_max_sec: 3.0
+    # 1〜3秒の窓に最低100組の同一headerサンプルが必要。
     initial_sample_count: 100
+    # 0は方位の取得待ちを継続する。正値なら取得待ちの上限秒。
+    initialization_timeout_sec: 0.0
+    input_timeout_sec: 0.5
+    wheel_timeout_sec: 0.5
+    stationary_speed_threshold_mps: 0.03
+    stationary_yaw_rate_threshold_rad_s: 0.05
     max_initial_yaw_stddev_radians: 0.10
-    initialization_timeout_sec: 12.0
-    initial_yaw_variance: 0.05
+    min_horizontal_field: 1.0
+    max_pitch_rad: 1.0
+    # 暫定校正の真値誤差を含む値。円平均のばらつきだけから確信しない。
+    initial_yaw_variance: 0.122
+    service_timeout_sec: 5.0
+    verify_yaw_tolerance_rad: 0.15
+    # フィルタ呼び出し前の姿勢がこの時間より古い場合は位置を保持できない。
+    odom_timeout_sec: 1.0

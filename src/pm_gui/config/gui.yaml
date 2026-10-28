@@ -26,6 +26,7 @@ operator_console:
       navpvt: /navpvt
       wit_imu: /wit/imu
       wit_mag: /wit/mag
+      localization_initialization: /localization/initialization/status
     compass:
       # 生topicを使い、補正ノードと同じpm_configの設定を一度だけ適用する。
       calibration_package: pm_config

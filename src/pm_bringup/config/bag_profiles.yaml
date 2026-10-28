@@ -15,6 +15,8 @@ mission:
   - /wit/imu
   - /wit/mag
   - /wit/mag_corrected
+  - /localization/initialization/status
+  - /odometry/gps
   - /imu
   - /motor_state
   - /wheel/odometry  # レポートでは下位だが実走行で保存推奨の軽量EKF入力。
@@ -82,6 +84,6 @@ debug:
   - /vio/odometry/twist_gated
   - /fix/gated
   - /wit/imu/heading_calibrated
-  - /odometry/gps
+  - /odometry/gps/unverified
   - /gps/filtered
   - /joint_states
