@@ -41,6 +41,7 @@ mission:
   - /odometry/local_horizontal
   - /odometry/local_vertical
   - /odometry/global
+  - /odometry/global_horizontal
   - /pm/joy
   - /cmd_vel_joy
   - /cmd_vel

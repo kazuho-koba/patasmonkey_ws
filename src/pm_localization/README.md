@@ -23,6 +23,10 @@ flowchart LR
   W --> GE
   I --> GE
   TG --> GE
+  GE --> GC[global odometry composer]
+  L -->|roll, pitch, z| GC
+  GC --> OG[/odometry/global\nmap -> odom/]
+  OG -->|map基準odometry| N
 ```
 
 ### local odometry
@@ -35,6 +39,27 @@ roll/pitchはWit orientationから、zは品質通過VIO zから別に観測し�
 高さゲートが閉鎖された後も`/odometry/local_vertical`は出力を継続しますが、
 これは最後に検証済みのzを保持しているだけです。新しいVIO zの追従やIMU加速度の
 二重積分は行いません。
+
+### global odometry
+
+global EKFは`two_d_mode`でGNSSの水平x/y、wheel `vx`、Wit `wz`、
+健全なVIO `vx/vy`を融合し、`/odometry/global_horizontal`を出します。
+`global_odometry_composer_node`は同時刻に近い`/odometry/local`のroll/pitch・
+相対zを合成して`/odometry/global`を出し、唯一の`map -> odom` TFを配信します。
+localとglobalの時刻差が0.2秒を超える場合は、古い組合せで出力しません。
+VIOが未初期化・高さgate閉鎖の間のzは保持値であり、GNSS絶対高度ではありません。
+高さ不明の共分散も保持し、z=0を正確な高さとして扱いません。
+
+VIOが未起動・隔離中はlocal EKFの横速度と横加速度が直接観測されず、
+robot_localizationの予測モデルによって水平位置の共分散が増大します。
+これは未知の横滑りや外力に対する不確実性であり、位置の数値そのものが発散した
+ことを意味するとは限りません。Qを下げると表示される分散は減りますが、
+オフロードの実際の横滑りを評価せずに信頼度を上げることはできません。
+現行設定では暫定値を本番へ反映せず、VIO復帰時の速度観測と共分散を使います。
+
+navsat transformは`/odometry/global`を基準に`map` frameのGNSS位置を出します。
+localを基準にした`odom` frameのGNSSをglobalへ渡すと、global自身が出した
+`map -> odom` TFで観測が移動する循環となり、発散し得ます。
 
 ### headingとGNSS
 

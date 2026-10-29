@@ -14,7 +14,7 @@ from ament_index_python.packages import get_package_share_directory
 INPUTS = ['/wheel/odometry', '/wit/imu', '/wit/mag', '/vio/odometry',
           '/fix', '/navpvt']
 OUTPUTS = ['/odometry/local', '/odometry/local_horizontal', '/odometry/local_vertical',
-           '/odometry/global', '/odometry/gps', '/odometry/gps/unverified',
+           '/odometry/global', '/odometry/global_horizontal', '/odometry/gps', '/odometry/gps/unverified',
            # GNSSがglobalに入る際のmap→odom座標変換と、両EKFの依存関係を検証する。
            '/tf',
            '/fix/gated', '/localization/initialization/status',
@@ -28,12 +28,17 @@ def main():
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--rate', type=float, default=1.)
     parser.add_argument('--duration', type=float)
+    parser.add_argument('--local-ekf-config', type=Path,
+                        help='比較用local EKF設定YAML。省略時は本番設定')
     parser.add_argument('--ros-domain-id', type=int, default=112)
-    parser.add_argument('--navsat-odom-topic', default='/odometry/local',
+    parser.add_argument('--navsat-odom-topic', default='/odometry/global',
                         choices=['/odometry/local','/odometry/global'],
                         help='navsat入力の比較用。既定は本番設定')
-    parser.add_argument('--global-separated',action='store_true',
-                        help='試験用：global水平EKFとlocalの高さ・姿勢を合成する')
+    parser.add_argument('--global-separated',dest='global_separated',action='store_true',
+                        help='global水平EKFとlocalの高さ・姿勢を合成する（既定）')
+    parser.add_argument('--global-3d',dest='global_separated',action='store_false',
+                        help='比較用：従来のglobal 3D EKFに戻す')
+    parser.set_defaults(global_separated=True)
     args = parser.parse_args()
     if args.output_dir.exists():
         raise SystemExit('既存出力を上書きしません: {}'.format(args.output_dir))
@@ -48,10 +53,13 @@ def main():
              'ekf_global_gnss_constrained.yaml', 'navsat_transform_heading_initialized.yaml']
     for name in names:
         shutil.copy2(configs/name, args.output_dir/name)
+    if args.local_ekf_config:
+        shutil.copy2(args.local_ekf_config, args.output_dir/'local_override.yaml')
     (args.output_dir/'replay_parameters.json').write_text(json.dumps(
         {'input_bag':str(args.bag), 'rate':args.rate, 'duration':args.duration,
          'topics':INPUTS, 'navsat_odom_topic':args.navsat_odom_topic,
          'global_separated':args.global_separated,
+         'local_ekf_config':str(args.local_ekf_config) if args.local_ekf_config else None,
          'description':'元bagのVIOを再利用。センサ・走行制御は起動しない。'},
         ensure_ascii=False, indent=2), encoding='utf-8')
     processes = []
@@ -74,10 +82,12 @@ def main():
                 proc.wait(timeout=10)
                 raise RuntimeError('プロセスがSIGINTで停止しませんでした')
     try:
-        launch = start(['ros2','launch','pm_evaluation','replay_separated_global.launch.py',
-                        'navsat_odom_topic:='+args.navsat_odom_topic,
-                        'global_separated:='+str(args.global_separated).lower()],
-                       'launch.log')
+        launch_command = ['ros2','launch','pm_evaluation','replay_separated_global.launch.py',
+                          'navsat_odom_topic:='+args.navsat_odom_topic,
+                          'global_separated:='+str(args.global_separated).lower()]
+        if args.local_ekf_config:
+            launch_command.append('local_ekf_config:='+str(args.local_ekf_config.resolve()))
+        launch = start(launch_command, 'launch.log')
         time.sleep(3)
         if launch.poll() is not None:
             raise RuntimeError('再生対象のlaunchが起動できません')

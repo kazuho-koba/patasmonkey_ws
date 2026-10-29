@@ -34,6 +34,7 @@ setup(
             'vio_vertical_gate_node = pm_localization.vio_vertical_gate_node:main',
             'vio_twist_gate_node = pm_localization.vio_twist_gate_node:main',
             'local_odometry_composer_node = pm_localization.local_odometry_composer_node:main',
+            'global_odometry_composer_node = pm_localization.global_odometry_composer_node:main',
             'attitude_height_observer_node = pm_localization.attitude_height_observer_node:main',
             'heading_initializer_node = pm_localization.heading_initializer_node:main',
             'gnss_fix_gate_node = pm_localization.gnss_fix_gate_node:main',

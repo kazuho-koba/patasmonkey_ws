@@ -4,8 +4,10 @@ ekf_global_gnss_constrained_node:
     # /odometry/local poseは、1 Hz GNSS補正を押し負かし得るため意図して入力しない。
     frequency: 20.0
     sensor_timeout: 1.0
-    two_d_mode: false
-    publish_tf: true
+    # 高さ・傾斜はlocal観測器と合成する。未観測のz/vzが水平状態へ結合しない。
+    two_d_mode: true
+    # map→odomはglobal odometry composerだけが配信する。
+    publish_tf: false
     publish_acceleration: false
     print_diagnostics: true
 
@@ -27,12 +29,12 @@ ekf_global_gnss_constrained_node:
     odom0_differential: false
     odom0_relative: false
 
-    # 磁気yawを直接採用せずに車体姿勢を保持する。roll/pitchは重力基準で、yawは別途検証
-    # された一回限りのheading seedまでgyro zで伝播する。
+    # yawは検証された一回限りのheading seedからgyro zで伝播する。
+    # roll/pitchはlocal側で別途観測して合成する。
     imu0: /wit/imu
     imu0_config: [
       false, false, false,
-      true,  true,  false,
+      false, false, false,
       false, false, false,
       false, false, true,
       false, false, false

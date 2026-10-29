@@ -66,14 +66,17 @@ VIOは独自の原点・向きを持つため初期yawだけをlocalに合わせ
 診断時は`audit_global_replay <出力ディレクトリ>`と
 `plot_global_replay_audit <出力ディレクトリ>`でglobal状態・入力のCSVと図を
 作れます。navsatの参照を比較する`--navsat-odom-topic /odometry/global`は
-オフライン専用の試験引数で、本番設定を変更しません。
+比較用の引数で、本番設定を変更しません。既定は現在の本番と同じglobal基準です。
 
 `analyze_localization_tf <出力ディレクトリ>`は、再生時に保存した`/tf`と
 GNSS・local・globalを近い時刻で照合し、座標変換のCSV、集計と図を作成します。
 記録後の出力値の比較であり、EKF内部の更新前innovationではありません。
 
-`--global-separated --navsat-odom-topic /odometry/global`は評価用構成です。
-global EKFの水平推定にlocal推定のroll・pitch・相対zを合成し、評価用ノードが
-`map→odom`を発行します。高度は地球基準ではなく、VIO高さゲートが閉じた後は
-保持値です。時刻が0.2秒以上離れたlocal/global値は合成しません。本番構成を
-変更するものではなく、この試験だけで実機での安全性を保証しません。
+既定は`--global-separated --navsat-odom-topic /odometry/global`で、本番と同じ
+global水平推定にlocalのroll・pitch・相対zを合成します。高度は地球基準でなく、
+VIO高さゲートが閉じた後は保持値です。時刻差0.2秒を超える場合は合成しません。
+`--global-3d`は過去の3D方式との比較用、`--navsat-odom-topic /odometry/local`は
+過去の座標循環の再現用であり、いずれも実機での使用を推奨しません。
+`--local-ekf-config <yaml>`では本番設定を変更せず、異なるprocess noise等の
+local EKF設定をbag再生で比較できます。設定は出力先に保存されます。
+小さい共分散の出力は推定精度の証明ではなく、実走行で滑り・横移動を検証してください。

@@ -19,11 +19,19 @@ def generate_launch_description():
     with (config/'ekf_global_gnss_constrained.yaml').open(encoding='utf-8') as stream:
         global_horizontal = yaml.safe_load(stream)['ekf_global_gnss_constrained_node']['ros__parameters']
     global_horizontal.update({'two_d_mode': True, 'publish_tf': False})
+    # 過去条件との比較用。現行製品は水平合成方式を使う。
+    global_3d = dict(global_horizontal)
+    global_3d.update({'two_d_mode': False, 'publish_tf': True,
+                      'imu0_config': [False, False, False, True, True, False,
+                                      False, False, False, False, False, True,
+                                      False, False, False]})
     sim = {'use_sim_time': True}
     nodes = [
         # 比較試験でnavsatの基準odomだけを変えられる。既定は本番設定と同じ。
-        DeclareLaunchArgument('navsat_odom_topic',default_value='/odometry/local'),
-        DeclareLaunchArgument('global_separated',default_value='false'),
+        DeclareLaunchArgument('navsat_odom_topic',default_value='/odometry/global'),
+        DeclareLaunchArgument('global_separated',default_value='true'),
+        # 独立した評価用YAMLでlocal EKFの前提だけを切り替える。
+        DeclareLaunchArgument('local_ekf_config',default_value=str(config/'ekf_local_horizontal_vio_twist.yaml')),
         Node(package='robot_state_publisher', executable='robot_state_publisher',
              parameters=[sim, {'robot_description': urdf.read_text(encoding='utf-8')}]),
         Node(package='hwt905_rs485_driver', executable='wit_mag_corrector',
@@ -34,7 +42,7 @@ def generate_launch_description():
              parameters=[str(config/'gnss_fix_gate.yaml'), sim]),
         Node(package='robot_localization', executable='ekf_node',
              name='ekf_local_horizontal_node',
-             parameters=[str(config/'ekf_local_horizontal_vio_twist.yaml'), sim],
+             parameters=[LaunchConfiguration('local_ekf_config'), sim],
              remappings=[('odometry/filtered','/odometry/local_horizontal'),
                          ('set_pose','/localization/local/set_pose')]),
         Node(package='pm_localization', executable='attitude_height_observer_node', parameters=[sim]),
@@ -42,10 +50,10 @@ def generate_launch_description():
         Node(package='robot_localization', executable='ekf_node',
              name='ekf_global_gnss_constrained_node',
              condition=UnlessCondition(LaunchConfiguration('global_separated')),
-             parameters=[str(config/'ekf_global_gnss_constrained.yaml'), sim],
+             parameters=[global_3d, sim],
              remappings=[('odometry/filtered','/odometry/global'),
                          ('set_pose','/localization/global/set_pose')]),
-        # 試験案のみ：global水平EKFの高さ状態を切り離し、localの姿勢・zを合成。
+        # 本番と同じ方式：global水平EKFへlocalの姿勢・相対zを合成。
         Node(package='robot_localization', executable='ekf_node',
              name='ekf_global_gnss_constrained_node',
              condition=IfCondition(LaunchConfiguration('global_separated')),
