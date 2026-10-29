@@ -22,6 +22,8 @@ heading_initializer_node:
     # 暫定校正の真値誤差を含む値。円平均のばらつきだけから確信しない。
     initial_yaw_variance: 0.122
     service_timeout_sec: 5.0
+    # datum応答後のGNSS変換出力と/fromLLの準備を待つ最大時間。
+    gps_verify_timeout_sec: 30.0
     verify_yaw_tolerance_rad: 0.15
     # フィルタ呼び出し前の姿勢がこの時間より古い場合は位置を保持できない。
     odom_timeout_sec: 1.0

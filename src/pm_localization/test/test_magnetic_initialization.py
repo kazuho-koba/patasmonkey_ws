@@ -35,3 +35,46 @@ def test_unchanged_state_does_not_emit_for_each_sensor_sample():
     assert len(emitted)==1
     HeadingInitializerNode.set_state(stub,'COLLECTING','平均中')
     assert len(emitted)==1
+
+
+def test_datum_service_timeout_starts_when_fix_arrives():
+    clock = [100.]
+    errors = []
+    stub = SimpleNamespace(
+        state='DATUM_SERVICE', now=lambda: clock[0],
+        stationary=lambda: (True, ''), fix=None,
+        datum_service_wait_since=None, deadline=1.,
+        p={'service_timeout_sec': 5.},
+        datum_service=SimpleNamespace(service_is_ready=lambda: False),
+        fail=errors.append)
+    HeadingInitializerNode.tick(stub)
+    stub.fix = (object(), clock[0])
+    HeadingInitializerNode.tick(stub)
+    assert not errors
+    clock[0] += 5.1
+    stub.fix = (object(), clock[0])
+    HeadingInitializerNode.tick(stub)
+    assert errors == ['datum serviceが利用できません']
+
+
+def test_datum_response_uses_configured_gps_verification_timeout():
+    states = []
+    stub = SimpleNamespace(
+        pending=SimpleNamespace(done=lambda: True, result=lambda: None),
+        now=lambda: 10., p={'service_timeout_sec': 5., 'gps_verify_timeout_sec': 30.},
+        set_state=lambda state, reason: states.append((state, reason)))
+    HeadingInitializerNode.poll_call(stub, 'GPS_VERIFY', '確認')
+    assert stub.verify_after == 10.
+    assert stub.deadline == 40.
+    assert states == [('GPS_VERIFY', '確認')]
+
+
+def test_gps_verify_timeout_reports_missing_input():
+    errors = []
+    stub = SimpleNamespace(
+        state='GPS_VERIFY', now=lambda: 41., stationary=lambda: (True, ''),
+        gps=None, verify_after=10., deadline=40.,
+        fromll_service=SimpleNamespace(service_is_ready=lambda: True),
+        fail=errors.append)
+    HeadingInitializerNode.tick(stub)
+    assert errors == ['確認できません: datum後のGNSS変換出力']

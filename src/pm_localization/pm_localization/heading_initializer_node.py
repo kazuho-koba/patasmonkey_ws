@@ -78,7 +78,8 @@ class HeadingInitializerNode(Node):
                         stationary_yaw_rate_threshold_rad_s=.05,
                         max_initial_yaw_stddev_radians=.10, min_horizontal_field=1.,
                         max_pitch_rad=1., initial_yaw_variance=.122,
-                        service_timeout_sec=5., verify_yaw_tolerance_rad=.15,
+                        service_timeout_sec=5., gps_verify_timeout_sec=30.,
+                        verify_yaw_tolerance_rad=.15,
                         odom_timeout_sec=1., offset_deg=0., declination_deg=0.,
                         require_gnss=True, yaw_correction_radians=0.0,
                         input_imu_topic='/wit/imu',
@@ -113,6 +114,7 @@ class HeadingInitializerNode(Node):
         self.gps = None
         self.pending = None
         self.deadline = 0.
+        self.datum_service_wait_since = None
         self.expected = None
         self.verify_after = 0.
         self.datum = None
@@ -346,7 +348,10 @@ class HeadingInitializerNode(Node):
             return
         self.pending = None
         self.verify_after = self.now()
-        self.deadline = self.now()+self.p['service_timeout_sec']
+        # datumの応答後はGNSSの低周期と変換ノードの起動遅延を許容する。
+        timeout = (self.p['gps_verify_timeout_sec'] if next_state == 'GPS_VERIFY'
+                   else self.p['service_timeout_sec'])
+        self.deadline = self.now()+timeout
         self.set_state(next_state, next_reason)
 
     def verify_pose(self, item, next_state, reason):
@@ -413,7 +418,13 @@ class HeadingInitializerNode(Node):
             self.verify_pose(self.global_odom, 'DATUM_SERVICE', '有効GNSSとdatum serviceを待機')
         elif self.state == 'DATUM_SERVICE':
             # 地図座標は東x/北y。datum yawに車体yawを設定すると地図自体が回転する。
-            if self.fix and now-self.fix[1] < 2.5 and self.datum_service.service_is_ready():
+            if not self.fix or now-self.fix[1] >= 2.5:
+                # fixが遅れて到着しても、直前のEKF検証期限を流用しない。
+                self.datum_service_wait_since = None
+                return
+            if self.datum_service_wait_since is None:
+                self.datum_service_wait_since = now
+            if self.datum_service.service_is_ready():
                 self.datum = self.fix[0]
                 req = SetDatum.Request()
                 req.geo_pose.position.latitude = self.datum.latitude
@@ -421,12 +432,14 @@ class HeadingInitializerNode(Node):
                 req.geo_pose.position.altitude = self.datum.altitude
                 req.geo_pose.orientation.w = 1.0
                 self.begin_call(self.datum_service, req, 'DATUM_PENDING', 'GNSS datumの応答待ち')
-            elif self.fix and now-self.fix[1] < 2.5 and now > self.deadline:
+            elif now-self.datum_service_wait_since > self.p['service_timeout_sec']:
                 self.fail('datum serviceが利用できません')
         elif self.state == 'DATUM_PENDING':
             self.poll_call('GPS_VERIFY', 'GNSS座標変換の出力を確認')
         elif self.state == 'GPS_VERIFY':
-            if self.gps and self.gps[1] > self.verify_after and self.fromll_service.service_is_ready():
+            gps_received = bool(self.gps and self.gps[1] > self.verify_after)
+            fromll_ready = self.fromll_service.service_is_ready()
+            if gps_received and fromll_ready:
                 gps_position = self.gps[0].pose.pose.position
                 if (not all(math.isfinite(v) for v in (gps_position.x, gps_position.y)) or
                         math.hypot(gps_position.x, gps_position.y) > 15.0):
@@ -449,7 +462,12 @@ class HeadingInitializerNode(Node):
                 self.deadline = now+self.p['service_timeout_sec']
                 self.set_state('AXES_VERIFY', 'GNSSの東北座標軸を確認')
             elif now > self.deadline:
-                self.fail('datum後のGNSS変換出力を確認できません')
+                missing = []
+                if not gps_received:
+                    missing.append('datum後のGNSS変換出力')
+                if not fromll_ready:
+                    missing.append('/fromLL service')
+                self.fail('確認できません: ' + '、'.join(missing))
         elif self.state == 'AXES_VERIFY':
             if all(f.done() for f in self.ll_futures):
                 try:

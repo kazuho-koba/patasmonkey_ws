@@ -60,6 +60,10 @@ GNSS変換後の出力と、fromLLの東・北方向の変換を確認してか�
 `/localization/initialization/status`に状態と理由を1 Hzで発行し、GUIの姿勢欄と
 mission bagにも記録します。`READY`は処理の成立を示し、暫定磁気校正の絶対精度を
 保証するものではありません。状態表示は走行指令を自動遮断しません。
+GNSS fixは時間制限なく待ち、fix受信後のdatum service待ちは既定5秒です。
+datum応答後の変換出力と`/fromLL`は既定30秒待ち、期限切れには不足項目を表示します。
+待ち時間は`heading_initializer.yaml`の`service_timeout_sec`と
+`gps_verify_timeout_sec`で調整できます。
 旧`/wit/imu/heading_calibrated`出力は互換用に残しますが、今回の初期化や
 navsatには使わず、`/wit/mag_corrected`の補正を適用したものでもありません。
 
