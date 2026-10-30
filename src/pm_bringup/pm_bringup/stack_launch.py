@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 import json
 import yaml
+import xml.etree.ElementTree as ET
 
 from launch import LaunchDescription
 from launch.actions import (
@@ -156,7 +157,21 @@ def create_launch_description(legacy_recording=False, drive_default=True):
 
         # legacy modeではCLIで指定された設定ファイル名を実パスへ解決する。
         # YAMLが存在しないままEKFを無設定で起動する事態を、他nodeの起動前に防ぐ。
-        if localization_mode.perform(context) == "legacy":
+        mode = localization_mode.perform(context)
+        if mode not in ('legacy', 'separated_offroad', 'separated_projected',
+                        'ekf_3d_no_accel', 'ekf_3d_accel'):
+            raise RuntimeError('未対応のlocalization_mode: {}'.format(mode))
+        if mode == 'separated_projected':
+            # 投影ノードはWitと車体の軸一致を前提とする。URDFに傾きが加わる場合、
+            # 未変換の姿勢を使うより起動を止めて変換実装の再検証を要求する。
+            joint = ET.parse(str(urdf_file)).getroot().find("joint[@name='base_link_to_wit_imu_link']")
+            origin = joint.find('origin') if joint is not None else None
+            rpy = origin.get('rpy', '').split() if origin is not None else []
+            if (len(rpy) != 3 or any(abs(float(value)) > 1e-9 for value in rpy)
+                    or joint.find('parent').get('link') != 'base_link'
+                    or joint.find('child').get('link') != 'wit_imu_link'):
+                raise RuntimeError('水平投影はURDFのbase_linkとwit_imu_linkの軸一致が必要です')
+        if mode == "legacy":
             resolved_ekf_config = Path(ekf_local_config_file.perform(context))
             if not resolved_ekf_config.is_file():
                 raise RuntimeError(
@@ -176,6 +191,9 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                     urdf_file, imu_config_file, mag_calibration_file, wheel_odom_config_file,
                     vehicle_geometry_file, vehicle_control_file, openvins_config_file,
                     ekf_global_config_file, ekf_horizontal_config_file,
+                    pm_config_share / 'config' / 'ekf_local_horizontal_projected.yaml',
+                    pm_config_share / 'config' / 'ekf_local_3d_no_accel.yaml',
+                    pm_config_share / 'config' / 'ekf_local_3d_accel.yaml',
                     heading_initializer_config_file, gnss_fix_gate_config_file,
                     navsat_config_file, navsat_heading_initialized_config_file,
                     pm_perception_share / 'config' / 'depth_elevation_mapper.yaml',
@@ -613,18 +631,40 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         remappings=[("odometry/filtered", "/odometry/local_horizontal"),
                     ("set_pose", "/localization/local/set_pose")],
     )
+    # 投影方式はbase_levelをEKFの速度座標とし、最終TFはcomposerがbase_linkへ合成。
+    projected_velocity_node = Node(
+        package='pm_localization', executable='horizontal_velocity_projection_node',
+        condition=IfCondition(PythonExpression(["'", localization_mode, "' == 'separated_projected'"])),
+    )
+    ekf_local_projected_node = Node(
+        package='robot_localization', executable='ekf_node', name='ekf_local_horizontal_node',
+        parameters=[str(pm_config_share / 'config' / 'ekf_local_horizontal_projected.yaml')],
+        condition=IfCondition(PythonExpression(["'", localization_mode, "' == 'separated_projected'"])),
+        remappings=[('odometry/filtered', '/odometry/local_horizontal'),
+                    ('set_pose', '/localization/local/set_pose')],
+    )
+    ekf_local_3d_node = Node(
+        package='robot_localization', executable='ekf_node', name='ekf_local_3d_node',
+        parameters=[PathJoinSubstitution([str(pm_config_share), 'config', PythonExpression([
+            "'ekf_local_3d_accel.yaml' if '", localization_mode,
+            "' == 'ekf_3d_accel' else 'ekf_local_3d_no_accel.yaml'"])])],
+        condition=IfCondition(PythonExpression(["'", localization_mode,
+                                              "' in ['ekf_3d_no_accel', 'ekf_3d_accel']"])),
+        remappings=[('odometry/filtered', '/odometry/local'),
+                    ('set_pose', '/localization/local/set_pose')],
+    )
     attitude_height_observer_node = Node(
         package="pm_localization", executable="attitude_height_observer_node",
         name="attitude_height_observer_node", output="screen",
         condition=IfCondition(PythonExpression([
-            "'", localization_mode, "' == 'separated_offroad'",
+            "'", localization_mode, "' in ['separated_offroad', 'separated_projected']",
         ])),
     )
     local_odometry_composer_node = Node(
         package="pm_localization", executable="local_odometry_composer_node",
         name="local_odometry_composer_node", output="screen",
         condition=IfCondition(PythonExpression([
-            "'", localization_mode, "' == 'separated_offroad'",
+            "'", localization_mode, "' in ['separated_offroad', 'separated_projected']",
         ])),
     )
     # 分離profileでは静止時の補正磁気から両EKFを初期化し、GNSS軸を検証する。
@@ -636,8 +676,11 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             "declination_deg": float(mag_calibration["declination_deg"]),
             "require_gnss": ParameterValue(use_gnss, value_type=bool),
         }],
+        remappings=[('/odometry/local_horizontal', PythonExpression([
+            "'/odometry/local' if '", localization_mode,
+            "' in ['ekf_3d_no_accel', 'ekf_3d_accel'] else '/odometry/local_horizontal'"]))],
         condition=IfCondition(PythonExpression([
-            "'", localization_mode, "' == 'separated_offroad'",
+            "'", localization_mode, "' != 'legacy'",
         ])),
     )
     # datum初期化とnavsat_transformの両方より前にraw GNSSをgateする。raw `/fix`と
@@ -648,7 +691,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         parameters=[str(gnss_fix_gate_config_file)],
         condition=IfCondition(PythonExpression([
             "'", use_gnss, "' == 'true' and '", localization_mode,
-            "' == 'separated_offroad'",
+            "' != 'legacy'",
         ])),
     )
 
@@ -708,7 +751,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         ],
         condition=IfCondition(PythonExpression([
             "'", use_gnss, "' == 'true' and '", localization_mode,
-            "' == 'separated_offroad'",
+            "' != 'legacy'",
         ])),
     )
 
@@ -738,7 +781,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                     ("set_pose", "/localization/global/set_pose")],
         condition=IfCondition(PythonExpression([
             "'", use_gnss, "' == 'true' and '", localization_mode,
-            "' == 'separated_offroad'",
+            "' != 'legacy'",
         ])),
     )
 
@@ -748,7 +791,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         name="global_odometry_composer_node", output="screen",
         condition=IfCondition(PythonExpression([
             "'", use_gnss, "' == 'true' and '", localization_mode,
-            "' == 'separated_offroad'",
+            "' != 'legacy'",
         ])),
     )
 
@@ -825,6 +868,9 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                 wheel_odometry_node,
                 ekf_local_node,
                 ekf_local_horizontal_node,
+                projected_velocity_node,
+                ekf_local_projected_node,
+                ekf_local_3d_node,
                 attitude_height_observer_node,
                 local_odometry_composer_node,
                 heading_initializer_node,
@@ -1045,8 +1091,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             "localization_mode",
             default_value="separated_offroad",
             description=(
-                "legacy: one EKF; separated_offroad: horizontal EKF plus a "
-                "validated attitude/height observer, composed into /odometry/local"
+                "legacy / separated_offroad（既定） / separated_projected / "
+                "ekf_3d_no_accel / ekf_3d_accel。後者３つは比較用。"
             ),
         ),
 
