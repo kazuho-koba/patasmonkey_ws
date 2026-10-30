@@ -31,6 +31,59 @@ flowchart LR
 
 ### local odometry
 
+`pm_core.launch.py`の`localization_mode`で次の５構成を選べます。既定は
+`separated_offroad`のままです。後者３条件は実走採用前の比較用です。
+
+| 値 | localの構成 |
+|---|---|
+| `legacy` | 従来の3D EKF設定 |
+| `separated_offroad` | 現行の水平EKFと姿勢・高さ観測器 |
+| `separated_projected` | 車輪・VIO速度を水平投影して水平EKFへ与える分離構成 |
+| `ekf_3d_no_accel` | 3D EKF、IMU加速度を融合しない |
+| `ekf_3d_accel` | 3D EKF、重力補償したIMU加速度を融合する仮設定 |
+
+```bash
+ros2 launch pm_bringup pm_core.launch.py localization_mode:=separated_projected
+```
+
+通常の`pm_core`と同様に実機機器を起動する。検証時は走行系の状態を確認する。
+3D構成はwheel vx、Wit roll/pitch・3軸角速度、ゲート済みVIO vx/vy/vzとzを融合し、
+初期headingとglobal GNSS構成を分離方式と共有する。VIO途絶後の鉛直状態管理、VIO
+再起動後の高さ原点接続は未実装であり、加速度のbiasや共分散も未校正である。
+VIO poseとtwistは同じ推定器由来であり誤差相関をEKFでは十分に扱えていない。
+
+投影方式は`/wheel/odometry/horizontal`、`/vio/odometry/twist_horizontal`へ
+水平な車体座標`base_level`における`TwistWithCovarianceStamped`を出力する。
+`base_level`はbase_linkと原点・yawが共通でroll/pitchがゼロの仮想座標で、水平EKFの
+入力とtarget frameとして使う。composerが最終的にbase_linkの姿勢を合成する。
+Witとbase_linkの軸一致は現行URDFの前提であり、Wit frameが`wit_imu_link`以外なら
+転送しない。姿勢と速度のheader時刻の差が80 msを超える場合も転送せず、件数を
+`/localization/horizontal_projection/diagnostics`へ報告する。IMU姿勢共分散には
+標準偏差2°の暫定下限を適用し、小角度の独立誤差近似で速度共分散へ伝播する。
+車輪はvx以外をゼロと仮定し、スリップ・横移動の不確実性は表しきれない。
+姿勢と速度の相関や時間ずれの不確実性も完全にはモデル化していない。
+入力が古い・欠落する場合の保持や代替観測はなく、地形での真値検証も未実施。
+
+global EKFはこれまでどおり原始車輪速度とVIO速度を使用するため、投影方式でも
+global側の斜面速度補正は行わない。GNSS拘束の性能とともに後日の比較対象とする。
+mission bagにはVIO、ゲート出力、投影入力・診断を記録し、core manifestに選択modeと
+各設定を保存する。比較は同一の走行データをオフライン再生することも必要である。
+
+```bash
+ros2 run pm_evaluation replay_local_modes <MCAPのbagディレクトリ> <新規出力ディレクトリ>
+```
+
+同CLIは同じbagのwheel/Wit/VIO/TF staticを５つのlocal方式へ再生し、CSV、PNG、
+再計算bag、3D設定、ログを残す。global EKF、磁気heading初期化、GNSS・地図や
+OpenVINS自体の再計算は含まず、yawは各EKFの初期値から始まる。記録済み
+`/vio/odometry`が必要で、現行mission bagには追加済み。ROS domainは`--domain`、
+部分再生は`--duration`で指定する。topic配送や再生時間の偏りはlogを確認する。
+通常の磁気初期化が再生中に完了できず、既知の磁気方位を仮に適用する場合は、
+`--heading-yaw <ENU yaw rad> --heading-stamp <bag timestamp秒>`を同時に指定する。
+各EKFの位置・roll/pitchを保持して`set_pose`でyawを一度設定する比較用の疑似初期化で、
+静止判定・GNSS datum確定を代行しない。legacyはその後Wit yawを継続融合するため、
+疑似初期化値が維持されるとは限らない。
+
 水平EKFは`/wheel/odometry`の`vx`、`/wit/imu`の`wz`、および正常期間だけを
 通すVIO `vx/vy`を使用します。VIO pose・VIO z・Witの連続磁気yawは使いません。
 roll/pitchはWit orientationから、zは品質通過VIO zから別に観測し、

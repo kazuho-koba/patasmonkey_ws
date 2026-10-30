@@ -1,0 +1,23 @@
+ekf_local_horizontal_node:
+  ros__parameters:
+    frequency: 50.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: false
+    print_diagnostics: true
+    map_frame: map
+    odom_frame: odom
+    # 水平座標はbase_link原点、重力に垂直、yawは車体と共通。
+    # EKF入力とtargetが同じframeとなり、投影を二重に適用しない。
+    base_link_frame: base_level
+    world_frame: odom
+    twist0: /wheel/odometry/horizontal
+    twist0_config: [false, false, false, false, false, false, true, false, false, false, false, false, false, false, false]
+    twist0_queue_size: 20
+    twist1: /vio/odometry/twist_horizontal
+    twist1_config: [false, false, false, false, false, false, true, true, false, false, false, false, false, false, false]
+    twist1_queue_size: 20
+    twist1_rejection_threshold: 5.0
+    imu0: /wit/imu/horizontal
+    imu0_config: [false, false, false, false, false, false, false, false, false, false, false, true, false, false, false]
+    imu0_queue_size: 50

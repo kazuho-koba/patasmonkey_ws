@@ -1,0 +1,27 @@
+ekf_local_3d_node:
+  ros__parameters:
+    frequency: 50.0
+    sensor_timeout: 0.1
+    two_d_mode: false
+    publish_tf: true
+    print_diagnostics: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+    odom0: /wheel/odometry
+    odom0_config: [false, false, false, false, false, false, true, false, false, false, false, false, false, false, false]
+    odom0_queue_size: 20
+    # 比較用の仮設定。加速度bias・共分散・重力補償の実機検証は未実施。
+    imu0: /wit/imu
+    imu0_config: [false, false, false, true, true, false, false, false, false, true, true, true, true, true, true]
+    imu0_queue_size: 50
+    imu0_remove_gravitational_acceleration: true
+    odom1: /vio/odometry/twist_gated
+    odom1_config: [false, false, false, false, false, false, true, true, true, false, false, false, false, false, false]
+    odom1_queue_size: 20
+    odom1_twist_rejection_threshold: 5.0
+    odom2: /vio/odometry/gated
+    odom2_config: [false, false, true, false, false, false, false, false, false, false, false, false, false, false, false]
+    odom2_queue_size: 20
+    odom2_relative: true

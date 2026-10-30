@@ -34,11 +34,8 @@ bags/
 # 対話ログ・作業レポートはローカル保管のみとし、GitHubへは含めない。
 notes/codex_sessions/
 notes/reports/
-# Evaluation outputs may contain raw GNSS/location data. Keep them private by
-# default, but retain distilled, manually reviewed findings in version control.
-src/pm_evaluation/results/**
-!src/pm_evaluation/results/**/
-!src/pm_evaluation/results/**/FINDINGS.md
+# 解析結果は位置情報を含み得るため、FINDINGS.mdを含めてすべてローカルに保管する。
+/src/pm_evaluation/results/
 
 # credentials / local configs
 src/pm_config/config/*secret*.yaml
