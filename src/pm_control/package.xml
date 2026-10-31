@@ -8,9 +8,11 @@
   <license>MIT</license>
 
   <depend>rclpy</depend>
+  <depend>rcl_interfaces</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>launch</depend>
   <depend>launch_ros</depend>
   <depend>builtin_interfaces</depend>

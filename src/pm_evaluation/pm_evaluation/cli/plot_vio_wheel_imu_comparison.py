@@ -16,7 +16,9 @@ from pyproj import Geod, Transformer
 from pm_evaluation.cli.plot_recorded_local_global import read_recorded, nearest
 from pm_evaluation.cli.plot_gnss_bags import read_inputs, nearest_state
 from pm_evaluation.cli.plot_bag_trajectories import find_mcap_files, GNSS_STATE_STYLE
-from pm_localization.vio_odom_adapter_node import quat_to_rot, openvins_odom_pose_to_matrix
+from pm_localization.vio_odom_adapter_node import (
+    quat_to_rot, openvins_odom_pose_to_matrix, twist_axis_fix_matrix3,
+)
 
 
 def timestamp(msg):
@@ -28,8 +30,8 @@ def rotation(yaw):
     return np.array([[c,-s,0],[s,c,0],[0,0,1]])
 
 
-def read_reference_and_vio(bag):
-    """センサ姿勢とstatic TFの経路を保持し、画像データは展開しない。"""
+def read_reference_and_vio(bag, invert_orientation=True):
+    """姿勢とstatic TFを読む。反転引数の既定は旧解析スクリプトとの互換用。"""
     local, vio, edges, gate = [], [], {}, Counter()
     for path in find_mcap_files(bag):
         for item in read_ros2_messages(path, topics=['/odometry/local','/ov_msckf/odomimu','/tf_static','/vio/twist_gate/diagnostics'], log_time_order=True):
@@ -41,7 +43,7 @@ def read_reference_and_vio(bag):
             elif item.channel.topic == '/ov_msckf/odomimu':
                 if msg.header.frame_id != 'global' or msg.child_frame_id != 'imu':
                     raise ValueError('OpenVINS frameが想定と異なる')
-                vio.append((timestamp(msg),openvins_odom_pose_to_matrix(msg, True)))
+                vio.append((timestamp(msg),openvins_odom_pose_to_matrix(msg, invert_orientation)))
             elif item.channel.topic == '/vio/twist_gate/diagnostics':
                 for status in msg.status:
                     vals = {v.key:v.value for v in status.values}
@@ -93,11 +95,13 @@ def compare(bag, replay, basemap, summary, no_heading_offset=False, remove_magne
     output_dir=bag if output_dir is None else output_dir
     output_dir.mkdir(parents=True,exist_ok=True)
     recorded=read_recorded(bag); fix=recorded['fix']; ref=summary['reference_time']
-    tf=nearest(recorded['tf'],ref); locyaw,rawvio,edges,gate=read_reference_and_vio(bag)
+    tf=nearest(recorded['tf'],ref); locyaw,rawvio,edges,gate=read_reference_and_vio(bag, invert_orientation=False)
     if not locyaw or not rawvio: raise ValueError('local方位またはOpenVINS出力なし')
     params=json.loads((bag/'provenance/effective_parameters.json').read_text())['snapshots']['/vio_odom_adapter_node']['values']
-    if not params['invert_openvins_orientation']: raise ValueError('記録時のorientation設定が想定外')
     base_imu=static_transform(edges,params['base_frame_id'],params['oak_imu_frame_id'])
+    # 実機で方向の整合を確認した仮の取付回転を、速度補正と同じ軸に適用する。
+    # 記録TFの平行移動は維持し、姿勢の反転設定は実機adapterから流用しない。
+    base_imu[:3,:3]=twist_axis_fix_matrix3()@base_imu[:3,:3]
     local=np.loadtxt(output_dir/'recorded_local_enu.csv',delimiter=',',skiprows=1)
     local_rows=[tuple(x) for x in np.atleast_2d(local)]
     geod=Geod(ellps='WGS84'); origin=fix[0]
@@ -129,7 +133,7 @@ def compare(bag, replay, basemap, summary, no_heading_offset=False, remove_magne
     vo=[]
     for t,pose in rawvio:
         p=(pose@imu_base)[:3,3]; v=anchor_v+rotate@(p-first[:3,3]); vo.append((t,*v))
-    series=[('GNSS',gnss,'black'),('Recorded local',local_rows,'tab:blue'),('Wheel vx + Wit wz EKF',wheel,'tab:orange'),('OpenVINS pose',vo,'tab:purple')]
+    series=[('GNSS',gnss,'black'),('Recorded local',local_rows,'tab:blue'),('Wheel vx + Wit wz EKF',wheel,'tab:orange'),('OpenVINS pose',vo,'tab:green')]
     if remove_magnetic_offset:
         # bearing=atan2(mag)+offset、yaw=pi/2-bearingであるため、
         # 保存されたoffsetを0にするとyawの変化量は元のoffsetと同じ符号になる。
@@ -147,7 +151,7 @@ def compare(bag, replay, basemap, summary, no_heading_offset=False, remove_magne
             if p is not None: values.append(math.hypot(p[0]-g[1],p[1]-g[2]))
         return {'count':len(values),'median_m':float(np.median(values)) if values else None,'p95_m':float(np.percentile(values,95)) if values else None}
     common_start=max(rows[0][0] for _,rows,_ in series); common_end=min(rows[-1][0] for _,rows,_ in series)
-    result={'magnetic_offset_removed_approx':remove_magnetic_offset,'magnetic_offset_original_deg':original_offset if remove_magnetic_offset else None,'heading_offset_applied':not no_heading_offset,'map_odom_yaw_deg':math.degrees(mapyaw),'vio_alignment_rotation_deg':0.0 if no_heading_offset else math.degrees(h[1]+mapyaw-first_yaw),'wheel_alignment_rotation_deg':0.0 if no_heading_offset else math.degrees(heading[1]+mapyaw-ekf[0][4]),'common_start':common_start,'common_end':common_end,'common_metrics':{name:metric(rows,common_start,common_end) for name,rows,_ in series[1:]},'bag':bag.name,'initial_reference_time':ref,'wheel_alignment_time':start,'wheel_yaw_enu_deg':math.degrees(heading[1]+mapyaw),'vio_alignment_time':t0,'vio_yaw_enu_deg':math.degrees(h[1]+mapyaw),'vio_initial_lag_s':t0-ref,'base_imu_frame':params['oak_imu_frame_id'],'metrics':{name:metric(rows) for name,rows,_ in series[1:]},'counts':{name:len(rows) for name,rows,_ in series},'vio_gate_diagnostic_counts':dict(gate)}
+    result={'vio_pose_convention':'ROS quaternion; assumed velocity-axis mounting','vio_mount_assumption':'base=(−imu_z, −imu_y, −imu_x)','magnetic_offset_removed_approx':remove_magnetic_offset,'magnetic_offset_original_deg':original_offset if remove_magnetic_offset else None,'heading_offset_applied':not no_heading_offset,'map_odom_yaw_deg':math.degrees(mapyaw),'vio_alignment_rotation_deg':0.0 if no_heading_offset else math.degrees(h[1]+mapyaw-first_yaw),'wheel_alignment_rotation_deg':0.0 if no_heading_offset else math.degrees(heading[1]+mapyaw-ekf[0][4]),'common_start':common_start,'common_end':common_end,'common_metrics':{name:metric(rows,common_start,common_end) for name,rows,_ in series[1:]},'bag':bag.name,'initial_reference_time':ref,'wheel_alignment_time':start,'wheel_yaw_enu_deg':math.degrees(heading[1]+mapyaw),'vio_alignment_time':t0,'vio_yaw_enu_deg':math.degrees(h[1]+mapyaw),'vio_initial_lag_s':t0-ref,'base_imu_frame':params['oak_imu_frame_id'],'metrics':{name:metric(rows) for name,rows,_ in series[1:]},'counts':{name:len(rows) for name,rows,_ in series},'vio_gate_diagnostic_counts':dict(gate)}
     suffix='_magnetic_offset_zero_approx' if remove_magnetic_offset else ('_no_heading_offset' if no_heading_offset else '')
     for name,rows,_ in series[1:]:
         with (output_dir/('source_comparison_'+{'Recorded local':'local','Wheel vx + Wit wz EKF':'wheel_imu','OpenVINS pose':'vio'}[name]+suffix+'.csv')).open('w') as f:
@@ -158,10 +162,12 @@ def compare(bag, replay, basemap, summary, no_heading_offset=False, remove_magne
     for state,style in GNSS_STATE_STYLE.items():
         sub=[r for r in gnss if r[3]==state]
         if sub: ax.scatter([r[1] for r in sub],[r[2] for r in sub],s=12,c=style['color'],marker=style['marker'],label=style['label'])
-    for name,rows,color in series[1:]: ax.plot([r[1] for r in rows],[r[2] for r in rows],color=color,lw=1.3,label=name)
+    for name,rows,color in series[1:]:
+        label=name+' (assumed mount)' if name=='OpenVINS pose' else name
+        ax.plot([r[1] for r in rows],[r[2] for r in rows],color=color,lw=1.3,label=label)
     ax.scatter([gnss[0][1]],[gnss[0][2]],marker='^',s=110,c='limegreen',edgecolors='black',label='GNSS start',zorder=9)
     ax.scatter([gnss[-1][1]],[gnss[-1][2]],marker='X',s=110,c='red',edgecolors='black',label='GNSS goal',zorder=9)
-    ax.scatter([vo[0][1]],[vo[0][2]],marker='o',s=50,c='purple',edgecolors='white',label='VIO start',zorder=9)
+    ax.scatter([vo[0][1]],[vo[0][2]],marker='o',s=50,c='tab:green',edgecolors='white',label='VIO start',zorder=9)
     ax.set(xlabel='East [m]',ylabel='North [m]',title=bag.name+' — source comparison'+(' (magnetic offset zero, approx.)' if remove_magnetic_offset else (' (no heading offset)' if no_heading_offset else ''))); ax.set_aspect('equal'); ax.grid(alpha=.25); ax.legend(fontsize=8)
     ax.text(.99,.01,'Map: © OpenStreetMap contributors',transform=ax.transAxes,ha='right',fontsize=8,bbox={'facecolor':'white','alpha':.8,'edgecolor':'none'})
     xs=[v[1] for v in gnss];ys=[v[2] for v in gnss]; margin=max(10.,.1*max(max(xs)-min(xs),max(ys)-min(ys)))

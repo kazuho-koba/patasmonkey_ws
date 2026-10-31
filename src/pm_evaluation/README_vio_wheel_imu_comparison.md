@@ -19,8 +19,11 @@ ros2 run pm_evaluation plot_vio_wheel_imu_comparison BAG_ROOT \
 ```
 
 比較図と時系列CSVは各bagディレクトリへ、概要JSONは再計算先へ保存します。
-出力ファイルは同名ファイルを上書きします。VIOは記録済みのOpenVINS出力を
-記録時の設定に従い姿勢を反転し、記録済みstatic TFで車体へ変換します。
+出力ファイルは同名ファイルを上書きします。VIOはOpenVINSのROS quaternionを
+そのまま使用し、速度の軸補正に基づく仮の取付回転 `(x,y,z)=(-z,-y,-x)` と
+記録済みstatic TFの平行移動でIMU位置を車体位置へ変換します。この仮定は小さな
+実機動作との整合を確認しましたが、厳密な取付校正ではありません。描画設定は
+実機adapterの姿勢反転設定とは独立で、走行中の推定は変更しません。
 開始時刻の記録local位置・yawを基準にします。開始前の誤差や基準自体の方位誤差は
 引き継ぎます。VIO軌跡はゲート後のEKF入力ではありません。ゲート診断は状態ごとの
 診断メッセージ件数であり、VIOデータの通過件数ではありません。
@@ -67,3 +70,7 @@ GNSSと各系列の距離は共通時刻の水平差であり、GNSSも誤差を
 `--output-root /workspaces/patasmonkey_ws/src/pm_evaluation/results/rosbag2_2026_10_30-homearound`
 を指定します。`plot_recorded_local_global` と `plot_recorded_height` にも
 同名オプションがあり、先にlocalのCSVを同じ保存先へ生成できます。
+
+従来の `plot_bag_trajectories` は `/vio/odometry` を描画する別のCLIであり、
+上記のOpenVINS生姿勢・仮取付回転によるVIO単独軌跡とは入力と整列方法が異なります。
+VIO単独軌跡の比較には本CLIを使用してください。

@@ -2,5 +2,5 @@ joy_node:
   ros__parameters:
     device_id: 0  # `/dev/input/js0` を使用
     deadzone: 0.05
-    autorepeat_rate: 20.0
+    autorepeat_rate: 10.0  # 状態変化がない間の再送周期。操作イベント時は直ちに発行。
     coalesce_interval_ms: 1

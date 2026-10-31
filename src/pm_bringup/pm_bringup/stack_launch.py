@@ -347,8 +347,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         # -------------------------------------------------------------
         "/pm/joy",
         "/cmd_vel_joy",
+        "/cmd_vel_autonomy",
         "/cmd_vel",
-        "/sim_cmd_vel",
         "/emergency_stop",
 
         # -------------------------------------------------------------

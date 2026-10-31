@@ -3,7 +3,10 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
 from rclpy.qos import qos_profile_sensor_data
+from rclpy.expand_topic_name import expand_topic_name
 from std_msgs.msg import Bool, String
+from std_srvs.srv import SetBool
+from rcl_interfaces.msg import ParameterDescriptor
 from pm_msgs.msg import MotorState
 from rclpy.time import Time
 from .odrive_controller import MotorController
@@ -29,6 +32,12 @@ class VehicleInterfaceNode(Node):
         self.declare_parameter("joy_normal_max_linear_speed", 1.0)
         self.declare_parameter("joy_turbo_max_linear_speed", 2.0)
         self.declare_parameter("autonomous_max_linear_speed", 1.0)
+        # 指令送信とフィードバック取得は別周期。起動後の値変更は反映されないため拒否する。
+        self.declare_parameter('motor_command_rate_hz', 10.0, ParameterDescriptor(read_only=True))
+        self.motor_command_rate_hz = float(self.get_parameter('motor_command_rate_hz').value)
+        # 0.1秒の加速度dt上限と0.3秒の指令期限を保てる範囲に限定する。
+        if not math.isfinite(self.motor_command_rate_hz) or not 10.0 <= self.motor_command_rate_hz <= 25.0:
+            raise ValueError('motor_command_rate_hzは10〜25 Hzの有限値が必要です')
         self.declare_parameter("joy_state_topic", "/pm/joy")
         self.declare_parameter("joy_turbo_button", 1)
 
@@ -38,7 +47,7 @@ class VehicleInterfaceNode(Node):
         self.declare_parameter("mtr_axis_l", 0)
         self.declare_parameter("mtr_axis_r", 1)
 
-        self.declare_parameter("cmd_vel_topic", "/cmd_vel")
+        self.declare_parameter("cmd_vel_topic", "/cmd_vel_autonomy")
         self.declare_parameter("cmd_vel_joy_topic", "/cmd_vel_joy")
         self.declare_parameter("motor_state_topic", "/motor_state")
         self.declare_parameter("emergency_stop_topic", "/emergency_stop")
@@ -97,6 +106,16 @@ class VehicleInterfaceNode(Node):
         self.cmd_vel_joy_topic = (
             self.get_parameter("cmd_vel_joy_topic").get_parameter_value().string_value
         )
+        # 記録用出力を自律入力へ戻す設定は、指令の自己循環を生むため拒否する。
+        output_topic = expand_topic_name('/cmd_vel', self.get_name(), self.get_namespace())
+        if any(expand_topic_name(topic, self.get_name(), self.get_namespace()) == output_topic
+               for topic in (self.cmd_vel_topic, self.cmd_vel_joy_topic)):
+            raise ValueError('入力topicに記録用出力 /cmd_vel を指定できません')
+        # publisher/subscriberの実際の解決名でもremap後の衝突を検査する。
+        self.selected_cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        # 記録・Simulator向け出力は指令送信周期と独立して10 Hzで最新値を送る。
+        self._selected_cmd_vel = Twist()
+        self.create_timer(0.1, self.publish_selected_cmd_vel)
         self.motor_state_topic = (
             self.get_parameter("motor_state_topic").get_parameter_value().string_value
         )
@@ -197,6 +216,10 @@ class VehicleInterfaceNode(Node):
         self._drive_armed = not self.require_neutral
         self._emergency_stop_active = False
         self._neutral_received_at = None
+        # 再起動後も自動再開しない。GUI等から明示的に許可されるまで自律指令を遮断。
+        self._autonomy_enabled = False
+        self._joy_received_monotonic = None
+        self.create_service(SetBool, '/pm/vehicle/set_autonomy_enabled', self.set_autonomy_enabled)
         self._connected_at = None
         self._status_pub = self.create_publisher(
             String, str(self.get_parameter('vehicle_status_topic').value), 10)
@@ -225,10 +248,12 @@ class VehicleInterfaceNode(Node):
         self.create_subscription(Joy, self.joy_state_topic,
                                  self.joy_state_callback, qos_profile_sensor_data)
         # subscriber config
-        self.create_subscription(Twist, self.cmd_vel_topic, self.cmd_vel_callback, 10)
-        self.create_subscription(
+        autonomy_sub = self.create_subscription(Twist, self.cmd_vel_topic, self.cmd_vel_callback, 10)
+        joy_sub = self.create_subscription(
             Twist, self.cmd_vel_joy_topic, self.cmd_vel_callback_joy, 10
         )
+        if self.selected_cmd_vel_pub.topic_name in (autonomy_sub.topic_name, joy_sub.topic_name):
+            raise ValueError('remap後の入力topicと記録用出力が衝突しています')
         self.create_subscription(
             Bool, self.emergency_stop_topic, self.emergency_stop_callback, 10
         )
@@ -244,9 +269,9 @@ class VehicleInterfaceNode(Node):
         # self.accumerated_ver_err_right = 0.0
 
         # タイマーを定義
-        # - 速度指令のODrive反映: 25 Hz
+        # - 速度指令のODrive反映: motor_command_rate_hz（既定10 Hz）
         # - MotorStateのpublish: 30 Hz
-        self._timer = self.create_timer(0.04, self.command_selector)
+        self._timer = self.create_timer(1.0 / self.motor_command_rate_hz, self.command_selector)
         self._motor_state_timer = self.create_timer(1.0 / 30.0, self.publish_motor_state)
 
         # vbus_voltageは変化が遅いため、ODriveからは1 Hzでのみ再取得する。
@@ -259,7 +284,6 @@ class VehicleInterfaceNode(Node):
         self.motor_state_pub = self.create_publisher(
             MotorState, self.motor_state_topic, 10
         )
-        self.sim_cmd_vel_pub = self.create_publisher(Twist, "/sim_cmd_vel", 10)
 
     def connect_odrive(self):
         """Connect/Re-Connect to ODrive and initialize both motors."""
@@ -310,7 +334,9 @@ class VehicleInterfaceNode(Node):
             self.get_logger().warn(f"ODrive connection failed: {e}")
 
     def cmd_vel_callback(self, msg):
-        """callback function when /cmd_vel from autnomous driving software has been recieved"""
+        """許可中だけ自律入力の速度[m/s, rad/s]と受信時刻を保存する。"""
+        if not self._autonomy_enabled:
+            return
         self.last_cmd_vel = msg  # keep /cmd_vel_msg
         self.last_cmd_vel_time = (
             self.get_clock().now()
@@ -323,6 +349,11 @@ class VehicleInterfaceNode(Node):
         """
         # 車両変換後のゼロは真横入力でも発生するため、生Twistの中立だけを使う。
         values = (float(msg.linear.x), float(msg.angular.z))
+        # ゼロを含む全Joy Twistを手動介入として扱う。消えた後も自律許可を復帰しない。
+        self._joy_received_monotonic = time.monotonic()
+        self._autonomy_enabled = False
+        self.last_cmd_vel = None
+        self.last_cmd_vel_time = None
         if all(math.isfinite(v) and abs(v) < 1e-6 for v in values):
             self._neutral_received_at = time.monotonic()
         else:
@@ -331,6 +362,19 @@ class VehicleInterfaceNode(Node):
         # ボタンを離した後も古いTurbo変換済み指令が残ることを避ける。
         self.last_cmd_vel_joy = msg
         self.last_cmd_vel_joy_time = self.get_clock().now()
+
+    def set_autonomy_enabled(self, request, response):
+        """明示許可と旧指令破棄。新しいJoyが届いている間は再開を拒否する。"""
+        if request.data and self._joy_received_monotonic is not None and time.monotonic() - self._joy_received_monotonic < 0.3:
+            response.success = False
+            response.message = 'Joy指令が継続中のため自律走行を許可できません'
+            return response
+        self._autonomy_enabled = bool(request.data)
+        self.last_cmd_vel = None
+        self.last_cmd_vel_time = None
+        response.success = True
+        response.message = '自律指令を許可しました' if request.data else '自律指令を無効化しました'
+        return response
 
     def joy_state_callback(self, msg):
         """既存JoyのTurboボタンと受信時刻を保持する。欠損・無効番号は通常扱い。"""
@@ -436,8 +480,11 @@ class VehicleInterfaceNode(Node):
         """check which command should be prioritized, from gamepad or autonomous driving software"""
         try:
             if self._emergency_stop_active:
+                # モータ指令処理を通らない停止状態も、記録上はゼロとして示す。
+                self._selected_cmd_vel = Twist()
                 return
             if not self._drive_armed:
+                self._selected_cmd_vel = Twist()
                 # 再接続後にも新しい中立を要求する。ROS時刻停止中も鮮度を延長しない。
                 neutral = self._neutral_received_at
                 if (self.odrive_connected and neutral is not None
@@ -467,8 +514,8 @@ class VehicleInterfaceNode(Node):
                     cmd = self.map_joy_twist_to_vehicle_twist(
                         self.last_cmd_vel_joy, speed_limit)
 
-            # use /cmd_vel when no joy cmd received
-            if cmd is None and self.last_cmd_vel is not None:
+            # Joyが期限切れのときだけ、明示許可中の自律入力を選択する。
+            if cmd is None and self._autonomy_enabled and self.last_cmd_vel is not None:
                 # check the command's newness
                 if (now - self.last_cmd_vel_time).nanoseconds < 0.3 * 1e9:
                     cmd = self.last_cmd_vel
@@ -553,7 +600,7 @@ class VehicleInterfaceNode(Node):
         """Twist[m/s, rad/s]を左右モータ回転数[rps]へ変換して送る。
 
         車体制約、差動駆動変換、車輪回転数上限の順で処理する。最終車輪指令から
-        逆算したTwistを履歴とsim出力へ反映し、タイムアウト時はゼロ指令を送る。
+        逆算したTwistを履歴と/cmd_velへ反映し、タイムアウト時はゼロ指令を送る。
         """
 
         if cmd is not None:
@@ -581,7 +628,7 @@ class VehicleInterfaceNode(Node):
             mtr_left_rps = v_left * self.gear_ratio
             mtr_right_rps = v_right * self.gear_ratio
 
-            # 車輪の絶対制限後に車体Twistを逆算し、次周期の履歴とsim出力を一致させる。
+            # 車輪の絶対制限後に車体Twistを逆算し、次周期の履歴と記録・Simulator入力を一致させる。
             lin_x = (v_left + v_right) * wheel_perimeter / 2.0
             ang_z = (v_right - v_left) * wheel_perimeter / self.tread_width
             self.prev_linear_speed_cmd = lin_x
@@ -589,7 +636,7 @@ class VehicleInterfaceNode(Node):
             limited_cmd = Twist()
             limited_cmd.linear.x = lin_x
             limited_cmd.angular.z = ang_z
-            self.sim_cmd_vel_pub.publish(limited_cmd)
+            self._selected_cmd_vel = limited_cmd
 
         else:
             mtr_left_rps = 0.0
@@ -599,7 +646,7 @@ class VehicleInterfaceNode(Node):
             self.reset_motion_limits()
 
             zero_cmd = Twist()
-            self.sim_cmd_vel_pub.publish(zero_cmd)
+            self._selected_cmd_vel = zero_cmd
 
         if not self.odrive_connected:
             self.left_cmd_rps = 0.0
@@ -617,6 +664,10 @@ class VehicleInterfaceNode(Node):
 
         except Exception as e:
             self.mark_odrive_disconnected(e)
+
+    def publish_selected_cmd_vel(self):
+        """制御周期で更新済みの車体指令を10 Hzで記録・Simulatorへ送る。"""
+        self.selected_cmd_vel_pub.publish(self._selected_cmd_vel)
 
     def publish_motor_state(self):
         """モータ制御情報を取得しpublishする関数"""
@@ -718,6 +769,8 @@ class VehicleInterfaceNode(Node):
         """緊急停止は再起動までラッチする。GUIの走行許可とは別の安全経路。"""
         if msg.data:
             self._emergency_stop_active = True
+            # 次の送信周期まで古い速度指令を再送しない。
+            self._selected_cmd_vel = Twist()
             self.reset_motion_limits()
             self.left_cmd_rps = self.right_cmd_rps = 0.0
             self.stop_motors()
@@ -726,6 +779,8 @@ class VehicleInterfaceNode(Node):
     def stop_motors(self):
         """正常終了でも各軸へゼロとIDLEを送る。片軸の失敗で他軸を飛ばさない。"""
         self._drive_armed = False
+        # 停止後、次の記録周期に停止前の指令を出さない。
+        self._selected_cmd_vel = Twist()
         succeeded = True
         for motor in (self.left_motor, self.right_motor):
             if motor is None:
@@ -752,6 +807,7 @@ class VehicleInterfaceNode(Node):
             'connected': self.odrive_connected,
             'armed': self._drive_armed and self.odrive_connected,
             'emergency_stop': self._emergency_stop_active,
+            'autonomy_enabled': self._autonomy_enabled,
         }
         # ODriveを所有する本ノード内でのみ実状態を読む。別プロセスから
         # USBを開くと競合するため、試験時だけ既存2 Hz通知に検証値を追加する。
@@ -783,6 +839,7 @@ class VehicleInterfaceNode(Node):
             ("joy_normal_max_linear_speed", self.joy_normal_max_linear_speed),
             ("joy_turbo_max_linear_speed", self.joy_turbo_max_linear_speed),
             ("autonomous_max_linear_speed", self.autonomous_max_linear_speed),
+            ("motor_command_rate_hz", self.motor_command_rate_hz),
             ("joy_state_topic", self.joy_state_topic),
             ("joy_turbo_button", self.joy_turbo_button),
             ("odrv_usb_port", self.odrv_usb_port),

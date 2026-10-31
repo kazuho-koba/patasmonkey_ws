@@ -6,7 +6,7 @@ vehicle_interface_node:
     odrv_baud_rate: 115200
 
     # topics
-    cmd_vel_topic: "/cmd_vel"
+    cmd_vel_topic: "/cmd_vel_autonomy"  # 自律側入力。/cmd_velは選択・制約適用後の記録用出力。
     cmd_vel_joy_topic: "/cmd_vel_joy"
     mtr_output_topic: "/motor_cmd"
 
@@ -25,6 +25,9 @@ vehicle_interface_node:
 
     # state
     motor_state_topic: "/motor_state"
+    # 速度指令の選択・ODrive送信周期。10〜25 Hz、変更後はnode再起動。
+    # モータ位置・速度・電流の取得周期（既定30 Hz）には影響しない。
+    motor_command_rate_hz: 10.0
 
 
     #################################################

@@ -18,7 +18,8 @@ def make_node(enabled, broken=False):
     motor = SimpleNamespace(axis=SimpleNamespace(current_state=8, error=0,
                                                  controller=SimpleNamespace(input_vel=0.0)))
     node = SimpleNamespace(odrive_connected=True, _drive_armed=True,
-                           _emergency_stop_active=False, left_motor=None if broken else motor,
+                           _emergency_stop_active=False, _autonomy_enabled=False,
+                           left_motor=None if broken else motor,
                            right_motor=motor, get_parameter=lambda _: SimpleNamespace(value=enabled),
                            _status_pub=SimpleNamespace(publish=lambda m: output.append(json.loads(m.data))))
     scope['publish_vehicle_status'](node)
@@ -27,7 +28,8 @@ def make_node(enabled, broken=False):
 
 def test_default_does_not_read_axes():
     """OFFでは壊れた軸でも参照せず、既存通知の内容を保つ。"""
-    assert make_node(False, broken=True) == {'connected': True, 'armed': True, 'emergency_stop': False}
+    assert make_node(False, broken=True) == {'connected': True, 'armed': True, 'emergency_stop': False,
+                                             'autonomy_enabled': False}
 
 
 def test_enabled_reports_actual_state():

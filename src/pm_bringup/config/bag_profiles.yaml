@@ -52,8 +52,8 @@ mission:
   - /odometry/global_horizontal
   - /pm/joy
   - /cmd_vel_joy
+  - /cmd_vel_autonomy
   - /cmd_vel
-  - /sim_cmd_vel
   - /emergency_stop
   - /set_pose
   - /oak/diagnostics/left_frame

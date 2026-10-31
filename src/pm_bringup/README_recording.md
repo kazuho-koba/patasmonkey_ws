@@ -260,7 +260,7 @@ CameraInfoは今回毎フレーム保存を維持し、固定値の間引きは�
 | RTK | `/rtcm`, `/rxmrtcm` |
 | VOオンライン状態 | `/ov_msckf/odomimu`, `/ov_msckf/points_msckf`, `/ov_msckf/points_slam` |
 | 自己位置推定 | `/odometry/local`, `/odometry/local_horizontal`, `/odometry/local_vertical`, `/odometry/global` |
-| 操作・安全・外部初期化 | `/pm/joy`, `/cmd_vel_joy`, `/cmd_vel`, `/sim_cmd_vel`, `/emergency_stop`, `/set_pose` |
+| 操作・安全・外部初期化 | `/pm/joy`, `/cmd_vel_joy`, `/cmd_vel_autonomy`, `/cmd_vel`, `/emergency_stop`, `/set_pose` |
 | OAK metadata | `/oak/diagnostics/left_frame`, `/oak/diagnostics/right_frame`, `/oak/diagnostics/color_frame`, `/oak/diagnostics/depth_frame`, `/oak/diagnostics/imu_packet`, `/oak/diagnostics/device_info` |
 | 実行時診断 | `/diagnostics`, `/rosout`, `/vio/vertical_gate/diagnostics`, `/vio/twist_gate/diagnostics`, `/gnss/fix_gate/diagnostics` |
 | 初期化 | `/localization/initialization/status`, `/odometry/gps` |
