@@ -18,6 +18,7 @@
     max_projection_advance: 0.35
     max_path_error: 1.0
     goal_radius: 0.10  # 既存進捗判定の弧長余裕0.15 mより小さく設定。
+    yaw_response_gain: 1.0  # interfaceが指令を実現する前提。応答誤差は実験時のみ設定。
     # 候補の参照点距離・方位差・目標速度との差・yaw速度・末端距離の重み。
     path_cost_weight: 4.0
     heading_cost_weight: 0.2

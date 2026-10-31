@@ -1,0 +1,63 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Fixed Frame: planner_preview
+    Background Color: 245; 245; 245
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: 1m Grid
+      Enabled: true
+      Cell Size: 1
+      Plane Cell Count: 200
+    - Class: rviz_default_plugins/Path
+      Name: Reference Path
+      Enabled: true
+      Color: 0; 100; 255
+      Line Style: Lines
+      Topic:
+        Value: /pm/planner/mppi_demo/reference_path
+        Durability Policy: Transient Local
+    - Class: rviz_default_plugins/Path
+      Name: Travelled Track
+      Enabled: true
+      Color: 0; 160; 50
+      Topic:
+        Value: /pm/planner/mppi_demo/track
+        Durability Policy: Transient Local
+    - Class: rviz_default_plugins/Path
+      Name: Predicted Trajectory
+      Enabled: true
+      Color: 255; 100; 0
+      Topic:
+        Value: /pm/planner/mppi_demo/prediction
+    - Class: rviz_default_plugins/Marker
+      Name: Candidate Trajectories
+      Enabled: true
+      Topic:
+        Value: /pm/planner/mppi_demo/candidates
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Simulated Vehicle
+      Enabled: true
+      Topic:
+        Value: /pm/planner/mppi_demo/vehicle
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Scale: 45
+      Target Frame: mppi_demo_base
+      X: 0
+      Y: 0
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+Window Geometry:
+  Width: 1400
+  Height: 900
+  Displays:
+    collapsed: false

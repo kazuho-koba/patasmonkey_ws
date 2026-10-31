@@ -38,6 +38,7 @@ def main():
     parser.add_argument('mission');parser.add_argument('--anchor',required=True)
     parser.add_argument('--vehicle-config',required=True);parser.add_argument('--output',required=True)
     parser.add_argument('--spacing',type=float,default=.1)
+    parser.add_argument('--reference-turn-margin',type=float,default=.1,help='車両最小半径に加える参照Path半径の余裕[m]')
     parser.add_argument('--corner-allowance',type=float,default=.3)
     parser.add_argument('--pass-radius',type=float,default=.5)
     parser.add_argument('--sharp-turn-strategy',choices=('symmetric_bulb','reject'),default='symmetric_bulb')
@@ -46,12 +47,13 @@ def main():
     mission=read_mission(args.mission);anchor=read_anchor(args.anchor);limits=read_limits(args.vehicle_config)
     points=[anchor.project(w['latitude'],w['longitude']) for w in mission['waypoints']]
     reference=None;error=None
-    try:reference=build_reference(points,mission['waypoints'],limits,args.spacing,args.corner_allowance,args.pass_radius,
+    try:reference=build_reference(points,mission['waypoints'],limits.with_turn_margin(args.reference_turn_margin),args.spacing,args.corner_allowance,args.pass_radius,
         sharp_turn_strategy=args.sharp_turn_strategy,uturn_direction=args.uturn_direction)
     except ValueError as exc:error=str(exc)
     output=Path(args.output);output.mkdir(parents=True,exist_ok=False)
     result=dict(stage=1,dry_run=True,drive_ready=False,geometry_valid=reference is not None,
                 geometry_error=error,frame_id=anchor.frame_id,anchor=asdict(anchor),vehicle_limits=asdict(limits),
+                reference_turn_margin_m=args.reference_turn_margin,
                 # node側と同じ正規化snapshotをhash化し、YAMLの空白差で別missionにしない。
                 mission=mission,mission_sha256=hashlib.sha256(json.dumps(mission,sort_keys=True).encode()).hexdigest(),
                 projected_waypoints=points,reference_samples=reference.samples if reference else [],

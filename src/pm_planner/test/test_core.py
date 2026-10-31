@@ -9,6 +9,15 @@ from pm_planner.progress import Progress
 from pm_planner.io import read_mission
 
 
+def test_reference_radius_margin_uses_vehicle_limits():
+    """参照経路は車体の最小半径に余裕を加え、車体制約は変更しない。"""
+    base=Limits(.3,1.,1.,1.)
+    planned=base.with_turn_margin(.1)
+    assert planned.radius == pytest.approx(.4)
+    assert base.radius == pytest.approx(.3)
+    with pytest.raises(ValueError):base.with_turn_margin(-.01)
+
+
 LIMITS=Limits(.4,1.,1.,1.)
 
 

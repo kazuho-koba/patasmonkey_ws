@@ -27,7 +27,7 @@ class MppiPocNode(Node):
             pose_timeout_sec=0.5,rate_hz=10.,batch_size=384,steps=25,iterations=2,seed=42,
             temperature=.4,sigma_v=.22,sigma_w=.65,target_speed=.15,lookahead_m=.05,
             path_cost_weight=4.,heading_cost_weight=.2,speed_cost_weight=.5,yaw_cost_weight=.015,terminal_cost_weight=5.,
-            max_projection_advance=.35,max_path_error=1.,goal_radius=.10,visualize=True)
+            max_projection_advance=.35,max_path_error=1.,goal_radius=.10,yaw_response_gain=1.0,visualize=True)
         for key,value in defaults.items():self.declare_parameter(key,value)
         p={key:self.get_parameter(key).value for key in defaults};self.p=p
         if not math.isfinite(p['rate_hz']) or not 1.<=p['rate_hz']<=25. or not math.isfinite(p['pose_timeout_sec']) or p['pose_timeout_sec']<=0:
@@ -40,8 +40,9 @@ class MppiPocNode(Node):
             max_projection_advance=p['max_projection_advance'],max_path_error=p['max_path_error'],goal_radius=p['goal_radius'],
             path_cost_weight=p['path_cost_weight'],heading_cost_weight=p['heading_cost_weight'],
             speed_cost_weight=p['speed_cost_weight'],yaw_cost_weight=p['yaw_cost_weight'],
-            terminal_cost_weight=p['terminal_cost_weight'])
+            terminal_cost_weight=p['terminal_cost_weight'],yaw_response_gain=p['yaw_response_gain'])
         self.solver=MppiPoc(config);self.frame='';self.odom=None;self.odom_time=None;self.timings=deque(maxlen=300)
+        self.previous_command=(0.,0.)
         self.command_pub=self.create_publisher(Twist,'~/debug/cmd_vel',10)
         self.path_pub=self.create_publisher(Path,'~/debug/trajectory',10)
         self.status_pub=self.create_publisher(String,'~/debug/status',10)
@@ -83,10 +84,12 @@ class MppiPocNode(Node):
                 raise ValueError('Odometry姿勢が無効')
             yaw=math.atan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z))
             position=msg.pose.pose.position;tw=msg.twist.twist
-            result=self.solver.step((position.x,position.y,yaw),(tw.linear.x,tw.angular.z))
+            result=self.solver.step((position.x,position.y,yaw),(tw.linear.x,tw.angular.z),
+                                    previous_command=self.previous_command)
             cmd.linear.x,cmd.angular.z=result['command']
+            self.previous_command=result['command']
         except (ValueError,ArithmeticError) as exc:
-            reason=str(exc);self.solver.nominal.fill(0.)
+            reason=str(exc);self.solver.nominal.fill(0.);self.previous_command=(0.,0.)
         elapsed=(time.perf_counter()-started)*1000.;self.timings.append(elapsed)
         self.command_pub.publish(cmd)
         status=dict(valid=result is not None,reason=reason,stage='NON_DRIVING_POC',environment_checked=False,

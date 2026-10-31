@@ -1,0 +1,6 @@
+/**:
+  ros__parameters:
+    # 可視化実験の仮想車体とMPPI予測側を同じ旋回応答に設定。
+    # この人工環境の成功は、実車の走行安全性を保証しない。
+    yaw_response_gain: 0.5
+    sim_yaw_response_gain: 0.5

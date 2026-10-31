@@ -1,5 +1,55 @@
 # pm_planner：準備・Stage 1
 
+## home.yamlを使うMPPIのリアルタイム可視化
+
+`mppi_live_demo`はMISSION PLANNER形式の経路を読み、生成した参照Pathへ
+仮想車体を閉ループで追従させるデモです。各周期にMPPIが候補を評価し、
+採用した速度から点車体の位置・向きを更新します。GUIや実機の起動は不要です。
+専用の仮想frame `planner_preview`・`mppi_demo_base`を使い、実機の位置推定や
+`/cmd_vel`・`/cmd_vel_autonomy`には接続しません。障害物は評価しません。
+
+Foxy・外部workspace・本workspaceを順にsourceした端末で実行します。
+
+```bash
+source /opt/ros/foxy/setup.bash
+source /workspaces/ros2_ws/install/setup.bash
+source /workspaces/patasmonkey_ws/install/setup.bash
+ros2 launch pm_planner mppi_live_demo.launch.py
+```
+
+青はwaypointから生成した参照Path、緑は仮想車体の走行軌跡、橙は現時点の
+採用予測軌道、灰色は評価した候補の一部です。水色の箱は車体の概形、矢印は
+車首方向で、箱の長さ0.65 mは表示用の仮値です。RVizは仮想車体を追従します。
+`home.yaml`は既定でinstall済みの`pm_mission/missions/home.yaml`を読みます。
+基準座標は`config/home_preview_anchor.yaml`の仮基準で、実機のmapとの重ね合わせはできません。
+
+別のmissionや倍速表示は起動引数で指定できます。倍速では計算機が処理に追いつかない
+場合、指定倍率より遅くなります。`/clock`は変更せず、仮想車体の時間だけを進めます。
+
+```bash
+ros2 launch pm_planner mppi_live_demo.launch.py time_scale:=10.0
+ros2 launch pm_planner mppi_live_demo.launch.py mission_file:=/absolute/path/to/mission.yaml
+```
+
+`config/mppi_live_demo.yaml`で候補数・予測長・速度・倍速・表示候補数などを変更できます。
+`reference_turn_margin_m`は車両の最小旋回半径に足す参照Pathの余裕で、既定は0.1 mです。
+車両の設定が0.3 mなら参照Pathは0.4 m、MPPIの車体制約は0.3 mのままです。
+候補表示は`candidate_sample_count: 0`で無効化できます。YAMLの変更は再起動後に反映します。
+独自基準を使うときは`anchor_file:=/absolute/path/to/anchor.yaml`を指定し、RVizのFixed Frameも
+そのframeに合わせます。中間のPAUSE／CONFIRM属性には未対応で、無視せず起動を拒否します。
+
+別端末では進捗・計算時間の確認と一時停止・再開・初期化ができます。
+
+```bash
+ros2 topic echo /pm/planner/mppi_demo/status
+ros2 service call /pm/planner/mppi_demo/pause std_srvs/srv/Trigger '{}'
+ros2 service call /pm/planner/mppi_demo/resume std_srvs/srv/Trigger '{}'
+ros2 service call /pm/planner/mppi_demo/reset std_srvs/srv/Trigger '{}'
+```
+
+`compute_ms`はMPPI計算だけの時間です。仮想車体は簡易モデルであり、実機の走行性能・
+安全性を保証するものではありません。実位置での非駆動確認は下記`mppi_poc`を使います。
+
 ## MPPI非駆動PoC
 
 `mppi_poc`は参照Pathと同一frameのOdometryを読み、複数の速度候補を予測・評価する
@@ -23,6 +73,26 @@ Python／NumPyの試験nodeです。発行するのは`/pm/planner/mppi_poc/debu
 最小旋回半径・最大速度・yaw速度／加速度の上限は共有`vehicle_control.yaml`から読みます。
 parameterは起動時に読み取り、変更反映にはnodeの再起動が必要です。
 `visualize: false`で予測Path messageの生成・publishを止められます。
+
+### スキッドステア旋回応答の実験設定
+
+`yaw_response_gain`は指令yaw rateに対する予測車体yaw rateの倍率です。
+候補生成・速度指令の制約は従来どおりで、予測のyaw積分だけに係数を適用します。
+既定値1.0は、vehicle interfaceが車体の速度指令を実現するという仮定です。
+vehicle interfaceの補正はまだ未実装で、実車への適用を意味しません。0.5の設定は
+旧bagでの未補正状態を模擬する実験用です。低速0.15 m/sや他の路面、左右差、
+過渡応答は未検証です。角加速度制約には
+実測値と区別した前回指令を使用します。起動時・異常時は指令をゼロに戻します。
+この仮値を実車指令へ接続しないでください。
+
+```bash
+ros2 launch pm_planner mppi_live_demo.launch.py config:=/workspaces/patasmonkey_ws/src/pm_planner/config/mppi_live_skid_experiment.yaml
+```
+
+上の設定は予測と仮想車体の両方を0.5にします。`sim_yaw_response_gain`は
+仮想車体側のみ、`yaw_response_gain`は予測側のみの設定で、独立に変更できます。
+人工車体側を変更するだけでは実車の検証になりません。実効旋回半径も大きくなるため、
+従来の0.3 m半径の参照経路を追従できないことがあります。
 
 ### 人工閉ループで試す
 
@@ -184,12 +254,13 @@ ros2 run pm_planner preview_mission \
 右折返しではその鏡像にします。主旋回と、入口・出口での小さな逆方向旋回を
 合わせた正味のheading変化が元の折曲角です。単に大きな単一円弧へ置き換える方式とは異なります。
 
-全円弧の半径Rは共有車両設定の`min_turn_radius`です。折曲角の絶対値をβとすると、
+全円弧の半径Rは共有車両設定の`min_turn_radius`に`reference_turn_margin_m`を加えた値です。
+既定の0.3 m＋0.1 mでは0.4 mです。折曲角の絶対値をβとすると、
 `h=β/2`、`α=acos((1+cos(h))/2)`、`d=R*(sin(h)+2*sin(α))`を使います。
 元点をB、進入・離脱の単位方向をu/vとしたとき、進入点は`B-d*u`、離脱点は`B+d*v`。
 元点からの距離は両側で等しく、経路の弧長中点はBを通ります。
 円弧角は左折返しの場合`-α, β+2α, -α`で、右折返しは符号が逆になります。
-180°でもdは有限で、R=0.3 mなら約0.820 mです。
+180°でもdは有限で、R=0.4 mなら約1.093 mです。
 **dは進入・離脱の切詰め距離であり、横方向の膨らみ幅や走行回廊幅ではありません。**
 
 正確な180°では点列だけから左右を決められないため、`uturn_direction`で指定します。
@@ -225,6 +296,7 @@ ros2 launch pm_planner preview.launch.py \
 | max_projection_tilt_rad | 0.05 rad | 2D座標変換で許容するTFのroll/pitch |
 | spacing_m | 0.1 m | 参照経路の弧長方向の最大補間間隔 |
 | corner_allowance_m | 0.3 m | 通常filletで元PASS点から離れてよい距離 |
+| reference_turn_margin_m | 0.1 m | 車体最小半径に加える参照Path半径の余裕。0で余裕なし |
 | sharp_turn_strategy | symmetric_bulb | 通常fillet不可時の対称3円弧接続。rejectで従来の拒否方針 |
 | uturn_direction | counterclockwise | 正確な180°だけの左右選択。clockwiseも可 |
 | pass_radius_m / stop_radius_m | 0.5 / 0.25 m | PASS／停止属性の到達半径 |
@@ -238,7 +310,7 @@ ros2 launch pm_planner preview.launch.py \
 | vehicle_config | pm_config共有設定 | min_turn_radius・速度・角速度・角加速度を取得 |
 
 共有車両設定の現値は最小旋回半径0.3 m、最大速度1 m/s、最大yaw rate 1 rad/s、
-最大yaw acceleration 1 rad/s²です。Stage 1では旋回半径を経路形状に適用し、
+最大yaw acceleration 1 rad/s²です。Stage 1では車両最小半径と参照半径の余裕を経路形状に適用し、
 最大速度を位置ジャンプ検出に利用します。角速度・角加速度を満たす速度時間割は
 まだ生成しません。円弧との接続点は曲率が不連続なので、次Stageで速度計画が必要です。
 

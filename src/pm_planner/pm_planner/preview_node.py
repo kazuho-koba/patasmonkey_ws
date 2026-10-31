@@ -52,7 +52,7 @@ class PreviewNode(Node):
         defaults=dict(mission_file='',managed_mission_enabled=False,coordinate_mode='navsat',anchor_file='',planning_frame='map',
             navsat_world_frame='',navsat_service='/fromLL',navsat_odom_topic='/odometry/gps',gnss_topic='/fix/gated',
             pose_topic='/odometry/local',base_frame='base_link',pose_timeout_sec=.5,gnss_timeout_sec=2.5,
-            service_timeout_sec=3.,max_projection_tilt_rad=.05,spacing_m=.1,corner_allowance_m=.3,
+            service_timeout_sec=3.,max_projection_tilt_rad=.05,spacing_m=.1,corner_allowance_m=.3,reference_turn_margin_m=.1,
             sharp_turn_strategy='symmetric_bulb',uturn_direction='counterclockwise',
             pass_radius_m=.5,stop_radius_m=.25,start_radius_m=.5,max_deviation_m=1.,max_advance_m=2.,
             max_pose_gap_sec=1.,jump_slack_m=.3,stop_speed_mps=.03,heading_tolerance_rad=.52,max_segment_m=500.,
@@ -63,6 +63,7 @@ class PreviewNode(Node):
         for key in ('pose_timeout_sec','gnss_timeout_sec','service_timeout_sec','max_projection_tilt_rad'):
             if not math.isfinite(self.p[key]) or self.p[key]<=0:raise ValueError(key+'は正の有限値が必要です')
         self.limits=read_limits(self.p['vehicle_config'])
+        self.reference_limits=self.limits.with_turn_margin(self.p['reference_turn_margin_m'])
         self.frame=self.p['planning_frame'];self.mission=None;self.reference=None;self.progress=None
         self.points=[];self.pose=None;self.pose_received=None;self.pose_error='pose未受信'
         self.fix=None;self.gps=None;self.load_state='IDLE';self.load_error='';self.provenance={}
@@ -228,7 +229,7 @@ class PreviewNode(Node):
     def finish_load(self):
         self.polyline_pub.publish(self.path_message([(x,y,0.,0.) for x,y in self.points]))
         try:
-            self.reference=build_reference(self.points,self.mission['waypoints'],self.limits,
+            self.reference=build_reference(self.points,self.mission['waypoints'],self.reference_limits,
                 self.p['spacing_m'],self.p['corner_allowance_m'],self.p['pass_radius_m'],self.p['max_segment_m'],
                 sharp_turn_strategy=self.p['sharp_turn_strategy'],uturn_direction=self.p['uturn_direction'])
             self.progress=Progress(self.reference,self.p['pass_radius_m'],self.p['stop_radius_m'],self.p['start_radius_m'],

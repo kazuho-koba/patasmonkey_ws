@@ -29,19 +29,22 @@ def save_svg(path, reference, rows):
     lines.append('</svg>');path.write_text('\n'.join(lines)+'\n')
 
 
-def simulate(name, points, output, config, max_steps=1200):
+def simulate(name, points, output, config, max_steps=1200, sim_yaw_response_gain=None, reference_turn_margin_m=0.1):
     """各stepで予測指令を同じ車体運動modelへ戻し、追従を実際に閉ループさせる。"""
     wp=[dict(waypoint_id=str(i),attribute=('start' if i==0 else 'goal' if i==len(points)-1 else 'pass'),
              pause_sec=0.,note='') for i in range(len(points))]
     # 通常previewの既定と同じ0.1 m間隔で参照Pathを生成する。
-    ref=build_reference(points,wp,Limits(config.min_radius,config.max_speed,config.max_yaw_rate,config.max_yaw_accel),spacing=.1)
+    limits=Limits(config.min_radius,config.max_speed,config.max_yaw_rate,config.max_yaw_accel)
+    ref=build_reference(points,wp,limits.with_turn_margin(reference_turn_margin_m),spacing=.1)
     solver=MppiPoc(config);solver.set_path([(p[0],p[1]) for p in ref.samples])
+    # 人工車体は既定で予測と同じ倍率。指定すればモデル誤差も試せる。
+    plant_gain=config.yaw_response_gain if sim_yaw_response_gain is None else sim_yaw_response_gain
     x,y,yaw=ref.samples[0][:3];v=w=0.;rows=[];timings=[];failure='';goal=False;max_error=0.
     # 実行管理への接続はまだ行わないが、既存進捗判定との到達条件を照合する。
     progress=Progress(ref);progress.start((0.,x,y,yaw,0.))
     for i in range(max_steps):
         started=time.perf_counter()
-        try:result=solver.step((x,y,yaw),(v,w))
+        try:result=solver.step((x,y,yaw),(v,w*plant_gain),previous_command=(v,w))
         except ValueError as exc:failure=str(exc);break
         timings.append((time.perf_counter()-started)*1000.)
         # 行はstep開始時刻・現在pose・その時点で計算した指令を組にする。
@@ -54,7 +57,7 @@ def simulate(name, points, output, config, max_steps=1200):
         error=float(np.min(np.linalg.norm(starts+fraction[:,None]*vectors-position,axis=1)))
         max_error=max(max_error,error)
         rows.append((i*config.dt,x,y,yaw,v,w,result['station'],error))
-        yaw+=w*config.dt;x+=v*math.cos(yaw)*config.dt;y+=v*math.sin(yaw)*config.dt
+        yaw+=w*plant_gain*config.dt;x+=v*math.cos(yaw)*config.dt;y+=v*math.sin(yaw)*config.dt
         progress.update(((i+1)*config.dt,x,y,yaw,v))
         if result['goal']:goal=True;break
     output.mkdir(parents=True,exist_ok=True)

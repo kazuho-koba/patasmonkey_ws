@@ -21,6 +21,12 @@ class Limits:
             raise ValueError('車両制約は有限、半径・速度は正値が必要です')
         if self.max_yaw_rate<0 or self.max_yaw_accel<0:raise ValueError('yaw制約は非負値です')
 
+    def with_turn_margin(self, margin_m):
+        """車体の最小半径に余裕[m]を加えた参照Path用制約を返す。"""
+        if not math.isfinite(margin_m) or margin_m < 0:
+            raise ValueError('reference_turn_margin_mは非負の有限値が必要です')
+        return Limits(self.radius + margin_m, self.max_speed, self.max_yaw_rate, self.max_yaw_accel)
+
 
 @dataclass
 class Reference:
