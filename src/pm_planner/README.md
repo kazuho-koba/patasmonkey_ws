@@ -1,5 +1,71 @@
 # pm_planner：準備・Stage 1
 
+## MPPI非駆動PoC
+
+`mppi_poc`は参照Pathと同一frameのOdometryを読み、複数の速度候補を予測・評価する
+Python／NumPyの試験nodeです。発行するのは`/pm/planner/mppi_poc/debug/`配下の
+`cmd_vel`（Twist）、`trajectory`（採用予測Path）、`status`（JSON）だけです。
+`/cmd_vel_autonomy`には接続せず、実行管理の走行開始拒否も維持します。
+
+前進・旋回の候補を正規分布で生成し、各候補の各stepで車体速度、yaw rate、
+加速度と最小旋回半径を制約したうえで位置を予測します。参照Pathの前方点までの
+距離・向き・目標速度などのcostからsoftmax重みを作り、候補入力の重み付き平均を
+次の指令とします。前回の解を次回へ持ち越し、Pathが変われば初期化します。
+往復路が近い場合に復路へ飛ばないよう、最近傍探索を現在の進捗周辺に限定します。
+これは独立実装のPoCで、Nav2 MPPIとの数値一致や同等の性能を保証しません。
+制約が競合する場合は最後に最小旋回半径・停止を優先するため、yaw加速度上限を
+常に満たす保証はありません。
+
+`config/mppi_poc.yaml`で`rate_hz`、候補数`batch_size`、予測step数`steps`、
+反復数`iterations`、乱数seed、速度・角速度のばらつき、lookahead等を設定します。
+参照点距離・方位・速度・yaw速度・末端距離のcost重みも同じYAMLで調整できます。
+既定は10 Hz、384候補、25 step、2反復、target_speed 0.15 m/sです。
+最小旋回半径・最大速度・yaw速度／加速度の上限は共有`vehicle_control.yaml`から読みます。
+parameterは起動時に読み取り、変更反映にはnodeの再起動が必要です。
+`visualize: false`で予測Path messageの生成・publishを止められます。
+
+### 人工閉ループで試す
+
+Foxyの各overlayをsourceしてから、未作成の出力directoryを指定します。
+
+```bash
+ros2 run pm_planner mppi_sim --output /tmp/mppi_demo
+```
+
+点車体modelが予測指令に反応する4経路（直線、曲線、折返し、近接往復）を評価し、
+各`*.svg`に青い参照経路と橙の人工軌跡、`*.csv`に各時刻の座標・速度・弧長を保存します。
+`summary.json`には終点到達、既存waypoint進捗判定の結果、参照折線の線分への最大最近傍距離と
+計算時間分布があります。進捗判定は検証用で、実行管理にはまだ接続していません。
+自己交差付近では異なる区間への距離が最小になるため、実際の追従区間の誤差を過小評価し得ます。
+この人工simulationは共有車両設定の初期値相当を使い、実機の地理座標には接続しません。
+
+### ROS topicを使って確認する
+
+既存previewまたはCoreがPathをpublishし、同じframeのOdometryがある状態で、別端末から
+以下を実行します。Coreやbag再生をこのlaunchが起動することはありません。
+
+```bash
+ros2 launch pm_planner mppi_poc.launch.py rviz:=true
+ros2 topic echo /pm/planner/mppi_poc/debug/status
+```
+
+RVizで青が参照Path、橙が現在poseからの予測軌道です。Fixed Frame既定はmapです。
+Odometry入力は既定`/odometry/global`（map）で、変更は`mppi_poc.yaml`で行います。
+PathとOdometryのframeが一致しない場合はゼロ指令をdebug publishし、理由をstatusに出します。
+TF変換は未対応です。timestamp・受信時間の両方でOdometryの期限を確認します。
+`use_sim_time:=true`はbagのclock使用時に指定します。
+
+statusの`compute_ms`はoptimizerと入力検査の時間で、publish・描画やcallback待ちを含む
+end-to-end時間ではありません。`p95_ms`・`max_ms`は直近最大300回の同じ計算時間で、
+入力未受信など計算できなかった周期の短い処理時間も含みます。
+Jetsonでの実行時間・CPUや受信間隔は別途計測します。
+
+障害物・perception・unknown、車体footprint、PAUSE／CONFIRM waypointでの停止、後退、
+実行管理との開始・終了連携、実機速度指令は未対応です。終点近傍ではdebug指令を
+即時ゼロにし、実車向けの減速軌道を生成しません。vehicle_interfaceの制限モデルを
+完全に再現するものではなく、候補軌道の妥当性・実機追従を保証しません。
+予測dtは設定した周期の固定値で、callback遅延を実時間で補正しません。
+
 ## UGV側の実行管理
 
 `pm_core.launch.py`は`/pm/planner/execution_manager`も起動します。
@@ -18,14 +84,26 @@ GUI右上の地図には、実行管理が保持するhashと一致した受領w
 これはWGS84の元折線で、車両の実績軌跡や生成済み補間Pathではありません。
 地理地図の表示には有効なGNSS fixが必要です。実行管理が停止・staleになった場合は消します。
 
-残りの段階では、受領missionをplannerの地理変換・Path生成へ接続し、controllerの準備状態、
-手動介入時の状態遷移、実際の自律有効化・停止応答の確定を実装します。
+`pm_core.launch.py`は非駆動previewも起動します。実行管理の検証済みsnapshotを
+`/pm/planner/execution_manager/mission`経由で受け、自動的に地理変換・Path生成します。
+実行管理はmission ID・revision・hashを照合し、一致したpreviewの`path_state`、
+`path_error`、`path_frame`、`path_geometry_valid`を状態へ反映します。新規missionの
+受領後は以前のPath状態を直ちに無効化し、previewも新しいPath生成時に旧Pathを消します。
+previewが停止・staleの場合は`WAITING_FOR_PREVIEW`です。GUIにもPath状態と理由を表示します。
+
+Core既定の`separated_offroad`など非legacy構成は`/odometry/gps`のframeが`map`、
+`legacy`構成は`odom`であることを確認してFromLLを使います。frame不一致や、GNSS・
+FromLL未準備時は待機します。localizationの初期化・datum・TFは変更しません。
+実機での地理的整合と走行可能性はこの段階では未検証です。
+
+残りの段階では、controllerの準備状態、手動介入時の状態遷移、
+実際の自律有効化・停止応答の確定を実装します。
 現時点ではGUI・実行管理から自律走行の開始はできません。
 
 GNSSミッションをメートル単位の参照経路に変換し、位置入力からwaypointの
 進捗を確認するPythonパッケージです。**Stage 1は非駆動previewです。**
 `start`サービスも追跡状態を開始するだけで、車両を動かしません。
-速度publisher、TF broadcaster、MPPI、障害物回避、GUI mode切替はまだありません。
+実車用の速度publisher、TF broadcaster、実行管理と接続したMPPI、障害物回避、GUI mode切替はまだありません。
 perception・localization・motorの既存launchは変更も起動もしません。
 
 ## 責務と今後の構成
@@ -172,8 +250,9 @@ manual anchorはWGS84→ECEF→ENUを使い、指定frameのXYへ回転・平行
 zは水平Pathでは0で、waypoint高度を地形として推定する機能もありません。
 
 実車座標に揃える場合は既存navsatの`/fromLL`を使用します。サービスの応答fieldが
-`map_point`でも、その座標frameがmapとは限りません。現在のbringupはnavsatへ
-`/odometry/local`を入力する構成なので、次を確認して指定してください。
+`map_point`でも、その座標frameが常にmapとは限りません。bringupではlegacyが
+`/odometry/local`、標準separated系が`/odometry/global`をnavsatへ入力します。
+単体previewでは実際のframeを確認して指定してください。
 
 ```bash
 ros2 topic echo /odometry/gps

@@ -1,0 +1,46 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Fixed Frame: map
+    Background Color: 245; 245; 245
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: 1m Grid
+      Enabled: true
+      Cell Size: 1
+      Plane Cell Count: 100
+    - Class: rviz_default_plugins/Path
+      Name: Reference Path
+      Enabled: true
+      Color: 0; 100; 255
+      Topic:
+        Value: /pm/planner/preview/reference_path
+        Durability Policy: Transient Local
+    - Class: rviz_default_plugins/Path
+      Name: Predicted Trajectory (non-driving)
+      Enabled: true
+      Color: 255; 120; 0
+      Topic:
+        Value: /pm/planner/mppi_poc/debug/trajectory
+        Durability Policy: Volatile
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Scale: 10
+      Target Frame: <Fixed Frame>
+      X: 0
+      Y: 0
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+Window Geometry:
+  Width: 1400
+  Height: 900
+  Displays:
+    collapsed: false

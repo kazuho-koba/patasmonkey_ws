@@ -32,6 +32,7 @@ from .geodesy import planar_transform
 from .io import read_mission,read_anchor,read_limits
 from .reference import build_reference
 from .progress import Progress
+from pm_mission.model import validate
 
 
 def stamp_seconds(stamp):return stamp.sec+stamp.nanosec/1e9
@@ -48,7 +49,7 @@ def yaw_from_quaternion(q):
 class PreviewNode(Node):
     def __init__(self,parameter_overrides=None):
         super().__init__('preview',namespace='/pm/planner',parameter_overrides=parameter_overrides)
-        defaults=dict(mission_file='',coordinate_mode='navsat',anchor_file='',planning_frame='map',
+        defaults=dict(mission_file='',managed_mission_enabled=False,coordinate_mode='navsat',anchor_file='',planning_frame='map',
             navsat_world_frame='',navsat_service='/fromLL',navsat_odom_topic='/odometry/gps',gnss_topic='/fix/gated',
             pose_topic='/odometry/local',base_frame='base_link',pose_timeout_sec=.5,gnss_timeout_sec=2.5,
             service_timeout_sec=3.,max_projection_tilt_rad=.05,spacing_m=.1,corner_allowance_m=.3,
@@ -73,6 +74,8 @@ class PreviewNode(Node):
         self.marker_pub=self.create_publisher(MarkerArray,'~/markers',latched)
         self.progress_marker_pub=self.create_publisher(MarkerArray,'~/progress_markers',latched)
         self.status_pub=self.create_publisher(String,'~/status',10)
+        if self.p['managed_mission_enabled']:
+            self.create_subscription(String, '/pm/planner/execution_manager/mission', self.on_managed_mission, latched)
         self.create_subscription(Odometry,self.p['pose_topic'],self.on_pose,qos_profile_sensor_data)
         self.create_subscription(Odometry,self.p['navsat_odom_topic'],self.on_gps,qos_profile_sensor_data)
         self.create_subscription(NavSatFix,self.p['gnss_topic'],self.on_fix,qos_profile_sensor_data)
@@ -123,7 +126,21 @@ class PreviewNode(Node):
             raise ValueError('poseが期限切れです')
         return self.pose
 
-    def load(self):
+    def on_managed_mission(self,message):
+        """実行管理の検証済みsnapshotを再検証し、旧Pathを無効化して変換する。"""
+        try:
+            payload=json.loads(message.data)
+            mission=validate(payload['mission'],for_submission=True)
+            digest=hashlib.sha256(json.dumps(mission,sort_keys=True).encode()).hexdigest()
+            if digest!=payload['sha256']:raise ValueError('mission hashが一致しません')
+            if self.progress:self.progress.pause('新規missionを受領')
+            self.load(mission)
+        except (ValueError,TypeError,KeyError) as exc:
+            self.generation+=1;self.waiting=False;self.future=None
+            self.mission=None;self.points=[];self.reference=None;self.progress=None
+            self.clear_geometry();self.fail_load('実行管理からのmissionが不正: '+str(exc))
+
+    def load(self,mission_document=None):
         """元fileは変更しない。reloadでは旧Path／進捗を先に無効化する。"""
         if self.progress and self.progress.state in ('RUNNING','STOP_REQUIRED','WAITING_PAUSE','WAITING_CONFIRM'):
             raise ValueError('追跡中はloadできません。pauseまたはresetしてください')
@@ -132,8 +149,11 @@ class PreviewNode(Node):
         self.load_state='LOADING';self.load_error=''
         self.clear_geometry()
         try:
-            path=self.get_parameter('mission_file').value
-            self.mission=read_mission(path)
+            if mission_document is None:
+                path=self.get_parameter('mission_file').value
+                self.mission=read_mission(path)
+            else:
+                self.mission=validate(mission_document,for_submission=True)
             self.provenance['mission_sha256']=hashlib.sha256(json.dumps(self.mission,sort_keys=True).encode()).hexdigest()
             if self.p['coordinate_mode']=='manual':
                 anchor=read_anchor(self.p['anchor_file']);self.frame=anchor.frame_id
@@ -156,14 +176,18 @@ class PreviewNode(Node):
         """サービス名でなく、明示したworld frameと新しいgps odometryで準備確認。"""
         source=self.p['navsat_world_frame']
         if not source:self.load_error='navsat_world_frameを実際の出力frameに合わせて明示してください';return
-        if not self.gps or not self.fix:return
+        if not self.gps or not self.fix:
+            self.load_error='GNSSまたはnavsat odometryを待っています';return
         gps,gt=self.gps;fix,ft=self.fix
         timeout=self.p['gnss_timeout_sec']
-        if not self.fresh(gps,gt,timeout) or not self.fresh(fix,ft,timeout):return
+        if not self.fresh(gps,gt,timeout) or not self.fresh(fix,ft,timeout):
+            self.load_error='GNSSまたはnavsat odometryが期限切れです';return
         if gps.header.frame_id!=source:
             self.load_error='navsat odometry frameと明示navsat_world_frameが不一致';return
-        if fix.status.status<0 or not all(math.isfinite(v) for v in (fix.latitude,fix.longitude,fix.altitude)):return
-        if not self.client.service_is_ready():return
+        if fix.status.status<0 or not all(math.isfinite(v) for v in (fix.latitude,fix.longitude,fix.altitude)):
+            self.load_error='GNSS fixまたは高度が無効です';return
+        if not self.client.service_is_ready():
+            self.load_error='FromLLサービスを待っています';return
         transform=None
         if source!=self.frame:
             # TF2では時刻0がlatestを意味するため、未設定stampでの変換は行わない。
@@ -248,7 +272,7 @@ class PreviewNode(Node):
     def tick(self):
         if self.initial_load:
             self.initial_load=False
-            if self.get_parameter('mission_file').value:self.load()
+            if not self.p['managed_mission_enabled'] and self.get_parameter('mission_file').value:self.load()
         if self.waiting:self.begin_navsat()
         if self.future and time.monotonic()-self.future_started>self.p['service_timeout_sec']:
             self.fail_load('FromLL service timeout')
@@ -295,6 +319,8 @@ class PreviewNode(Node):
         return response
 
     def on_load(self,request,response):
+        if self.p['managed_mission_enabled']:
+            response.success=False;response.message='実行管理接続時は受領missionから自動loadします';return response
         try:self.load()
         except ValueError as exc:response.success=False;response.message=str(exc);return response
         response.success=self.load_state!='ERROR'
@@ -320,7 +346,7 @@ class PreviewNode(Node):
     def on_reset(self,request,response):
         def reset():
             if self.progress:self.progress.pause('reset')
-            self.load()
+            self.load(self.mission if self.p['managed_mission_enabled'] else None)
         return self.command(response,reset)
 
 

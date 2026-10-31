@@ -289,8 +289,9 @@ class OperatorWindow(QMainWindow):
             mission = info.get('mission') or {}
             permission = ('ON' if info.get('vehicle_autonomy_enabled') is True else
                           'OFF' if info.get('vehicle_autonomy_enabled') is False else '未確認')
-            self.autonomy_state.setText('実行管理: {} / 車両自律許可: {} / 経路: {} / {}'.format(
-                info.get('state', 'UNKNOWN'), permission, mission.get('name', '未受領'), info.get('reason', '')))
+            self.autonomy_state.setText('実行管理: {} / 車両自律許可: {} / 経路: {} / Path: {} {} / {}'.format(
+                info.get('state', 'UNKNOWN'), permission, mission.get('name', '未受領'),
+                info.get('path_state', '未確認'), info.get('path_error', ''), info.get('reason', '')))
         else:
             self.autonomy_state.setText('自律走行: 実行管理の状態未受信')
         self.telemetry_panel.refresh(status, self.config)

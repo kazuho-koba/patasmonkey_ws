@@ -5,7 +5,7 @@ from pm_bringup.stack_launch import create_launch_description
 from ament_index_python.packages import get_package_share_directory
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 import os
 
@@ -30,4 +30,16 @@ def generate_launch_description():
     description.add_action(DeclareLaunchArgument('use_execution_manager', default_value='true'))
     description.add_action(Node(package='pm_planner', executable='execution_manager',
         output='screen', condition=IfCondition(LaunchConfiguration('use_execution_manager'))))
+    planner_config = os.path.join(get_package_share_directory('pm_planner'), 'config', 'planner.yaml')
+    # legacyはnavsatのworldがodom、それ以外はglobal EKFに合わせたmap。
+    # FromLLのframeは/odometry/gpsで照合し、不一致ならPathを生成しない。
+    legacy = ["'odom' if '", LaunchConfiguration('localization_mode'), "' == 'legacy' else 'map'"]
+    fix = ["'/fix' if '", LaunchConfiguration('localization_mode'), "' == 'legacy' else '/fix/gated'"]
+    pose = ["'/odometry/local' if '", LaunchConfiguration('localization_mode'), "' == 'legacy' else '/odometry/global'"]
+    description.add_action(Node(package='pm_planner', executable='planner_preview',
+        name='preview', namespace='pm/planner', parameters=[planner_config, {
+            'managed_mission_enabled': True, 'planning_frame': PythonExpression(legacy),
+            'navsat_world_frame': PythonExpression(legacy), 'gnss_topic': PythonExpression(fix),
+            'pose_topic': PythonExpression(pose)}], output='screen',
+        condition=IfCondition(LaunchConfiguration('use_execution_manager'))))
     return description

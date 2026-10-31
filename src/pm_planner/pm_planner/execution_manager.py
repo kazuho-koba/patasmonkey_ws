@@ -22,10 +22,15 @@ class ExecutionManager(Node):
         self.vehicle = None
         self.vehicle_received = None
         self.stop_future = None
+        self.preview = None
+        self.preview_received = None
         qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
                          reliability=ReliabilityPolicy.RELIABLE)
         self.create_subscription(String, '/pm/mission/accepted', self.on_mission, qos)
         self.create_subscription(String, '/pm/vehicle/status', self.on_vehicle, 10)
+        self.create_subscription(String, '/pm/planner/preview/status', self.on_preview, 10)
+        # 検証済みsnapshotを保持し、previewが後から起動しても同じ経路を受け取れる。
+        self.mission_publisher = self.create_publisher(String, '~/mission', qos)
         self.publisher = self.create_publisher(String, '~/status', 10)
         self.vehicle_client = self.create_client(SetBool, '/pm/vehicle/set_autonomy_enabled')
         self.create_service(Trigger, '~/start', self.start)
@@ -45,11 +50,43 @@ class ExecutionManager(Node):
                                 waypoint_count=len(mission['waypoints']),
                                 stored_path=payload['stored_path'])
             self.mission_document = mission
-            self.reason = '経路受領済み。MPPI未接続のため走行開始できません'
+            self.preview = None
+            self.preview_received = None
+            self.mission_publisher.publish(String(data=json.dumps(
+                {'mission': mission, 'sha256': digest}, ensure_ascii=False)))
+            self.reason = '経路受領済み。参照Path生成を待機中'
         except (ValueError, TypeError, KeyError) as exc:
             self.mission = None
             self.mission_document = None
+            self.preview = None
+            self.preview_received = None
+            self.mission_publisher.publish(String(data=''))
             self.reason = '経路の検証失敗: '+str(exc)
+
+    def on_preview(self, message):
+        """受領snapshotと一致するpreview状態だけを現在のPathとして採用する。"""
+        try:
+            status = json.loads(message.data)
+            if not isinstance(status, dict):
+                raise ValueError('preview状態が不正です')
+            provenance = status.get('coordinate_provenance') or {}
+            if not self.mission or status.get('mission_id') != self.mission['mission_id'] or \
+                    status.get('revision') != self.mission['revision'] or \
+                    provenance.get('mission_sha256') != self.mission['sha256']:
+                return
+            self.preview = status
+            self.preview_received = time.monotonic()
+            if self.reason.startswith(('経路受領済み', '参照Path')):
+                state = status.get('load_state', 'UNKNOWN')
+                if state == 'READY' and status.get('geometry_valid'):
+                    self.reason = '参照Path生成済み。MPPI未接続のため走行開始できません'
+                elif state == 'ERROR':
+                    self.reason = '参照Path生成失敗: '+status.get('load_error', '')
+                else:
+                    self.reason = '参照Path生成待機: '+state
+        except (ValueError, TypeError, AttributeError):
+            self.preview = None
+            self.preview_received = None
 
     def on_vehicle(self, message):
         """実際の車両側許可状態と通信鮮度を表示する。"""
@@ -100,8 +137,16 @@ class ExecutionManager(Node):
 
     def publish_status(self):
         fresh = self.vehicle_received is not None and time.monotonic()-self.vehicle_received < 2.0
+        preview_fresh = self.preview_received is not None and time.monotonic()-self.preview_received < 2.0
+        preview = self.preview if preview_fresh else None
         status = dict(state='BLOCKED', reason=self.reason, mission=self.mission,
                       controller_ready=False, drive_ready=False, vehicle_fresh=fresh,
+                      path_state=(preview.get('load_state', 'UNKNOWN') if preview else
+                                  'WAITING_FOR_PREVIEW' if self.mission else 'NO_MISSION'),
+                      path_error=preview.get('load_error', '') if preview else '',
+                      path_frame=preview.get('frame_id') if preview else None,
+                      path_geometry_valid=bool(preview and preview.get('geometry_valid')),
+                      path_preview_fresh=preview_fresh,
                       vehicle_autonomy_enabled=(self.vehicle['autonomy_enabled'] if fresh else None))
         self.publisher.publish(String(data=json.dumps(status, ensure_ascii=False)))
 

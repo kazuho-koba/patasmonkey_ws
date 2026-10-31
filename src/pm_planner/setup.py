@@ -13,5 +13,7 @@ setup(name='pm_planner', version='0.1.0', packages=find_packages(),
       maintainer='kazuho', maintainer_email='kazuho.kobayashi.ynu@gmail.com', license='MIT',
       description='Patasmonkeyの非駆動参照経路とミッション進捗判定',
       entry_points={'console_scripts': ['planner_preview = pm_planner.preview_node:main',
+                                        'mppi_poc = pm_planner.mppi_poc_node:main',
+                                        'mppi_sim = pm_planner.mppi_sim:main',
                                         'execution_manager = pm_planner.execution_manager:main',
                                         'preview_mission = pm_planner.cli:main']})

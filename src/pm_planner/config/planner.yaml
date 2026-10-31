@@ -2,6 +2,7 @@
   ros__parameters:
     # Stage 1に速度出力機能はない。perceptionや既存coreもこのlaunchでは起動しない。
     mission_file: ""
+    managed_mission_enabled: false  # pm_coreからはtrueにし、実行管理のsnapshotを自動読込。
     coordinate_mode: navsat  # navsat / manual。manualはanchor_fileの明示が必要。
     anchor_file: ""
     planning_frame: map

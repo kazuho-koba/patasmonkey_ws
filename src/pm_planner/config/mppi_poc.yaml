@@ -1,0 +1,27 @@
+/**:
+  ros__parameters:
+    # 非駆動PoC。debug出力は車両指令へ接続しない。
+    path_topic: /pm/planner/preview/reference_path
+    odom_topic: /odometry/global
+    base_frame: base_link
+    pose_timeout_sec: 0.5
+    rate_hz: 10.0
+    batch_size: 384
+    steps: 25
+    iterations: 2
+    seed: 42
+    temperature: 0.4
+    sigma_v: 0.22
+    sigma_w: 0.65
+    target_speed: 0.15  # 初期PoCの低速条件。実機で使用できる速度を意味しない。
+    lookahead_m: 0.05  # 折返しでのショートカットを軽減する初期値。
+    max_projection_advance: 0.35
+    max_path_error: 1.0
+    goal_radius: 0.10  # 既存進捗判定の弧長余裕0.15 mより小さく設定。
+    # 候補の参照点距離・方位差・目標速度との差・yaw速度・末端距離の重み。
+    path_cost_weight: 4.0
+    heading_cost_weight: 0.2
+    speed_cost_weight: 0.5
+    yaw_cost_weight: 0.015
+    terminal_cost_weight: 5.0
+    visualize: true
