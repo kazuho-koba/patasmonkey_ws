@@ -3,6 +3,38 @@
 `vehicle_interface_node`は速度指令の制限、ODriveの接続・制御、モータ状態の配信を担当します。
 `wheel_odometry_node`は車輪情報からオドメトリを計算します。
 
+## スキッドステアの旋回補正
+
+`pm_config/config/vehicle_control.yaml`の`skid_steer_yaw_efficiency`を
+`実際の車体yawレート / 左右輪差から求める理想yawレート`と定義する。
+既定のコード値は1.0（従来互換）、車両YAMLは仮置き0.5。
+有限の`0 < eta <= 1`だけを許可し、変更にはnodeの再起動が必要。
+前後速度のスリップはこの係数では補正しない。
+
+処理順は、入力選択 → 予測車体Twistの制約・平滑化 → yaw/etaで左右輪差へ変換
+→ 車輪回転数上限 → 最終車輪から予測車体Twistへ逆算、となる。
+補正は左右輪への変換時に一度だけ適用する。輪差yawを`omega_w`として、
+`v_left = v - omega_w*tread_width/2`、`v_right = v + omega_w*tread_width/2`。
+`/cmd_vel`と次周期の履歴には`omega_body = eta*omega_w`を使う。
+記録・Simulatorに渡すTwistは車体に期待する値であり、実測値ではない。
+モーターへはTwistでなく左右rpsを送信する。
+
+既存の`max_yaw_rate`・`max_yaw_accel`は、補正後の輪差yawにも適用する。
+そのため予測車体側の実効上限をeta倍し、強い旋回では前進速度も滑らかに落とす。
+例：eta=0.5、max_yaw_rate=1なら輪差yawは最大1 rad/s、予測車体yawは最大0.5 rad/s。
+単純に補正後のyawだけを切り詰めて旋回半径を大きくする方法は使わない。
+停止・前後反転、車輪上限、半径等の絶対制限は既存どおり加速度制限より優先する。
+
+内輪を停止・逆転させない予測半径の下限は
+`max(min_turn_radius, tread_width/(2*eta)*(1+1e-6))`。
+現在の輪距0.36 m、eta=0.5、設定半径0.3 mでは実効下限は約0.36000036 mとなる。
+これは設定を無視するのでなく、設定半径以上で実現可能な半径を選ぶ制約。
+
+係数一定は近似で、路面・速度・荷重によって実際の旋回応答は変わる。
+実際のyawや旋回半径を保証する閉ループ制御ではない。IMU等の実測で係数を調整する。
+`wheel_odometry_node`の理想差動駆動式は変更していないため、車輪由来yawには
+この補正を加えていない。実測yawとの違いを記録解析時に区別すること。
+
 ## motor enabledの確認
 
 `/pm/vehicle/status`（`std_msgs/String`内のJSON）の`armed`はソフトウェアの走行許可であり、

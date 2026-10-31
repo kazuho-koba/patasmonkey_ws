@@ -67,6 +67,7 @@ class VehicleInterfaceNode(Node):
         self.declare_parameter("min_turn_radius", 0.75)  # [m]
         self.declare_parameter("max_yaw_rate", 0.5)  # [rad/s]
         self.declare_parameter("max_yaw_accel", 0.5)  # [rad/s^2]
+        self.declare_parameter("skid_steer_yaw_efficiency", 1.0)
 
         # joy入力の角度解釈
         self.declare_parameter("joy_max_turn_angle_deg", 45.0)  # [deg]
@@ -172,6 +173,11 @@ class VehicleInterfaceNode(Node):
         )
 
         self.max_linear_speed = float(self.get_parameter("max_linear_speed").value)
+        self.skid_steer_yaw_efficiency = float(
+            self.get_parameter("skid_steer_yaw_efficiency").value)
+        if not (math.isfinite(self.skid_steer_yaw_efficiency)
+                and 0.0 < self.skid_steer_yaw_efficiency <= 1.0):
+            raise ValueError("skid_steer_yaw_efficiency must be finite and in (0, 1]")
         self.joy_normal_max_linear_speed = float(
             self.get_parameter("joy_normal_max_linear_speed").value)
         self.joy_turbo_max_linear_speed = float(
@@ -536,11 +542,19 @@ class VehicleInterfaceNode(Node):
         """曲率とyaw制約から速度を適応的に落とし、速度とyawを独立に平滑化する。
 
         入力は車体中心速度[m/s]とyawレート[rad/s]。目標曲率を保持した定常速度を
-        yaw上限との滑らかな最小値で求め、速度の変化率はmax_yaw_accel×Rmin[m/s²]
-        から導く。過渡では曲率を厳密維持せず、yaw制約のために速度を増幅しない。
+        補正後の輪差yaw上限との滑らかな最小値で求め、速度の変化率は
+        max_yaw_accel×Rmin[m/s²]を基準に、旋回曲率と補正後のyaw加速度から
+        追加制限する。過渡では曲率を厳密維持せず、yaw制約のために速度を増幅しない。
         停止・前後反転・異常入力、および速度/yaw/半径の絶対制限は変化率より優先する。
         """
         eps = 1e-6
+        # eta = 車体yaw / 左右輪差の等価yaw。履歴・曲率は予測車体yawで扱う。
+        # 補正後の輪差yawも既存上限内に保つため、車体側の許容量をeta倍する。
+        # 内輪逆転・停止を避けるため、補正後の幾何学的下限にも余裕を持たせる。
+        eta = self.skid_steer_yaw_efficiency
+        radius = max(self.min_turn_radius, self.tread_width / (2.0 * eta) * (1.0 + eps))
+        yaw_rate_limit = eta * self.max_yaw_rate
+        yaw_accel_limit = eta * self.max_yaw_accel
         lin_x, ang_z = float(lin_x), float(ang_z)
         # mode上限は絶対上限以下。Turbo解除時は速度ランプより通常上限を優先する。
         speed_limit = (self.max_linear_speed if speed_limit is None
@@ -556,19 +570,23 @@ class VehicleInterfaceNode(Node):
             return 0.0, 0.0
 
         curvature = self.clamp(ang_z / lin_x,
-                               -1.0 / self.min_turn_radius,
-                               1.0 / self.min_turn_radius)
+                               -1.0 / radius, 1.0 / radius)
         target_v = self.clamp(lin_x, -speed_limit, speed_limit)
         if self.max_yaw_rate > 0.0:
             # p=4の滑らかな最小値。直進では減速せず、曲率が強いほど
-            # |v|をmax_yaw_rate/|curvature|以下へ滑らかに近づける。
-            ratio = abs(target_v * curvature) / self.max_yaw_rate
+            # |v|を補正後にも実現可能なyaw_rate_limit/|curvature|以下へ近づける。
+            ratio = abs(target_v * curvature) / yaw_rate_limit
             target_v /= math.hypot(1.0, ratio * ratio) ** 0.5
 
         # 遅延や時計巻き戻りで許容量を拡大しない。初回もゼロ履歴から立ち上げる。
         dt = self.clamp((now - self.prev_yaw_rate_time).nanoseconds * 1e-9, 0.0, 0.1)
         if self.max_yaw_accel > 0.0:
-            delta_v = self.max_yaw_accel * self.min_turn_radius * dt
+            # 直進の加速は従来どおり。旋回時だけ、一定曲率でのyaw加速度にも
+            # 収まる前後加速度へ絞る。曲率変更そのものは下段のyaw slewで制限する。
+            linear_accel = self.max_yaw_accel * self.min_turn_radius
+            if abs(curvature) > eps:
+                linear_accel = min(linear_accel, yaw_accel_limit / abs(curvature))
+            delta_v = linear_accel * dt
             lin_x = self.clamp(target_v, self.prev_linear_speed_cmd - delta_v,
                                self.prev_linear_speed_cmd + delta_v)
         else:
@@ -577,9 +595,9 @@ class VehicleInterfaceNode(Node):
 
         target_w = lin_x * curvature
         if self.max_yaw_rate > 0.0:
-            target_w = self.clamp(target_w, -self.max_yaw_rate, self.max_yaw_rate)
+            target_w = self.clamp(target_w, -yaw_rate_limit, yaw_rate_limit)
         if self.max_yaw_accel > 0.0:
-            delta_w = self.max_yaw_accel * dt
+            delta_w = yaw_accel_limit * dt
             ang_z = self.clamp(target_w, self.prev_yaw_rate_cmd - delta_w,
                                self.prev_yaw_rate_cmd + delta_w)
         else:
@@ -587,9 +605,9 @@ class VehicleInterfaceNode(Node):
 
         # 減速中に残るyawが小さな半径やその場旋回を作らないよう、最後に絶対制限する。
         # 実現不可能な組み合わせではyaw変化率より半径・yaw上限・停止を優先する。
-        yaw_cap = abs(lin_x) / self.min_turn_radius
+        yaw_cap = abs(lin_x) / radius
         if self.max_yaw_rate > 0.0:
-            yaw_cap = min(yaw_cap, self.max_yaw_rate)
+            yaw_cap = min(yaw_cap, yaw_rate_limit)
         ang_z = self.clamp(ang_z, -yaw_cap, yaw_cap)
         self.prev_linear_speed_cmd = lin_x
         self.prev_yaw_rate_cmd = ang_z
@@ -612,9 +630,10 @@ class VehicleInterfaceNode(Node):
 
             wheel_perimeter = self.wheel_radius * 2.0 * math.pi
 
-            # compute rps of L/R wheels
-            v_left = (lin_x - ang_z * self.tread_width / 2.0) / wheel_perimeter
-            v_right = (lin_x + ang_z * self.tread_width / 2.0) / wheel_perimeter
+            # 制約済みの予測車体yawを左右輪差へ変換する。補正はここで一度だけ行う。
+            wheel_yaw = ang_z / self.skid_steer_yaw_efficiency
+            v_left = (lin_x - wheel_yaw * self.tread_width / 2.0) / wheel_perimeter
+            v_right = (lin_x + wheel_yaw * self.tread_width / 2.0) / wheel_perimeter
 
             # 左右速度比を保ったまま、ホイール最大速度内に収める
             max_abs_whl_rps = max(abs(v_left), abs(v_right))
@@ -630,7 +649,10 @@ class VehicleInterfaceNode(Node):
 
             # 車輪の絶対制限後に車体Twistを逆算し、次周期の履歴と記録・Simulator入力を一致させる。
             lin_x = (v_left + v_right) * wheel_perimeter / 2.0
-            ang_z = (v_right - v_left) * wheel_perimeter / self.tread_width
+            # 記録・Simulator・次周期の履歴は、補正前と同じ車体Twistの意味で統一する。
+            # これは実測yawではなく、eta一定と仮定した最終車輪指令からの予測値。
+            ang_z = (self.skid_steer_yaw_efficiency
+                     * (v_right - v_left) * wheel_perimeter / self.tread_width)
             self.prev_linear_speed_cmd = lin_x
             self.prev_yaw_rate_cmd = ang_z
             limited_cmd = Twist()
@@ -858,6 +880,7 @@ class VehicleInterfaceNode(Node):
             ("min_turn_radius", self.min_turn_radius),
             ("max_yaw_rate", self.max_yaw_rate),
             ("max_yaw_accel", self.max_yaw_accel),
+            ("skid_steer_yaw_efficiency", self.skid_steer_yaw_efficiency),
             ("joy_max_turn_angle_deg", self.joy_max_turn_angle_deg),
             ("joy_side_stop_angle_deg", self.joy_side_stop_angle_deg),
         ]:

@@ -46,6 +46,8 @@ def make_control(alpha=1.0, yaw_cap=1.0):
     exec(compile(ast.fix_missing_locations(tree), str(source), 'exec'), env)
     a = env['Control']()
     a.max_linear_speed, a.min_turn_radius = 1.0, 0.7
+    # 既存の差動駆動ケースは補正なしの既定値で再現する。
+    a.skid_steer_yaw_efficiency = 1.0
     a.joy_normal_max_linear_speed = 1.0
     a.joy_turbo_max_linear_speed = 2.0
     a.autonomous_max_linear_speed = 1.0
