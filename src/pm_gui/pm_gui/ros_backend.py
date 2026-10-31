@@ -1,6 +1,7 @@
 """ROS通信とテレメトリを集約し、Jetson上のRobot Managerへ操作を依頼する。"""
 
 import json
+import hashlib
 import math
 import threading
 import time
@@ -10,7 +11,7 @@ import rclpy
 from nav_msgs.msg import Odometry
 from pm_msgs.msg import MotorState
 from rclpy.node import Node
-from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy, DurabilityPolicy, qos_profile_sensor_data
 from sensor_msgs.msg import Image, CompressedImage, Imu, Joy, MagneticField, NavSatFix
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
@@ -108,6 +109,8 @@ class RosBackend(Node):
         self._start_client = self.create_client(Trigger, self.start_service_name)
         self._stop_client = self.create_client(Trigger, self.stop_service_name)
         self._status_client = self.create_client(Trigger, self.get_status_service_name)
+        self._execution_clients = {action: self.create_client(
+            Trigger, '/pm/planner/execution_manager/'+action) for action in ('start', 'stop')}
         self._vehicle_clients = {
             action: self.create_client(Trigger, name)
             for action, name in self._vehicle_service_names.items()
@@ -129,6 +132,11 @@ class RosBackend(Node):
                (self._battery_stationary_cmd_rps, self._battery_stationary_vel_rps)):
             raise ValueError('batteryの停止判定閾値は有限・非負のrpsで指定してください')
         self._telemetry_subscriptions = []
+        self._add_subscription(String, '/pm/planner/execution_manager/status', self._execution_callback)
+        # 保存済み元GNSS waypointを遅れて起動したGUIにも渡す。補間済みPathとは区別する。
+        self._add_subscription(String, '/pm/mission/accepted', self._mission_callback,
+            qos=QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                           reliability=ReliabilityPolicy.RELIABLE))
         self._add_subscription(MotorState, topics.get("motor_state", "/motor_state"),
                                self._motor_state_callback, qos=qos_profile_sensor_data)
         # 絶対方位はodometryの初期yawではなく、Witの磁気ベクトルから計算する。
@@ -194,6 +202,33 @@ class RosBackend(Node):
     def _store(self, key, value):
         with self._lock:
             self._telemetry[key] = (value, time.monotonic())
+
+    def _execution_callback(self, message):
+        """UGV側の実行状態をGUI更新threadへ鮮度付きで渡す。"""
+        try:
+            value = json.loads(message.data)
+            if not isinstance(value, dict):
+                raise ValueError('状態がmappingではありません')
+        except (ValueError, TypeError) as exc:
+            value = {'state': 'ERROR', 'reason': str(exc)}
+        self._store('execution_manager', value)
+
+    def _mission_callback(self, message):
+        """保存されたwaypointとhashのみ表示用に保持する。受領状態は実行管理に照合する。"""
+        try:
+            payload = json.loads(message.data)
+            mission = payload['mission']
+            if hashlib.sha256(json.dumps(mission, sort_keys=True).encode()).hexdigest() != payload['sha256']:
+                raise ValueError('経路のhashが一致しません')
+            if len(mission['waypoints']) > 10000:
+                raise ValueError('経路点数が上限を超えています')
+            points = [(float(p['latitude']), float(p['longitude'])) for p in mission['waypoints']]
+            if not all(math.isfinite(lat) and math.isfinite(lon) and abs(lat) <= 90 and abs(lon) <= 180
+                       for lat, lon in points):
+                raise ValueError('座標が範囲外です')
+            self._store('accepted_mission', {'sha256': payload['sha256'], 'points': points})
+        except (ValueError, TypeError, KeyError):
+            self._store('accepted_mission', None)
 
     def _motor_state_callback(self, message):
         """共通busのV/Aを集約する。並列2個の残量・電流は個別には推定しない。"""
@@ -400,6 +435,12 @@ class RosBackend(Node):
 
     def request_vehicle_stop(self):
         return self._request(self._vehicle_clients['stop'])
+
+    def request_autonomy(self, action):
+        """自律開始／終了を要求する。GUIから速度や車両許可を直接送らない。"""
+        if action not in self._execution_clients:
+            return False
+        return self._request(self._execution_clients[action])
 
     def _request(self, client):
         if not client.service_is_ready():

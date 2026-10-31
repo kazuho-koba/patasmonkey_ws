@@ -1,5 +1,27 @@
 # pm_planner：準備・Stage 1
 
+## UGV側の実行管理
+
+`pm_core.launch.py`は`/pm/planner/execution_manager`も起動します。
+MISSION PLANNERは既存の`/pm/mission/upload`へ経路を送り、`pm_mission`の受信箱は
+保存成功後に`/pm/mission/accepted`を発行します。実行管理は内容とhashを再検証し、
+受領したmissionを保持します。受信箱の再起動時も保存済みの最後の経路を再検証して復元します。
+地理座標の経路を受領した状態と、参照Path生成・走行準備の完了は別です。
+
+GUIの「自律走行 開始／終了」は実行管理の`~/start`／`~/stop`（Trigger）に要求します。
+**MPPI未接続の現在、開始は必ず理由付きで拒否し、車両の自律指令を許可しません。**
+終了は`/pm/vehicle/set_autonomy_enabled`にfalseを非同期送信します。
+サービスの受付は車両の停止完了を意味せず、GUIには車両の許可状態と鮮度を別に表示します。
+車両側サービスが無い場合の終了要求は失敗を表示します。手動走行とCoreの操作は別です。
+
+GUI右上の地図には、実行管理が保持するhashと一致した受領waypointを橙破線で表示します。
+これはWGS84の元折線で、車両の実績軌跡や生成済み補間Pathではありません。
+地理地図の表示には有効なGNSS fixが必要です。実行管理が停止・staleになった場合は消します。
+
+残りの段階では、受領missionをplannerの地理変換・Path生成へ接続し、controllerの準備状態、
+手動介入時の状態遷移、実際の自律有効化・停止応答の確定を実装します。
+現時点ではGUI・実行管理から自律走行の開始はできません。
+
 GNSSミッションをメートル単位の参照経路に変換し、位置入力からwaypointの
 進捗を確認するPythonパッケージです。**Stage 1は非駆動previewです。**
 `start`サービスも追跡状態を開始するだけで、車両を動かしません。

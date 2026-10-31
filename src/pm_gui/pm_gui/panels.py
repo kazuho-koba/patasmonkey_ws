@@ -217,6 +217,7 @@ class TrajectoryCanvas(QWidget):
         self.geo_center = None
         self.geo_position = None
         self.gnss_points = []
+        self.mission_points = []
         self.geo_yaw = None
         self._follow_vehicle = True
         self._drag_last_position = None
@@ -447,6 +448,16 @@ class TrajectoryCanvas(QWidget):
                                              tile_y * tile_pixels - top,
                                              tile_pixels, tile_pixels), image)
 
+        # オレンジはUGV受領済み元waypointの折線。青い実績軌跡・補間Pathとは別物。
+        route = []
+        for latitude, longitude in self.mission_points:
+            px, py = self._world_pixel(latitude, longitude, zoom)
+            route.append(QPointF(px - left, py - top))
+        if len(route) > 1:
+            painter.setPen(QPen(QColor('#ef6c00'), 3, Qt.DashLine))
+            painter.drawPolyline(QPolygonF(route))
+            painter.setPen(QColor('#9b4100'))
+            painter.drawText(8, 55, '橙破線: 受領waypoint（補間前）')
         projected = []
         for latitude, longitude in self.gnss_points:
             px, py = self._world_pixel(latitude, longitude, zoom)
@@ -1223,6 +1234,11 @@ class LocalizationPanel(QWidget):
                 odom['frame_id'] or 'unknown frame', odom['x'], odom['y'], odom['z']))
         else:
             self.position.setText('odometry stale / 待受中')
+        execution = telemetry.get('execution_manager', {})
+        accepted = telemetry.get('accepted_mission', {}).get('value') or {}
+        actual = (execution.get('value') or {}).get('mission') or {}
+        self.map.mission_points = (accepted.get('points', []) if execution.get('fresh') and
+                                   actual.get('sha256') and actual.get('sha256') == accepted.get('sha256') else [])
         valid_fix = (fix is not None and fix['status'] >= 0
                      and math.isfinite(fix['latitude']) and math.isfinite(fix['longitude'])
                      and abs(fix['latitude']) <= 90.0 and abs(fix['longitude']) <= 180.0)

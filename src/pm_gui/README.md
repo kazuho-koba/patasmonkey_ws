@@ -286,3 +286,13 @@ UGV側は更新後のpm_coreがmission_receiverを起動し、経路を検証・
 ホスト/コンテナの作業分担、日本語font導入、再ビルドとアイコン起動は
 [ノートPC手順](docs/laptop_setup.md)を参照。
 Mission Plannerの起動戻り値はPyQt5のbool/tuple両方を扱い、起動後に誤ったunpackエラーを出さない。
+# 自律実行管理
+
+Operator Consoleの「自律走行 開始／終了」は`/pm/planner/execution_manager`へ要求する。
+開始はMPPI未接続の間、必ず拒否理由を表示し、車両の自律指令を有効にしない。
+終了は車両側へ自律指令の無効化を依頼する。要求受付と車両側の許可状態は別に表示する。
+車両状態の受信が古い・未受信の場合は許可状態を「未確認」とする。
+
+右上の地図の橙破線は、MISSION PLANNERから送信・UGVで保存された元waypointである。
+青の走行実績・plannerが生成する補間Pathとは別である。実行管理のmission hashと受領データが
+一致し、地理座標の地図表示が可能な場合に表示する。GNSS fixがない場合は地理地図へ表示しない。

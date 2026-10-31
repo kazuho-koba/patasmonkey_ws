@@ -26,4 +26,8 @@ def generate_launch_description():
         package='pm_mission', executable='mission_receiver', name='mission_receiver',
         parameters=[LaunchConfiguration('mission_receiver_config')], output='screen',
         condition=IfCondition(LaunchConfiguration('use_mission_receiver'))))
+    # 実行管理は受領経路と開始・終了要求を扱う。MPPI未接続の間は開始を拒否する。
+    description.add_action(DeclareLaunchArgument('use_execution_manager', default_value='true'))
+    description.add_action(Node(package='pm_planner', executable='execution_manager',
+        output='screen', condition=IfCondition(LaunchConfiguration('use_execution_manager'))))
     return description

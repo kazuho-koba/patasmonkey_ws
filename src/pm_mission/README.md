@@ -56,8 +56,9 @@ receiverは`rclpy`とYAML/modelだけを使用し、Qt windowを起動しませ�
 理由をtooltipに表示する。編集とローカル保存はUGV未接続でも利用可能。
 受領確認timeout後は未確認状態を維持し、送付済みとは表示しない。
 
-この段階の「UGVへ読み込み」は **検証・保存・受領応答** までを指す。
-走行開始、経路追従、motor enableやcmd_vel送信は行わない。
+この段階の「UGVへ読み込み」は **検証・保存・受領応答と実行管理への受領通知** を指す。
+最後に保存した経路は`latest_mission.json`の参照と保存fileを使い、receiver再起動時に
+内容hashを検証して復元する。走行開始、経路追従、motor enableやcmd_vel送信は行わない。
 
 ## 編集
 

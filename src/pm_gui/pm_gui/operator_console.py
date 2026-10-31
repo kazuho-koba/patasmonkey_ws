@@ -107,6 +107,18 @@ class OperatorWindow(QMainWindow):
         controls.addWidget(self.core_action_button, 1)
         controls.addWidget(self.error_button)
         manager_layout.addLayout(controls, 4, 0, 1, 2)
+        # Robot Coreや手動走行許可とは別の操作。開始可否はUGV側で判定する。
+        self.autonomy_state = QLabel('自律走行: 状態待受')
+        self.autonomy_state.setWordWrap(True)
+        self.autonomy_start = QPushButton('自律走行 開始')
+        self.autonomy_stop = QPushButton('自律走行 終了')
+        self.autonomy_start.clicked.connect(lambda: self.backend.request_autonomy('start'))
+        self.autonomy_stop.clicked.connect(lambda: self.backend.request_autonomy('stop'))
+        autonomy_controls = QHBoxLayout()
+        autonomy_controls.addWidget(self.autonomy_start)
+        autonomy_controls.addWidget(self.autonomy_stop)
+        manager_layout.addWidget(self.autonomy_state, 5, 0, 1, 2)
+        manager_layout.addLayout(autonomy_controls, 6, 0, 1, 2)
 
         # 左側はcameraを上段、姿勢とjoystickを下段に置く。
         self.telemetry_panel = TelemetryPanel(config, backend=backend)
@@ -269,6 +281,18 @@ class OperatorWindow(QMainWindow):
         self.error_detail.setVisible(bool(status['error']))
         connected = connection == 'CONNECTED'
         self._update_core_action(connected, state)
+        execution = status['telemetry'].get('execution_manager', {})
+        self.autonomy_start.setEnabled(bool(execution.get('fresh')))
+        self.autonomy_stop.setEnabled(bool(execution.get('fresh')))
+        if execution.get('fresh'):
+            info = execution['value']
+            mission = info.get('mission') or {}
+            permission = ('ON' if info.get('vehicle_autonomy_enabled') is True else
+                          'OFF' if info.get('vehicle_autonomy_enabled') is False else '未確認')
+            self.autonomy_state.setText('実行管理: {} / 車両自律許可: {} / 経路: {} / {}'.format(
+                info.get('state', 'UNKNOWN'), permission, mission.get('name', '未受領'), info.get('reason', '')))
+        else:
+            self.autonomy_state.setText('自律走行: 実行管理の状態未受信')
         self.telemetry_panel.refresh(status, self.config)
         self.camera_panel.refresh(status)
         self.localization_panel.refresh(status)
