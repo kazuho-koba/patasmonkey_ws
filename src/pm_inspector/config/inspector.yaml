@@ -1,0 +1,6 @@
+# PCとJetsonで同じservice名を使用する。パスは各実行機のローカルパス。
+service: /pm/inspector/request
+remote_root: ''
+local_root: ~/patasmonkey_ws/bags
+window_sec: 10.0
+request_timeout_sec: 10.0

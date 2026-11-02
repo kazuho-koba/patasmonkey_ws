@@ -14,7 +14,7 @@ from PyQt5.QtCore import QProcess, QTimer, Qt
 from pm_ui_common.fonts import configure_japanese_font
 from PyQt5.QtWidgets import (
     QApplication, QGridLayout, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
-    QPushButton, QSplitter, QVBoxLayout, QWidget,
+    QPushButton, QComboBox, QSplitter, QVBoxLayout, QWidget,
 )
 
 from .panels import CameraPanel, LocalizationPanel, PALETTE, RecordingPanel, TelemetryPanel
@@ -64,6 +64,10 @@ class OperatorWindow(QMainWindow):
         mission_button.setToolTip('独立したミッション編集アプリを開く（走行は開始しません）')
         mission_button.clicked.connect(self._open_mission_planner)
         title_row.addWidget(mission_button)
+        inspector_button = QPushButton('BAG INSPECTOR')
+        inspector_button.setToolTip('JetsonまたはPCに保存済みのbagを検査する独立アプリ')
+        inspector_button.clicked.connect(self._open_bag_inspector)
+        title_row.addWidget(inspector_button)
         layout.addLayout(title_row)
 
         manager_box = QWidget()
@@ -119,6 +123,18 @@ class OperatorWindow(QMainWindow):
         autonomy_controls.addWidget(self.autonomy_stop)
         manager_layout.addWidget(self.autonomy_state, 5, 0, 1, 2)
         manager_layout.addLayout(autonomy_controls, 6, 0, 1, 2)
+        # 3択で包含関係を表し、「路面ON・障害物OFF」の矛盾した指定を作らない。
+        self.perception_mode=QComboBox()
+        for label,mode in (('認識OFF（経路追従のみ）','off'),('障害物回避ON','obstacle_only'),
+                           ('障害物回避＋路面評価ON','full_terrain')):
+            self.perception_mode.addItem(label,mode)
+        self.perception_apply=QPushButton('認識modeを適用')
+        self.perception_apply.clicked.connect(lambda:self.backend.request_perception_mode(self.perception_mode.currentData()))
+        self._reported_perception_mode=None
+        mode_controls=QHBoxLayout();mode_controls.addWidget(self.perception_mode);mode_controls.addWidget(self.perception_apply)
+        manager_layout.addLayout(mode_controls,7,0,1,2)
+        mode_note=QLabel('mode変更で停止。適用後は走行開始が必要。実際のmodeはUGV状態で確認。')
+        mode_note.setWordWrap(True);manager_layout.addWidget(mode_note,8,0,1,2)
 
         # 左側はcameraを上段、姿勢とjoystickを下段に置く。
         self.telemetry_panel = TelemetryPanel(config, backend=backend)
@@ -194,6 +210,17 @@ class OperatorWindow(QMainWindow):
         self._set_split_ratio(self._telemetry_splitter, (1, 3, 4))
         self._set_split_ratio(self._right_splitter, (2, 1))
 
+    def _open_bag_inspector(self):
+        """Consoleと独立した検査画面を開く。解析自体は画面内で明示要求する。"""
+        try:
+            get_package_share_directory('pm_inspector')
+            result = QProcess.startDetached(
+                'ros2', ['launch', 'pm_inspector', 'bag_inspector.launch.py'])
+            if not (result[0] if isinstance(result, tuple) else result):
+                raise RuntimeError('bag_inspectorを起動できませんでした')
+        except Exception as error:
+            QMessageBox.warning(self, 'Bag Inspector起動失敗', str(error))
+
     def _open_mission_planner(self):
         """独立processを起動し、Console終了時もプランナーを終了させない。"""
         try:
@@ -256,6 +283,7 @@ class OperatorWindow(QMainWindow):
             self.backend.request_stop()
 
     def _refresh(self):
+        self.backend.operator_activity()
         status = self.backend.snapshot()
         connection, state = status['connection'], status['core_state']
         colors = {'CONNECTED': PALETTE['green'], 'STALE': PALETTE['yellow'],
@@ -282,8 +310,15 @@ class OperatorWindow(QMainWindow):
         connected = connection == 'CONNECTED'
         self._update_core_action(connected, state)
         execution = status['telemetry'].get('execution_manager', {})
-        self.autonomy_start.setEnabled(bool(execution.get('fresh')))
+        info=execution.get('value') or {}
+        self.autonomy_start.setEnabled(bool(execution.get('fresh') and info.get('drive_ready') and info.get('state') not in ('STARTING','RUNNING')))
         self.autonomy_stop.setEnabled(bool(execution.get('fresh')))
+        self.autonomy_start.setToolTip(info.get('readiness_reason','UGV状態の受信待ち'))
+        reported=info.get('perception_mode')
+        self.perception_apply.setEnabled(bool(execution.get('fresh') and reported in ('off','obstacle_only','full_terrain')))
+        if reported in ('off','obstacle_only','full_terrain') and reported!=self._reported_perception_mode:
+            self.perception_mode.setCurrentIndex(self.perception_mode.findData(reported))
+            self._reported_perception_mode=reported
         if execution.get('fresh'):
             info = execution['value']
             mission = info.get('mission') or {}
@@ -291,7 +326,8 @@ class OperatorWindow(QMainWindow):
                           'OFF' if info.get('vehicle_autonomy_enabled') is False else '未確認')
             self.autonomy_state.setText('実行管理: {} / 車両自律許可: {} / 経路: {} / Path: {} {} / {}'.format(
                 info.get('state', 'UNKNOWN'), permission, mission.get('name', '未受領'),
-                info.get('path_state', '未確認'), info.get('path_error', ''), info.get('reason', '')))
+                info.get('path_state', '未確認'), info.get('path_error', ''), info.get('reason', ''))
+                + ' / 認識mode: '+str(info.get('perception_mode','未確認')))
         else:
             self.autonomy_state.setText('自律走行: 実行管理の状態未受信')
         self.telemetry_panel.refresh(status, self.config)

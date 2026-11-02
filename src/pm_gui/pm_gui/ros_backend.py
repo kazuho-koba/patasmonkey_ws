@@ -5,11 +5,13 @@ import hashlib
 import math
 import threading
 import time
+import uuid
 from collections import deque
 
 import rclpy
 from nav_msgs.msg import Odometry
 from pm_msgs.msg import MotorState
+from pm_msgs.srv import SetPlannerMode
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy, DurabilityPolicy, qos_profile_sensor_data
 from sensor_msgs.msg import Image, CompressedImage, Imu, Joy, MagneticField, NavSatFix
@@ -111,6 +113,12 @@ class RosBackend(Node):
         self._status_client = self.create_client(Trigger, self.get_status_service_name)
         self._execution_clients = {action: self.create_client(
             Trigger, '/pm/planner/execution_manager/'+action) for action in ('start', 'stop')}
+        self._perception_mode_client=self.create_client(SetPlannerMode,'/pm/planner/execution_manager/set_perception_mode')
+        self._perception_mode_pending=False
+        self._operator_session=uuid.uuid4().hex
+        self._operator_ui_received=None
+        self._operator_pub=self.create_publisher(String,'/pm/planner/operator_heartbeat',1)
+        self._operator_timer=self.create_timer(.25,self._operator_heartbeat)
         self._vehicle_clients = {
             action: self.create_client(Trigger, name)
             for action, name in self._vehicle_service_names.items()
@@ -212,6 +220,15 @@ class RosBackend(Node):
         except (ValueError, TypeError) as exc:
             value = {'state': 'ERROR', 'reason': str(exc)}
         self._store('execution_manager', value)
+
+    def operator_activity(self):
+        """Qtの描画更新が生きていることを記録する。ROS threadだけの生存と区別する。"""
+        with self._lock:self._operator_ui_received=time.monotonic()
+
+    def _operator_heartbeat(self):
+        with self._lock:stamp=self._operator_ui_received
+        if stamp is not None and time.monotonic()-stamp<1.:
+            self._operator_pub.publish(String(data=self._operator_session))
 
     def _mission_callback(self, message):
         """保存されたwaypointとhashのみ表示用に保持する。受領状態は実行管理に照合する。"""
@@ -441,6 +458,28 @@ class RosBackend(Node):
         if action not in self._execution_clients:
             return False
         return self._request(self._execution_clients[action])
+
+    def request_perception_mode(self,mode):
+        """認識の階層を一括で要求する。GUI表示の選択だけでは有効と扱わない。"""
+        if mode not in ('off','obstacle_only','full_terrain'):return False
+        with self._lock:
+            if self._perception_mode_pending:
+                self._last_response='認識modeの応答待ちです';return False
+            if not self._perception_mode_client.service_is_ready():
+                self._last_response='plannerの認識modeサービスが見つかりません';return False
+            self._perception_mode_pending=True
+        request=SetPlannerMode.Request();request.mode=mode
+        try:
+            future=self._perception_mode_client.call_async(request)
+        except Exception as exc:
+            with self._lock:self._perception_mode_pending=False;self._last_response=str(exc)
+            return False
+        def completed(f):
+            try:self._service_response(f)
+            finally:
+                with self._lock:self._perception_mode_pending=False
+        future.add_done_callback(completed)
+        return True
 
     def _request(self, client):
         if not client.service_is_ready():

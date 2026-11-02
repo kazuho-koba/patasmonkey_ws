@@ -289,10 +289,29 @@ Mission Plannerの起動戻り値はPyQt5のbool/tuple両方を扱い、起動�
 # 自律実行管理
 
 Operator Consoleの「自律走行 開始／終了」は`/pm/planner/execution_manager`へ要求する。
-開始はMPPI未接続の間、必ず拒否理由を表示し、車両の自律指令を有効にしない。
+開始は受領Path・自己位置・GUI heartbeat・車両状態が揃う場合に受け付ける。
+STARTINGで車両側の許可応答を確認後、RUNNINGで自律指令を出す。起動・経路受領だけでは有効化しない。
+Qtの更新中だけROS heartbeatを送り、GUI停止時はUGV側が自律出力を無効化する。
+手動介入・期限切れ後は入力が復旧しても自律を再開せず、開始ボタンで明示的に再開する。
 終了は車両側へ自律指令の無効化を依頼する。要求受付と車両側の許可状態は別に表示する。
 車両状態の受信が古い・未受信の場合は許可状態を「未確認」とする。
 
 右上の地図の橙破線は、MISSION PLANNERから送信・UGVで保存された元waypointである。
 青の走行実績・plannerが生成する補間Pathとは別である。実行管理のmission hashと受領データが
 一致し、地理座標の地図表示が可能な場合に表示する。GNSS fixがない場合は地理地図へ表示しない。
+
+## 認識mode
+
+Operator Consoleの認識modeをOFF／障害物回避／障害物＋路面評価から選んで適用する。
+走行開始・終了とは別操作。OFFでも経路追従は可能で、路面評価ONは障害物回避も包含する。
+適用によるmode変更では停止し、UGVの実modeと入力準備を確認して明示的に走行開始する。
+選択しただけの値を有効とは表示しない。開始ボタンのtooltipにも拒否理由を表示する。
+専用のperception出力が未提供なら認識ONでの開始は拒否される。
+詳しい受け渡し仕様はpm_planner/README_perception_input.mdを参照。
+
+## Bag Inspector
+
+MISSION PLANNER横のBAG INSPECTORで独立した検査アプリを開きます。
+既定はJetson上の停止済みbagの解析で、LANでbag本文をコピーしません。
+PC上のbagの解析・複数bag一括解析にも対応します。
+遠隔受付の起動とbuild手順は[pm_inspector](../pm_inspector/README.md)を参照してください。
