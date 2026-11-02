@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from pm_ui_common.map_tiles import MapTileProvider
 
 COLORS = {'start': '#7ac943', 'goal': '#ee6352', 'pass': '#4ea5d9',
-          'pause': '#ff9f1c', 'confirm': '#bd93f9'}
+          'visit': '#f2d35e', 'pause': '#ff9f1c', 'confirm': '#bd93f9'}
 
 
 def world_pixel(lat, lon, zoom):

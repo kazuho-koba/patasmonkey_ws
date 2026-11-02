@@ -123,7 +123,7 @@ class MissionWindow(QMainWindow):
             button = QPushButton(label)
             button.clicked.connect(lambda checked=False, fn=callback: fn())
             edit_controls.addWidget(button)
-        edit_controls.addWidget(QLabel('点は線分で接続。背景dragでpan／ホイールでzoom。'))
+        edit_controls.addWidget(QLabel('属性で「大まかな通過点」と「必ず寄る点」を選択。GOALは必須・停止。'))
         root.addLayout(edit_controls)
         self.status = QLabel('経路をロード、または地図上で新規作成 → 編集・保存 → UGVへ読み込み。走行は開始しません。')
         self.status.setWordWrap(True)
@@ -153,6 +153,7 @@ class MissionWindow(QMainWindow):
                 if column == 3:
                     combo = QComboBox()
                     combo.addItems(LABELS)
+                    combo.setToolTip("大まかな通過点：経路帯内で前進すれば通過。必ず寄る点：到達半径内への接近が必要。GOALはさらに停止が必要。")
                     combo.setCurrentIndex(ATTRIBUTES.index(point['attribute']))
                     combo.currentIndexChanged.connect(lambda index, r=row: self.attribute(r, index))
                     self.table.setCellWidget(row, column, combo)

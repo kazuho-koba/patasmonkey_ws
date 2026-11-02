@@ -8,8 +8,9 @@ import uuid
 
 import yaml
 
-ATTRIBUTES = ('pass', 'start', 'goal', 'pause', 'confirm')
-LABELS = ('通過', 'スタート', 'ゴール', '一時停止', 'オペレータ確認')
+# 既存ROS属性番号0〜4は維持。VISIT=5は停止を要求しない必須到達点。
+ATTRIBUTES = ('pass', 'start', 'goal', 'pause', 'confirm', 'visit')
+LABELS = ('大まかな通過点', 'スタート（必須）', 'ゴール（必須・停止）', '一時停止（必須）', 'オペレータ確認（必須）', '必ず寄る点')
 MAX_POINTS = 10000
 MAX_FILE_BYTES = 16 * 1024 * 1024
 

@@ -148,3 +148,24 @@ UGVの位置表示は継続し、移動したい場合は「UGV位置へ」を�
 
 日本語fontの選択はConsoleと同じpm_ui_common.fontsを利用する。
 古いコンテナで日本語が□になる場合は、pm_gui/docs/laptop_setup.mdのfont導入手順を実施する。
+
+## 大まかな点と必須到達点
+
+表の「属性」で選択する。
+
+| 表示 | YAML attribute | UGV側の意味 |
+|---|---|---|
+| 大まかな通過点 | pass | 許容する経路帯内で、その点に相当する弧長より前方へ進めば通過 |
+| 必ず寄る点 | visit | 到達半径内へ接近が必要。停止は不要 |
+| スタート（必須） | start | 初回開始位置・向き・停止の確認 |
+| ゴール（必須・停止） | goal | 到達半径内で停止して完了 |
+| 一時停止／オペレータ確認（必須） | pause / confirm | 停止属性。現行自律MPPIは未対応として拒否 |
+
+既存YAMLのpassはそのまま大まかな点として扱う。必ず寄りたい中間点はvisitへ変更して
+保存・再送信する。旧点番号は維持し、ROS属性番号VISIT=5を追加した。UGV・GUIの両側へ
+pm_msgs・pm_mission・pm_plannerを更新・ビルドする。古い受信実装はvisitを受け付けない。
+GOALを大まかな点には変更できず、送信時は末尾GOALの検証が必要。
+
+到達半径はUGV側のplanner.yamlで定義し、VISITはpass_radius_m=0.5 m、GOALは
+stop_radius_m=0.25 m。手動再開時でも未到達VISITは推定通過にせず、飛ばした再開を拒否する。
+地図のvisitは黄色で、通常passの青と区別する。
