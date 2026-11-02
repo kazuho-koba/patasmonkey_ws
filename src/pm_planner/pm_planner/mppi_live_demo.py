@@ -53,7 +53,7 @@ class MppiLiveDemo(Node):
             raise ValueError('軌跡点数または車体表示寸法が範囲外です')
         mission=read_mission(p['mission_file']);anchor=read_anchor(p['anchor_file']);limits=read_limits(p['vehicle_config'])
         # 中間停止属性はPoCで未対応。無視して走破せず、明示的に拒否する。
-        if any(w['attribute'] not in ('start','pass','goal') for w in mission['waypoints']):
+        if any(w['attribute'] not in ('start','pass','visit','goal') for w in mission['waypoints']):
             raise ValueError('デモはPAUSE/CONFIRM属性に未対応です')
         if anchor.frame_id in ('map','odom','base_link','mppi_demo_base'):
             raise ValueError('表示専用anchorには実機と異なるframeを指定してください')

@@ -13,7 +13,8 @@
     temperature: 0.4
     sigma_v: 0.22
     sigma_w: 0.65
-    target_speed: 0.15  # 初期PoCの低速条件。実機で使用できる速度を意味しない。
+    target_speed: 1.0  # 直線での目標速度[m/s]。曲率参照速度により旋回手前から減速する。
+    use_reference_speed_profile: true  # 曲率・加減速・終点停止に応じて先の参照点と速度を選ぶ。
     lookahead_m: 0.05  # 折返しでのショートカットを軽減する初期値。
     max_projection_advance: 0.35
     max_path_error: 1.0

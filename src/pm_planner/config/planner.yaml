@@ -1,6 +1,7 @@
 /**:
   ros__parameters:
-    # Stage 1に速度出力機能はない。perceptionや既存coreもこのlaunchでは起動しない。
+    # 単独preview用。UGV coreの正本はpm_config/config/planner.yaml。
+    # preview単独は非駆動。Coreの実行管理はGUIの明示開始後だけ自律速度を出力する。
     mission_file: ""
     managed_mission_enabled: false  # pm_coreからはtrueにし、実行管理のsnapshotを自動読込。
     coordinate_mode: navsat  # navsat / manual。manualはanchor_fileの明示が必要。
@@ -18,7 +19,7 @@
     service_timeout_sec: 3.0
     max_projection_tilt_rad: 0.05
     spacing_m: 0.1
-    reference_turn_margin_m: 0.1  # 実車の最小旋回半径0.3 mに加える参照Path半径の余裕。
+    reference_turn_margin_m: 0.1  # vehicle_control.yamlの最小半径に加える参照Path半径の余裕[m]。
     corner_allowance_m: 0.3  # 通常filletが元PASS点から離れてよい距離。回廊幅ではない。
     # 通常filletで接続できないPASSは、元点を通る対称3円弧にする。回廊・環境判定なし。
     sharp_turn_strategy: symmetric_bulb  # symmetric_bulb / reject（従来の拒否方針）
@@ -27,10 +28,51 @@
     pass_radius_m: 0.5
     stop_radius_m: 0.25
     start_radius_m: 0.5
-    max_deviation_m: 1.0
+    max_deviation_m: 4.0  # 経路から左右4 m、合計幅8 m。走行中・再開時の許容上限。
     max_advance_m: 2.0
     max_pose_gap_sec: 1.0
     jump_slack_m: 0.3
     stop_speed_mps: 0.03
     heading_tolerance_rad: 0.52
     max_segment_m: 500.0
+
+    # 自律追従。速度・旋回の上限は共通vehicle_control.yamlから読み、ここで二重定義しない。
+    target_speed: 1.0
+    controller_rate_hz: 10.0
+    use_reference_speed_profile: true
+    batch_size: 384
+    steps: 25
+    iterations: 2
+    operator_timeout_sec: 1.5
+    vehicle_timeout_sec: 1.5
+    preview_timeout_sec: 1.5
+    command_timeout_sec: 0.3
+    permission_timeout_sec: 2.0
+    allow_unverified_manual_anchor: false
+
+    # 再開時は前方経路全体へ照合。近接した別区間を一意に選べなければ拒否する。
+    resume_ambiguity_distance_m: 0.15  # 最短距離との差がこの範囲なら別区間も候補[m]
+    resume_ambiguity_station_m: 1.0   # 弧長がこれより離れた候補は別区間と扱う[m]
+    resume_max_yaw_rate: 0.05         # 開始・再開時に停止とみなすyaw rate[rad/s]
+    # 推定の共分散と連続poseを検査。ジャンプはmission再受領まで異常を保持する。
+    pose_max_position_std_m: 1.0      # XY共分散の最大固有値の平方根[m]
+    pose_max_yaw_std_rad: 0.5         # yaw標準偏差[rad]
+    pose_jump_slack_m: 0.3           # 最高速度×観測間隔を超えて許す位置変化[m]
+    pose_yaw_jump_slack_rad: 0.2      # 最高yaw rate×観測間隔を超えて許す向き変化[rad]
+
+    # 経路は中心線への厳密追従ではなく帯として誘導。外側の停止条件はmax_deviation_m。
+    tracking_mode: corridor             # pointは従来の数値比較用
+    path_tolerance_m: 1.0               # 横ずれcostを付けない帯の半幅[m]。左右1 m。
+    corridor_cost_weight: 0.25          # 帯外の横ずれcost。重み×max(0,横ずれ-半幅)^2。
+    progress_cost_weight: 0.5           # 前進を誘導する弱いcost
+    terrain_cost_weight: 20.0           # 非致命的なhazardの回避cost
+    # perception処理自体は継続。このフラグはplannerがhazardを使うかだけを切り替える。
+    perception_enabled: false          # 旧起動互換。perception_mode指定が優先。
+    perception_mode: "off"                # off / obstacle_only / full_terrain。GUIで原子的に変更可。
+    perception_costmap_topic: /depth_elevation_mapper/planner_costmap
+    # 旧debug総合hazardはobstacleのunknownを隠すため、明示的な比較試験以外は使わない。
+    allow_legacy_full_hazard: false
+    terrain_topic: /depth_elevation_mapper/terrain_hazard_debug
+    terrain_timeout_sec: 1.0            # stamp/受信の両方で有効期限を検査[s]
+    footprint_radius_m: 0.4             # 車体外接円＋余裕を実測して設定する[m]
+    terrain_lethal_threshold: 100       # 以上は候補不採用。unknownとmap外も不採用

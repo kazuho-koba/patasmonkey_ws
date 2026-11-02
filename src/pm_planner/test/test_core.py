@@ -6,7 +6,7 @@ import pytest
 from pm_planner.geodesy import Anchor,ecef
 from pm_planner.reference import Limits,build_reference,project_local
 from pm_planner.progress import Progress
-from pm_planner.io import read_mission
+from pm_planner.io import read_mission,read_limits
 
 
 def test_reference_radius_margin_uses_vehicle_limits():
@@ -16,6 +16,36 @@ def test_reference_radius_margin_uses_vehicle_limits():
     assert planned.radius == pytest.approx(.4)
     assert base.radius == pytest.approx(.3)
     with pytest.raises(ValueError):base.with_turn_margin(-.01)
+
+
+def test_vehicle_limits_follow_source_symlink(tmp_path):
+    """install側リンクを維持したままsrc側のYAMLを更新すると再読込に反映される。"""
+    source=tmp_path/'source.yaml'
+    link=tmp_path/'installed.yaml'
+    link.symlink_to(source)
+    def write(radius):
+        source.write_text('vehicle_interface_node:\n  ros__parameters:\n'
+                          '    min_turn_radius: {}\n    autonomous_max_linear_speed: 1.0\n'
+                          '    max_yaw_rate: 1.0\n    max_yaw_accel: 1.0\n'.format(radius))
+    write(.3)
+    assert read_limits(link).radius==pytest.approx(.3)
+    write(.4)
+    assert read_limits(link).radius==pytest.approx(.4)
+
+
+@pytest.mark.parametrize('efficiency',[.25,.5,1.])
+def test_skid_efficiency_does_not_modify_body_limits(tmp_path,efficiency):
+    """スキッド補正を二重に掛けず、車体上限と半径を設定どおり取得する。"""
+    import yaml
+    source=tmp_path/'vehicle_control.yaml'
+    source.write_text(yaml.safe_dump({'vehicle_interface_node':{'ros__parameters':{
+        'min_turn_radius':.3,'autonomous_max_linear_speed':2.,'max_linear_speed':1.,
+        'max_yaw_rate':1.,'max_yaw_accel':2.,'skid_steer_yaw_efficiency':efficiency}}}))
+    limits=read_limits(source)
+    assert limits.radius==pytest.approx(.3)
+    assert limits.max_speed==pytest.approx(1.)
+    assert limits.max_yaw_rate==pytest.approx(1.)
+    assert limits.max_yaw_accel==pytest.approx(2.)
 
 
 LIMITS=Limits(.4,1.,1.,1.)
@@ -198,3 +228,67 @@ def test_short_segments_and_invalid_turn_policy_are_rejected():
         build_reference([(-.4,0.),(0.,0.),(-.4,.01)],wp,Limits(.3,1.,1.,1.))
     with pytest.raises(ValueError,match='sharp_turn_strategy'):
         build_reference([(-3.,0.),(0.,0.),(-3.,.1)],wp,LIMITS,sharp_turn_strategy='invalid')
+
+
+def test_rejoin_advances_multiple_pass_events_without_consuming_goal():
+    """手動で先行した距離に上限を課さず、PASSだけを推定通過にする。"""
+    ref=build_reference([(0.,0.),(3.,0.),(6.,0.),(10.,0.)],waypoints(('start','pass','pass','goal')),LIMITS)
+    p=Progress(ref);p.start((0.,0.,0.,0.,0.));p.pause()
+    p.rejoin((10.,7.,0.,0.,0.))
+    assert p.station==pytest.approx(7.) and p.index==3
+    assert p.completed==['point0','point1','point2']
+    assert p.status()['inferred_completed_waypoint_ids']==['point1','point2']
+    p.pause();p.rejoin((11.,10.,0.,0.,0.))
+    assert p.state=='RUNNING' and 'point3' not in p.completed
+    p.update((11.1,10.,0.,0.,0.));assert p.state=='COMPLETE'
+
+
+@pytest.mark.parametrize('pose,message',[
+    ((10.,1.,2.,0.,0.),'離れ'),((10.,1.,0.,math.pi,0.),'heading'),
+    ((10.,1.,0.,0.,.1),'停止')])
+def test_rejoin_refusal_preserves_progress(pose,message):
+    p=Progress(line());p.start((0.,0.,0.,0.,0.));p.pause();before=p.status()
+    with pytest.raises(ValueError,match=message):p.rejoin(pose)
+    assert p.status()==before
+
+
+def test_rejoin_ambiguous_same_heading_segments_are_rejected():
+    """交差や近接した同方向の別周回を位置だけで選ばない。"""
+    from pm_planner.reference import Reference
+    samples=[(0.,0.,0.,0.),(5.,0.,0.,5.),(5.,5.,0.,10.),(0.,5.,0.,15.),(0.,.1,0.,19.9),(5.,.1,0.,24.9)]
+    ref=Reference(samples,[dict(waypoint_id='s',attribute='start',station=0.,x=0.,y=0.),
+                           dict(waypoint_id='g',attribute='goal',station=24.9,x=5.,y=.1)],LIMITS,.1,[])
+    p=Progress(ref);p.start((0.,0.,0.,0.,0.));p.pause()
+    with pytest.raises(ValueError,match='曖昧'):p.rejoin((10.,2.,.05,0.,0.))
+    assert p.station==0. and p.state=='MANUAL_PAUSED'
+
+
+
+def test_rejoin_does_not_skip_required_stop_or_turn_back_after_goal():
+    p=Progress(line(('start','pause','goal')));p.start((0.,0.,0.,0.,0.));p.pause()
+    with pytest.raises(ValueError,match='停止属性'):p.rejoin((5.,1.5,0.,0.,0.))
+    assert p.station==0. and p.index==1
+    p=Progress(line());p.start((0.,0.,0.,0.,0.));p.pause()
+    with pytest.raises(ValueError,match='行き過ぎ'):p.rejoin((5.,2.6,0.,0.,0.))
+    assert p.station==0.
+
+
+def test_pass_crosses_route_station_at_one_metre_offset_but_visit_does_not():
+    """同じ横ずれでも大まかなPASSは通過、必須VISITは未到達で停止する。"""
+    result=[]
+    for kind in ('pass','visit'):
+        ref=build_reference([(0.,0.),(3.,0.),(7.,0.)],waypoints(('start',kind,'goal')),LIMITS)
+        p=Progress(ref,max_deviation=2.);p.start((0.,0.,0.,0.,0.))
+        for i in range(1,46):
+            p.update((i*.2,i*.1,min(1.,i*.05),0.,.5))
+            if p.state=='FAULT':break
+        result.append(p)
+    assert result[0].state=='RUNNING' and result[0].index==2
+    assert result[1].state=='FAULT' and result[1].index==1
+
+
+def test_visit_path_keeps_corner_point_and_cannot_be_skipped_on_rejoin():
+    ref=build_reference([(0.,0.),(3.,0.),(3.,3.)],waypoints(('start','visit','goal')),LIMITS)
+    assert min(math.hypot(x-3.,y) for x,y,_,_ in ref.samples)<1e-8
+    p=Progress(ref,max_deviation=2.);p.start((0.,0.,0.,0.,0.));p.pause()
+    with pytest.raises(ValueError,match='停止属性'):p.rejoin((20.,3.,2.,math.pi/2,0.))

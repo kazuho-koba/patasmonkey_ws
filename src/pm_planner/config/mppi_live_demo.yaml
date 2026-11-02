@@ -13,7 +13,8 @@
     batch_size: 384
     steps: 25
     iterations: 2
-    target_speed: 0.15
+    target_speed: 1.0
+    use_reference_speed_profile: true
     yaw_response_gain: 1.0  # vehicle interfaceが車体の旋回速度を実現する仮定。
     sim_yaw_response_gain: 1.0  # 人工車体の応答。実測を保証しない。
     reference_turn_margin_m: 0.1  # 最小0.3 mに加え、参照Pathは0.4 mとする。

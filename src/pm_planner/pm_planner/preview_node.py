@@ -30,6 +30,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from .geodesy import planar_transform
 from .io import read_mission,read_anchor,read_limits
+from .follower import reference_snapshot
 from .reference import build_reference
 from .progress import Progress
 from pm_mission.model import validate
@@ -71,6 +72,8 @@ class PreviewNode(Node):
         self.buffer=Buffer(cache_time=Duration(seconds=30.));self.listener=TransformListener(self.buffer,self)
         latched=QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.path_pub=self.create_publisher(Path,'~/reference_path',latched)
+        self.reference_pub=self.create_publisher(String,'~/reference',latched)
+        self.path_id=None
         self.polyline_pub=self.create_publisher(Path,'~/mission_polyline',latched)
         self.marker_pub=self.create_publisher(MarkerArray,'~/markers',latched)
         self.progress_marker_pub=self.create_publisher(MarkerArray,'~/progress_markers',latched)
@@ -168,6 +171,7 @@ class PreviewNode(Node):
         except (ValueError,OSError,KeyError,TypeError) as exc:self.fail_load(exc)
 
     def fail_load(self,error):
+        self.path_id=None;self.reference_pub.publish(String(data=''))
         self.load_state='ERROR';self.load_error=str(error);self.waiting=False;self.future=None
         self.reference=None;self.progress=None
         self.path_pub.publish(self.path_message([]))
@@ -235,6 +239,9 @@ class PreviewNode(Node):
             self.progress=Progress(self.reference,self.p['pass_radius_m'],self.p['stop_radius_m'],self.p['start_radius_m'],
                 self.p['max_deviation_m'],self.p['max_advance_m'],self.p['jump_slack_m'],self.p['max_pose_gap_sec'],
                 self.p['stop_speed_mps'],self.p['heading_tolerance_rad'])
+            snapshot=reference_snapshot(self.reference,self.mission,self.provenance,self.frame)
+            self.path_id=snapshot['path_id']
+            self.reference_pub.publish(String(data=json.dumps(snapshot,allow_nan=False)))
             self.load_state='READY';self.path_pub.publish(self.path_message(self.reference.samples))
         except ValueError as exc:self.fail_load(exc)
         self.publish_waypoints()
@@ -247,6 +254,7 @@ class PreviewNode(Node):
         return message
 
     def clear_geometry(self):
+        self.path_id=None;self.reference_pub.publish(String(data=''))
         self.path_pub.publish(self.path_message([]));self.polyline_pub.publish(self.path_message([]))
         marker=Marker();marker.action=Marker.DELETEALL;marker.header.frame_id=self.frame
         self.marker_pub.publish(MarkerArray(markers=[marker]))
@@ -282,7 +290,7 @@ class PreviewNode(Node):
             self.pose_error=str(exc)
             if self.progress:self.progress.pause(self.pose_error)
         status=dict(stage=1,dry_run=True,drive_ready=False,velocity_publisher=False,
-            load_state=self.load_state,load_error=self.load_error,frame_id=self.frame,
+            load_state=self.load_state,load_error=self.load_error,frame_id=self.frame,path_id=self.path_id,
             pose_error=self.pose_error,pose_fresh=not bool(self.pose_error),coordinate_provenance=self.provenance,
             vehicle_limits=asdict(self.limits),geometry_valid=self.reference is not None,
             turn_policy=self.p['sharp_turn_strategy'],turns=self.reference.turns if self.reference else [],

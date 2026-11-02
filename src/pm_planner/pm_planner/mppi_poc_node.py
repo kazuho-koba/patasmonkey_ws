@@ -25,9 +25,10 @@ class MppiPocNode(Node):
         defaults=dict(path_topic='/pm/planner/preview/reference_path',odom_topic='/odometry/global',
             base_frame='base_link',vehicle_config=get_package_share_directory('pm_config')+'/config/vehicle_control.yaml',
             pose_timeout_sec=0.5,rate_hz=10.,batch_size=384,steps=25,iterations=2,seed=42,
-            temperature=.4,sigma_v=.22,sigma_w=.65,target_speed=.15,lookahead_m=.05,
+            temperature=.4,sigma_v=.22,sigma_w=.65,target_speed=1.,lookahead_m=.05,
             path_cost_weight=4.,heading_cost_weight=.2,speed_cost_weight=.5,yaw_cost_weight=.015,terminal_cost_weight=5.,
-            max_projection_advance=.35,max_path_error=1.,goal_radius=.10,yaw_response_gain=1.0,visualize=True)
+            max_projection_advance=.35,max_path_error=1.,goal_radius=.10,yaw_response_gain=1.0,
+            use_reference_speed_profile=True,visualize=True)
         for key,value in defaults.items():self.declare_parameter(key,value)
         p={key:self.get_parameter(key).value for key in defaults};self.p=p
         if not math.isfinite(p['rate_hz']) or not 1.<=p['rate_hz']<=25. or not math.isfinite(p['pose_timeout_sec']) or p['pose_timeout_sec']<=0:
@@ -40,7 +41,8 @@ class MppiPocNode(Node):
             max_projection_advance=p['max_projection_advance'],max_path_error=p['max_path_error'],goal_radius=p['goal_radius'],
             path_cost_weight=p['path_cost_weight'],heading_cost_weight=p['heading_cost_weight'],
             speed_cost_weight=p['speed_cost_weight'],yaw_cost_weight=p['yaw_cost_weight'],
-            terminal_cost_weight=p['terminal_cost_weight'],yaw_response_gain=p['yaw_response_gain'])
+            terminal_cost_weight=p['terminal_cost_weight'],yaw_response_gain=p['yaw_response_gain'],
+            use_reference_speed_profile=p['use_reference_speed_profile'])
         self.solver=MppiPoc(config);self.frame='';self.odom=None;self.odom_time=None;self.timings=deque(maxlen=300)
         self.previous_command=(0.,0.)
         self.command_pub=self.create_publisher(Twist,'~/debug/cmd_vel',10)

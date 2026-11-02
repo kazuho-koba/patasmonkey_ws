@@ -100,7 +100,7 @@ def build_reference(points, waypoints, limits, spacing=.1, corner_allowance=.3, 
         u,v=vectors[i-1],vectors[i]
         theta=math.atan2(u[0]*v[1]-u[1]*v[0],u[0]*v[0]+u[1]*v[1])
         if abs(theta)<1e-5:continue
-        if waypoints[i]['attribute']!='pass':raise ValueError('停止属性waypointの折曲は未対応です: '+waypoints[i]['waypoint_id'])
+        if waypoints[i]['attribute'] not in ('pass','visit'):raise ValueError('停止属性waypointの折曲は未対応です: '+waypoints[i]['waypoint_id'])
         # 正確な180度だけはXYから左右を一意に決められないので明示設定を使う。
         # それ以外はincoming×outgoingの符号を保持し、左右を勝手に変更しない。
         if abs(abs(theta)-math.pi)<1e-8:
@@ -109,7 +109,8 @@ def build_reference(points, waypoints, limits, spacing=.1, corner_allowance=.3, 
         # R*(sec(theta/2)-1)を別々に検査する。半径だけを守って遠くへ迂回しない。
         near_uturn=abs(theta)>math.pi-.01
         deviation=math.inf if near_uturn else limits.radius*(1/math.cos(theta/2)-1)
-        bulb=near_uturn or deviation>min(corner_allowance,pass_radius)
+        # VISITは通常filletによって元点を切り落とさず、元点を通る円弧を使う。
+        bulb=waypoints[i]['attribute']=='visit' or near_uturn or deviation>min(corner_allowance,pass_radius)
         if bulb and sharp_turn_strategy=='reject':
             if near_uturn:raise ValueError('ほぼ180度の折返しは単純円弧で接続できません')
             raise ValueError('waypoint %d: %.2f度の折曲には約%.3fmの離隔が必要（許容%.3fm）'%(

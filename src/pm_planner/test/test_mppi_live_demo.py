@@ -63,9 +63,13 @@ def test_live_demo_ros():
         assert states[-1]['drive_output'] is False
         assert states[-1]['environment_checked'] is False
         assert len(node.reference.samples) > 10
-        assert node.config.min_radius == pytest.approx(.3)
-        assert node.reference.limits.radius == pytest.approx(.4)
+        # 車両設定はユーザーが変更可能。固定値でなく実際に指定された値との関係を確認する。
+        from pm_planner.io import read_limits
+        limits=read_limits(node.p['vehicle_config'])
+        assert node.config.min_radius == pytest.approx(limits.radius)
+        assert node.reference.limits.radius == pytest.approx(limits.radius+node.p['reference_turn_margin_m'])
         assert node.config.yaw_response_gain == pytest.approx(1.)
+        assert node.config.use_reference_speed_profile is True
         assert odoms[-1].header.frame_id == 'planner_preview'
         assert np.hypot(node.x-node.reference.samples[0][0], node.y-node.reference.samples[0][1]) > .001
         topics = [name for name, _ in node.get_publisher_names_and_types_by_node(node.get_name(), node.get_namespace())]
