@@ -1,0 +1,6 @@
+# 操作はlist/start/status/cancel/result。payloadはJSONで、bag本文は転送しない。
+string operation
+string payload
+---
+bool success
+string payload

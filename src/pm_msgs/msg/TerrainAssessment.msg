@@ -1,0 +1,10 @@
+# planner専用の同一stamp・同一gridの独立評価。debug画像の代用ではない。
+# schema_version=1。header.stampは評価snapshotの時刻。セル根拠の鮮度・可視性はproducerが判定する。
+uint8 schema_version
+std_msgs/Header header
+nav_msgs/MapMetaData info
+# row-major、各配列はwidth*height要素。-1=評価不能、0=有効観測で非検出、1..99=cost。
+# 衝突を否定できない確認待ち/確認済みの障害物は、ともに100。欠測・低支持を0へ変換しない。
+int8[] obstacle_cost
+# slope/roughness/step由来のみ。obstacleを混ぜない。未提供なら空配列（full_terrainでは全unknown）。
+int8[] terrain_cost

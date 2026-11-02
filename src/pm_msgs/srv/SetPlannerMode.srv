@@ -1,0 +1,6 @@
+# off / obstacle_only / full_terrain。走行開始とは別。変更時は停止し明示再開を要求する。
+string mode
+---
+bool success
+string mode
+string message

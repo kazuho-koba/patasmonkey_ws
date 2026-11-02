@@ -4,6 +4,8 @@ uint8 START=1
 uint8 GOAL=2
 uint8 PAUSE=3
 uint8 CONFIRM=4
+# 必ず到達半径内へ寄る。GOALと異なり停止は要求しない。
+uint8 VISIT=5
 string waypoint_id
 float64 latitude
 float64 longitude
