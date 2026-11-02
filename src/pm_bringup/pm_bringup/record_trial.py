@@ -24,7 +24,7 @@ from std_srvs.srv import Trigger
 from ament_index_python.packages import get_package_share_directory
 from ament_index_python.packages import get_package_prefix
 import yaml
-from pm_bringup.bag_integrity import verify_message_counts
+from pm_bringup.bag_integrity import verify_recording_summary
 from pm_bringup.dds_transport import transport_environment
 from pm_bringup.recording_metadata import (
     atomic_json, copy_configuration, installed_inventory, redact, snapshot_versions, utc_now,
@@ -87,7 +87,7 @@ def verify_recorder(output, child):
         result['verified'] = (result['metadata_exists'] and info.returncode == 0
                               and child.returncode in (0, 2))
         if result['verified']:
-            result['content_integrity'] = verify_message_counts(output)
+            result['content_integrity'] = verify_recording_summary(output)
             result['verified'] = result['content_integrity']['verified']
             if not result['verified']:
                 result['error'] = result['content_integrity']['error']
@@ -369,16 +369,14 @@ def main(argv=None):
                '--max-cache-size', str(args.max_cache_size),
                '--max-bag-size',str(args.max_bag_size), '--polling-interval',str(args.polling_interval),
                '--qos-profile-overrides-path',str(qos_path), *topics]
-    if args.writer_backend == 'async':
-        # 外部ROS依存を書き換えず、標準transport＋非同期writerを選ぶ。
-        # 実binaryを直接所有し、従来と同じSIGINT・停止待ち・件数検証を適用する。
-        executable = Path(get_package_prefix('pm_recording'))/'lib/pm_recording/async_recorder'
-        if not executable.is_file():
-            raise RuntimeError('pm_recordingをbuild/sourceしてください: '+str(executable))
-        # byteとitemの両上限を明示する。画像と小さいIMUの構成比で先に達する
-        # 上限が変わるため、片方だけ増やして長い停滞を吸収したと見なさない。
-        command = [str(executable), '--queue-bytes', str(args.writer_queue_bytes),
-                   '--queue-messages', str(args.writer_queue_items), *command[3:]]
+    # 同期/非同期とも同じtransportとQoSを保ち、writer入口で軽量統計を集計する。
+    # 同期版はTimingWriterのtrace OFFを使い、FIFOは追加しない。
+    executable = Path(get_package_prefix('pm_recording'))/'lib/pm_recording'/(
+        'async_recorder' if args.writer_backend == 'async' else 'timing_recorder')
+    if not executable.is_file():
+        raise RuntimeError('pm_recordingをbuild/sourceしてください: '+str(executable))
+    command = [str(executable), '--queue-bytes', str(args.writer_queue_bytes),
+               '--queue-messages', str(args.writer_queue_items), *command[3:]]
     child = None
     imu_child = None
     imu_log = None
@@ -417,8 +415,8 @@ def main(argv=None):
         control.set_child(child)
         if auxiliary:
             # IMU modeは重複保存、bulk modeは画像・点群をmainから除外する。
-            # 両modeで同じ所有child登録・SIGINT停止・実件数検証を使う。
-            imu_command = ['ros2', 'bag', 'record', '-o', str(imu_output),
+            # 両modeで同じ所有child登録・SIGINT停止・metadataとwriter集計の照合を使う。
+            imu_command = [str(Path(get_package_prefix('pm_recording'))/'lib/pm_recording/timing_recorder'), '-o', str(imu_output),
                            '-s', args.storage, '--max-cache-size', '0',
                            '--max-bag-size', str(args.max_bag_size),
                            '--polling-interval', str(args.polling_interval),
@@ -577,19 +575,7 @@ def main(argv=None):
             verified = (complete and info is not None and info.returncode == 0
                         and child is not None and child.returncode in (0,2)
                         and not completion_error)
-            content_integrity = verify_message_counts(output) if verified else None
-            if verified and args.writer_backend == 'async':
-                # transportは内部例外をlogして戻る場合がある。FIFO flush証明の
-                # 欠如・不一致をmetadata成功で打ち消さず、保存失敗として扱う。
-                try:
-                    async_state = yaml.safe_load((output/'async_writer.yaml').read_text())
-                    verified = (async_state.get('verified') is True
-                                and async_state.get('accepted') == async_state.get('written')
-                                and async_state.get('written') == content_integrity['actual_total'])
-                except (OSError, ValueError, AttributeError, KeyError, yaml.YAMLError):
-                    verified = False
-                if not verified:
-                    completion_error = '非同期writerのflush証明または実保存件数が一致しません'
+            content_integrity = verify_recording_summary(output) if verified else None
             if content_integrity is not None and not content_integrity['verified']:
                 verified = False
                 completion_error = content_integrity['error']

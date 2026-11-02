@@ -3,6 +3,7 @@ import sqlite3
 import yaml
 from mcap.writer import Writer, CompressionType
 from pm_bringup.bag_integrity import verify_message_counts
+from pm_bringup.bag_integrity import verify_recording_summary
 
 
 def metadata(directory, storage, filename, count):
@@ -71,3 +72,41 @@ def test_sidecar_info_success_does_not_override_content_failure(tmp_path, monkey
     metadata(tmp_path, 'mcap', 'bag_0.mcap', 10)
     result = module.verify_recorder(tmp_path, SimpleNamespace(poll=lambda: 0, returncode=0))
     assert not result['verified'] and not result['content_integrity']['verified']
+
+
+def summary_fixture(directory):
+    """本体として解釈不能でも、軽量検査が本体を開かないことを確認する。"""
+    (directory/'bag_0.mcap').write_bytes(b'not scanned')
+    metadata(directory, 'mcap', 'bag_0.mcap', 2)
+    info = yaml.safe_load((directory/'metadata.yaml').read_text())
+    info['rosbag2_bagfile_information']['topics_with_message_count'][0]['topic_metadata']['type'] = 'std_msgs/msg/String'
+    (directory/'metadata.yaml').write_text(yaml.safe_dump(info))
+    state = dict(verified=True, accepted=2, written=2, accepted_bytes=8, written_bytes=8,
+                 topics={'/test': dict(accepted=2, written=2, average_hz=10.)})
+    (directory/'async_writer.yaml').write_text(yaml.safe_dump(state))
+    return state
+
+
+def test_lightweight_summary_never_scans_payload(tmp_path):
+    summary_fixture(tmp_path)
+    result = verify_recording_summary(tmp_path)
+    assert result['verified'], result
+    assert result['full_scan_performed'] is False
+    assert result['topics']['/test']['average_hz'] == 10.
+
+
+def test_lightweight_rejects_topic_count_mismatch(tmp_path):
+    state = summary_fixture(tmp_path)
+    state['topics']['/test']['written'] = 1
+    (tmp_path/'async_writer.yaml').write_text(yaml.safe_dump(state))
+    assert not verify_recording_summary(tmp_path)['verified']
+
+
+def test_lightweight_rejects_unflushed_and_missing_file(tmp_path):
+    state = summary_fixture(tmp_path)
+    state['verified'] = False
+    (tmp_path/'async_writer.yaml').write_text(yaml.safe_dump(state))
+    assert not verify_recording_summary(tmp_path)['verified']
+    summary_fixture(tmp_path)
+    (tmp_path/'bag_0.mcap').unlink()
+    assert not verify_recording_summary(tmp_path)['verified']

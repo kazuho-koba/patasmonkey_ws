@@ -11,6 +11,28 @@ from pm_bringup.record_trial import parameter_value
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_core_planner_config_uses_shared_package(monkeypatch):
+    """Coreは共通YAML、単独previewは独自YAMLを用いる。"""
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('pm_core_test',ROOT/'launch/pm_core.launch.py')
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    calls=[]
+    class Description:
+        def add_action(self,action):
+            pass
+    monkeypatch.setattr(module,'create_launch_description',lambda **kwargs:Description())
+    monkeypatch.setattr(module,'get_package_share_directory',lambda name:'/test/share/'+name)
+    monkeypatch.setattr(module,'Node',lambda **kwargs:calls.append(kwargs))
+    module.generate_launch_description()
+    preview=next(item for item in calls if item['executable']=='planner_preview')
+    assert preview['parameters'][0]=='/test/share/pm_config/config/planner.yaml'
+    workspace=ROOT.parent
+    shared=yaml.safe_load((workspace/'pm_config/config/planner.yaml').read_text())
+    standalone=yaml.safe_load((workspace/'pm_planner/config/planner.yaml').read_text())
+    assert shared==standalone
+
+
 def test_metadata_timing_launch_default_and_override():
     """終了後収集を既定にし、従来方式へ明示復帰できることを確認する。"""
     from launch import LaunchContext
@@ -259,7 +281,7 @@ def test_sidecar_verification_requires_closed_metadata_and_info(tmp_path, monkey
     child = SimpleNamespace(poll=lambda: 0, returncode=0)
     monkeypatch.setattr(module.subprocess, 'run', lambda *a, **k:
                         SimpleNamespace(returncode=0, stdout='fixture', stderr=''))
-    monkeypatch.setattr(module, 'verify_message_counts', lambda path: {'verified': True})
+    monkeypatch.setattr(module, 'verify_recording_summary', lambda path: {'verified': True})
     assert not module.verify_recorder(tmp_path, child)['verified']
     (tmp_path/'metadata.yaml').write_text('fixture')
     assert module.verify_recorder(tmp_path, child)['verified']

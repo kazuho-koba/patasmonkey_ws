@@ -80,20 +80,24 @@ missionが起動前に存在しないcoreのparameterを直ちに取得できな
 
 ## missionの記録履歴
 
-### 保存完了は実ファイル件数も検査する
+### 保存完了はwriter集計とmetadataで確認する
 
-metadata.yamlとros2 bag infoだけでは、cacheの未保存等を検出できません。
-停止後、MCAPは全message recordをdecodeせず走査し（存在するCRCも検査）、
-SQLiteはread-onlyで構造・件数を確認して、metadataの総数・topic別件数と照合します。
-不一致・ファイル欠如・読取不能ならcompletion.jsonのverifiedをfalseにし、
-GUI/systemdへ成功を返しません。検査詳細はcontent_integrityに保存します。
-追加IMU bagも同様に検査します。走査は全bagを読むため、大きいbagほど停止確認が長くなります。
-この件数一致はpublish総数との一致を保証せず、DDS配送中の欠落検証とは別です。
+通常のMission/Debugおよび副bagの停止時は、本体を読み直しません。
+recorder終了、writerのclose・flush完了、受付/書込み件数・byte数の一致、
+metadataの総数・topic別件数との一致、分割ファイルの存在・非zeroサイズを確認します。
+同期版も同じtransport/QoSのtiming_recorder（trace OFF）を使い、追加FIFOは作りません。
+非同期版は従来の有界FIFOを維持します。どちらもpm_recordingの再buildが必要です。
 
-Pythonのmcapライブラリが必要です（setup.pyに依存を記載）。storage pluginとは別の依存です。
-検査依存が利用できない場合は保存成功と判定しません。
+writer入口でtopicごとに件数と単調時計の最初/最後の時刻だけを保持し、
+停止後のasync_writer.yamlへ平均Hz=(件数−1)/(最終−初回)を保存します。
+1件以下はnullです。これはwriter入口の実行平均であり、sensor header周期や
+途中途絶の判定ではありません。追加購読・payload decode・受信ごとのファイルI/Oはしません。
+completion.jsonのcontent_integrityにもtopic統計とverification_modeを保存します。
+verifiedは保存手順とmetadataの整合性を意味し、本体CRCや破損検査の完了ではありません。
+不一致・保存エラーは従来どおりGUI/systemdへ成功を返しません。
 
-既存bagも元データを変更せず再検査できます。不一致時の終了コードは1です。
+本体の全件検査は通常停止から外し、実験後に開発PC等で明示的に実行できます。
+これはMCAPのmessage走査・存在するCRC、SQLiteの構造と実件数を確認します。
 
 ```bash
 ros2 run pm_bringup verify_bag_integrity --bag /path/to/bag --output /path/to/new_check.json
@@ -304,7 +308,7 @@ CPU・ディスク・DDSは共有するので資源隔離や無欠測保証で�
 従来の単一bagの構成・GUI操作・topicのROSインターフェースは既定で変えません。
 
 mainの`provenance/topic_partition.json`に両bagの場所と担当topicを保存します。
-停止時は両所有childへSIGINTを送り、両bagのmetadata・bag info・実件数を検査し、
+停止時は両所有childへSIGINTを送り、両bagのmetadata・bag info・writer集計を照合し、
 mainのcompletion.jsonは両方成功した場合だけverified=trueになります。
 第二bagの結果はbulk_sidecarに記録し、従来のimu_sidecarフィールドと区別します。
 
@@ -364,7 +368,7 @@ GUIの全停止では安全上vehicleを先に停止するため、車両nodeの
 
 終了処理は従来より長くなる場合があります。GUI/systemdのSTOPPING中に収集とbag検証を行い、
 メタデータ収集の失敗はcompletion.jsonのmetadata_snapshot_errorへ保存します。
-bag本体のclose・件数検査を省略しません。従来動作への復帰はduring_recordingを指定してください。
+bag本体のclose・metadataとの件数照合を省略しません。従来動作への復帰はduring_recordingを指定してください。
 
 # Wit IMUの接続先とCPU優先度
 

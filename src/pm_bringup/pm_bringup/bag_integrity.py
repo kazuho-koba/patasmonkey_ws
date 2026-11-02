@@ -1,15 +1,66 @@
-"""停止済みbagの実message件数をmetadataと照合する読み取り専用検査。
+"""停止済みbagの軽量確認と、明示実行専用の本体走査を提供する。
 
-bag infoはmetadataを表示するだけなので、未flush等で本体が空でも成功し得る。
-MCAPはmessage recordを走査、SQLiteはread-only接続で件数を数える。
-メモリにpayloadを保持せず、同じdirectoryの分割ファイルだけを扱う。
-この検査は保存構造・件数の一致であり、センサがpublishした総数の証明ではない。
+通常停止はwriterのclose/flush集計とmetadataを照合し、本体は開かない。
+CLIの全件検査だけはMCAP record走査やSQLite件数確認を行う。
+どちらもセンサがpublishした総数の証明ではない。
 """
 from collections import Counter
 from contextlib import closing
 from pathlib import Path
 import sqlite3
 import yaml
+
+
+def verify_recording_summary(directory):
+    """停止・close済みwriterの集計とmetadataを照合し、本体は開かない。
+
+    verifiedは保存手順と集計の整合性を意味し、CRCや本体破損の検査ではない。
+    周波数はwriter入口の受信区間平均で、未受信topicや1件だけの場合は未定義。
+    """
+    directory = Path(directory)
+    result = {'verified': False, 'verification_mode': 'metadata_and_writer',
+              'full_scan_performed': False, 'topics': {}, 'error': ''}
+    try:
+        info = yaml.safe_load((directory/'metadata.yaml').read_text())['rosbag2_bagfile_information']
+        writer = yaml.safe_load((directory/'async_writer.yaml').read_text())
+        if (writer.get('verified') is not True or writer.get('error')
+                or writer.get('transport_error')
+                or writer['accepted'] != writer['written']
+                or writer['accepted_bytes'] != writer['written_bytes']):
+            raise ValueError('writerの終了・flush証明が不正です')
+        expected = {}
+        for entry in info['topics_with_message_count']:
+            name = entry['topic_metadata']['name']
+            if name in expected or not entry['topic_metadata']['type']:
+                raise ValueError('metadataのtopic定義が不正です')
+            expected[name] = int(entry['message_count'])
+        if any(n < 0 for n in expected.values()):
+            raise ValueError('metadataの件数が負です')
+        total = int(info['message_count'])
+        if total != sum(expected.values()) or total != writer['written']:
+            raise ValueError('metadataとwriterの総件数が一致しません')
+        topics = writer['topics']
+        for name in set(expected) | set(topics):
+            sample = topics.get(name, {})
+            count = sample.get('written', 0)
+            if count != sample.get('accepted', 0) or count != expected.get(name, 0):
+                raise ValueError('topic別件数が一致しません: '+name)
+            result['topics'][name] = dict(sample, message_count=count)
+        if sum(t['written'] for t in topics.values()) != total:
+            raise ValueError('writerのtopic集計と総件数が一致しません')
+        visited = set()
+        for name in info['relative_file_paths']:
+            path = (directory/name).resolve()
+            path.relative_to(directory.resolve())
+            if path in visited or not path.is_file() or path.stat().st_size <= 0:
+                raise ValueError('保存ファイルの不足・重複・空ファイル: '+name)
+            visited.add(path)
+        if not visited:
+            raise ValueError('保存ファイルがありません')
+        result.update(verified=True, expected_total=total, writer_total=writer['written'])
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, yaml.YAMLError) as error:
+        result['error'] = str(error)
+    return result
 
 
 def verify_message_counts(directory):

@@ -189,7 +189,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                 "runtime_directory": str(resolved_directory),
                 "configuration_paths": [str(path) for path in (
                     urdf_file, imu_config_file, mag_calibration_file, wheel_odom_config_file,
-                    vehicle_geometry_file, vehicle_control_file, openvins_config_file,
+                    vehicle_geometry_file, vehicle_control_file, pm_config_share / 'config' / 'planner.yaml', openvins_config_file,
                     ekf_global_config_file, ekf_horizontal_config_file,
                     pm_config_share / 'config' / 'ekf_local_horizontal_projected.yaml',
                     pm_config_share / 'config' / 'ekf_local_3d_no_accel.yaml',

@@ -1,4 +1,4 @@
-"""UGV Coreと経路受信箱を起動する。recorderや経路走行は起動しない。"""
+"""UGV Core・経路受信と追従器を起動。自律出力は明示開始まで無効。"""
 # 具体的なNode構成・launch引数・起動順は ../pm_bringup/stack_launch.py に集約する。
 # このファイルは共通実装を「記録なし」で呼び出す起動入口。
 from pm_bringup.stack_launch import create_launch_description
@@ -26,16 +26,18 @@ def generate_launch_description():
         package='pm_mission', executable='mission_receiver', name='mission_receiver',
         parameters=[LaunchConfiguration('mission_receiver_config')], output='screen',
         condition=IfCondition(LaunchConfiguration('use_mission_receiver'))))
-    # 実行管理は受領経路と開始・終了要求を扱う。MPPI未接続の間は開始を拒否する。
+    # 自律許可はGUI開始と車両状態の確認後だけ。起動・経路受領では走行を開始しない。
     description.add_action(DeclareLaunchArgument('use_execution_manager', default_value='true'))
-    description.add_action(Node(package='pm_planner', executable='execution_manager',
-        output='screen', condition=IfCondition(LaunchConfiguration('use_execution_manager'))))
-    planner_config = os.path.join(get_package_share_directory('pm_planner'), 'config', 'planner.yaml')
+    # Coreは共通設定を使用。pm_configのsymlink-installによりsrc側の編集が反映される。
+    planner_config = os.path.join(get_package_share_directory('pm_config'), 'config', 'planner.yaml')
     # legacyはnavsatのworldがodom、それ以外はglobal EKFに合わせたmap。
     # FromLLのframeは/odometry/gpsで照合し、不一致ならPathを生成しない。
     legacy = ["'odom' if '", LaunchConfiguration('localization_mode'), "' == 'legacy' else 'map'"]
     fix = ["'/fix' if '", LaunchConfiguration('localization_mode'), "' == 'legacy' else '/fix/gated'"]
     pose = ["'/odometry/local' if '", LaunchConfiguration('localization_mode'), "' == 'legacy' else '/odometry/global'"]
+    description.add_action(Node(package='pm_planner', executable='execution_manager',
+        parameters=[planner_config,{'pose_topic':PythonExpression(pose)}],output='screen',
+        condition=IfCondition(LaunchConfiguration('use_execution_manager'))))
     description.add_action(Node(package='pm_planner', executable='planner_preview',
         name='preview', namespace='pm/planner', parameters=[planner_config, {
             'managed_mission_enabled': True, 'planning_frame': PythonExpression(legacy),

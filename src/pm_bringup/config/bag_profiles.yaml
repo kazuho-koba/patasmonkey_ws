@@ -54,6 +54,16 @@ mission:
   - /cmd_vel_joy
   - /cmd_vel_autonomy
   - /cmd_vel
+  # 受領missionとPathの版、許可/拒否理由を実指令と対応付ける。
+  - /pm/mission/accepted
+  - /pm/planner/execution_manager/mission
+  - /pm/planner/execution_manager/status
+  - /pm/planner/preview/status
+  - /pm/planner/preview/reference
+  - /pm/planner/preview/reference_path
+  # 同じsnapshotのobstacle/terrain独立cost。plannerの選択と指令を再検証する入力。
+  - /depth_elevation_mapper/planner_costmap
+  - /pm/planner/operator_heartbeat
   - /emergency_stop
   - /set_pose
   - /oak/diagnostics/left_frame
@@ -74,6 +84,8 @@ mission:
   - /oak/depth/camera_info
   - /robot_description
 debug:
+  - /pm/planner/execution_manager/local_path
+  - /pm/planner/execution_manager/trajectory
   - /depth_elevation_mapper/elevation_debug
   - /depth_elevation_mapper/relative_elevation_debug
   - /depth_elevation_mapper/elevation_variance_debug
