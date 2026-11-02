@@ -82,7 +82,11 @@ int main(int argc, char ** argv)
         storage.max_bagfile_size = value == "0" ? 0 : positive_number(value);
       }
       else if (key == "--max-cache-size") {
+#ifdef PM_TIMING_RECORDER
+        storage.max_cache_size = value == "0" ? 0 : positive_number(value);
+#else
         if (value != "0") {throw std::runtime_error("標準cacheは0のみ使用できます");}
+#endif
       }
       else if (key == "--polling-interval") {
         record.topic_polling_interval = std::chrono::milliseconds(positive_number(value));
@@ -166,7 +170,23 @@ int main(int argc, char ** argv)
       << YAML::Key << "max_write_seconds" << YAML::Value << stats.max_write_seconds
       << YAML::Key << "trace_evicted" << YAML::Value << evicted
       << YAML::Key << "error" << YAML::Value << stats.error
-      << YAML::Key << "transport_error" << YAML::Value << transport_error << YAML::EndMap;
+      << YAML::Key << "transport_error" << YAML::Value << transport_error
+      << YAML::Key << "topics" << YAML::Value << YAML::BeginMap;
+    // 確定した件数と平均レートだけを保存する。時刻は単調時計の秒で、UTCではない。
+    for (const auto & entry : stats.topics) {
+      const auto & topic = entry.second;
+      report << YAML::Key << entry.first << YAML::Value << YAML::BeginMap
+        << YAML::Key << "accepted" << YAML::Value << topic.accepted
+        << YAML::Key << "written" << YAML::Value << topic.written
+        << YAML::Key << "first_receive_monotonic_sec" << YAML::Value << topic.first
+        << YAML::Key << "last_receive_monotonic_sec" << YAML::Value << topic.last
+        << YAML::Key << "average_hz" << YAML::Value;
+      if (topic.accepted > 1 && topic.last > topic.first) {
+        report << (topic.accepted - 1) / (topic.last - topic.first);
+      } else {report << YAML::Null;}
+      report << YAML::EndMap;
+    }
+    report << YAML::EndMap << YAML::EndMap;
     std::ofstream output(storage.uri + "/async_writer.yaml");
     output << report.c_str() << '\n';
     output.close();

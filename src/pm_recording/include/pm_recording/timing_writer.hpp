@@ -37,6 +37,7 @@ public:
     // 測定OFF時はclock取得・trace蓄積を一切行わない。
     std::lock_guard<std::mutex> lock(mutex_);
     ++state_.accepted;
+    state_.topics[message->topic_name].receive();
     state_.accepted_bytes += message->serialized_data->buffer_length;
     const auto enter = enabled_ ? std::chrono::steady_clock::now() :
       std::chrono::steady_clock::time_point{};
@@ -44,6 +45,7 @@ public:
       std::chrono::system_clock::now().time_since_epoch()).count() : 0;
     target_->write(message);
     ++state_.written;
+    ++state_.topics[message->topic_name].written;
     state_.written_bytes += message->serialized_data->buffer_length;
     if (!enabled_) {return;}
     const auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(

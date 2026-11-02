@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <map>
 #ifdef __linux__
 #include <pthread.h>
 #endif
@@ -22,7 +23,19 @@ namespace pm_recording
 class AsyncWriter : public rosbag2_cpp::writer_interfaces::BaseWriterInterface
 {
 public:
+  // writer入口の単調時計による平均レート。payloadのdecodeや履歴保持はしない。
+  struct TopicStats {
+    uint64_t accepted = 0, written = 0;
+    double first = 0, last = 0;
+    void receive() {
+      const double now = std::chrono::duration<double>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+      if (accepted++ == 0) {first = now;}
+      last = now;
+    }
+  };
   struct Stats {
+    std::map<std::string, TopicStats> topics;
     uint64_t accepted = 0, written = 0, peak_bytes = 0, peak_messages = 0;
     // 圧縮前CDRの累積量。差分/経過秒で流入・保存帯域を直接比較できる。
     // ファイル容量や件数だけでは画像サイズと小さいIMUの偏りを判別できない。
@@ -119,6 +132,7 @@ private:
         stats_.peak_bytes = std::max(stats_.peak_bytes, pending_bytes_);
         stats_.peak_messages = std::max(stats_.peak_messages, pending_items_);
         if (item.message) {
+          stats_.topics[item.message->topic_name].receive();
           ++stats_.accepted;
           stats_.accepted_bytes += item.bytes();
         }
@@ -163,6 +177,7 @@ private:
         pending_bytes_ -= item.bytes();
         --pending_items_;
         if (item.message && !failed) {
+          ++stats_.topics[item.message->topic_name].written;
           ++stats_.written;
           stats_.written_bytes += item.bytes();
           stats_.max_write_seconds = std::max(stats_.max_write_seconds,

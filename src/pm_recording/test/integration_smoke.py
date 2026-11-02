@@ -19,11 +19,11 @@ from ament_index_python.packages import get_package_prefix
 import yaml
 
 
-def trial(root, label, limit, oversized=False):
+def trial(root, label, limit, oversized=False, binary_name='async_recorder'):
     """publisherの接続を待ち、stop後のmetadataとMCAP実件数を照合する。"""
     from pm_bringup.bag_integrity import verify_message_counts
     output = root/label
-    binary = Path(get_package_prefix('pm_recording'))/'lib/pm_recording/async_recorder'
+    binary = Path(get_package_prefix('pm_recording'))/'lib/pm_recording'/binary_name
     node = rclpy.create_node('async_writer_integration_'+label)
     publisher = node.create_publisher(String, '/async_writer_test', 100)
     with (root/(label+'.log')).open('w') as stream:
@@ -55,6 +55,12 @@ def trial(root, label, limit, oversized=False):
             child.wait(timeout=30)
             node.destroy_node()
     stats = yaml.safe_load((output/'async_writer.yaml').read_text())
+    from pm_bringup.bag_integrity import verify_recording_summary
+    summary = verify_recording_summary(output)
+    if not oversized:
+        assert summary['verified'], summary
+        topic = summary['topics']['/async_writer_test']
+        assert topic['written'] == count and topic['average_hz'] > 0, topic
     with (output/'async_writer.csv').open(newline='') as trace:
         final = list(csv.DictReader(trace))[-1]
     assert int(final['accepted_bytes']) == stats['accepted_bytes']
@@ -96,6 +102,7 @@ def main():
     rclpy.init(args=[])
     try:
         trial(root, 'split_flush', 64*1024*1024)
+        trial(root, 'synchronous', 64*1024*1024, binary_name='timing_recorder')
         trial(root, 'overflow', 8, oversized=True)
     finally:
         rclpy.shutdown()
