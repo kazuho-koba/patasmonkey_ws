@@ -188,7 +188,7 @@ class VehicleInterfaceNode(Node):
         self.joy_turbo_button = int(self.get_parameter("joy_turbo_button").value)
         self._joy_turbo_active = False
         self._joy_state_received_at = None
-        # 不正な寸法・閾値を接続前に拒否し、ゼロ除算や内側車輪の逆転を避ける。
+        # 不正な寸法・閾値を接続前に拒否し、ゼロ除算を避ける。
         positive = (self.wheel_radius, self.tread_width, self.gear_ratio,
                     self.max_whl_rps, self.max_linear_speed, self.min_turn_radius,
                     self.joy_normal_max_linear_speed, self.joy_turbo_max_linear_speed,
@@ -542,19 +542,17 @@ class VehicleInterfaceNode(Node):
         """曲率とyaw制約から速度を適応的に落とし、速度とyawを独立に平滑化する。
 
         入力は車体中心速度[m/s]とyawレート[rad/s]。目標曲率を保持した定常速度を
-        補正後の輪差yaw上限との滑らかな最小値で求め、速度の変化率は
-        max_yaw_accel×Rmin[m/s²]を基準に、旋回曲率と補正後のyaw加速度から
-        追加制限する。過渡では曲率を厳密維持せず、yaw制約のために速度を増幅しない。
+        YAMLの車体yaw上限との滑らかな最小値で求め、速度の変化率は
+        max_yaw_accel×Rmin[m/s²]から導く。スキッド補正は本処理の後で行い、
+        車体の上限値・半径を係数で変更しない。過渡では曲率を厳密維持しない。
         停止・前後反転・異常入力、および速度/yaw/半径の絶対制限は変化率より優先する。
         """
         eps = 1e-6
-        # eta = 車体yaw / 左右輪差の等価yaw。履歴・曲率は予測車体yawで扱う。
-        # 補正後の輪差yawも既存上限内に保つため、車体側の許容量をeta倍する。
-        # 内輪逆転・停止を避けるため、補正後の幾何学的下限にも余裕を持たせる。
-        eta = self.skid_steer_yaw_efficiency
-        radius = max(self.min_turn_radius, self.tread_width / (2.0 * eta) * (1.0 + eps))
-        yaw_rate_limit = eta * self.max_yaw_rate
-        yaw_accel_limit = eta * self.max_yaw_accel
+        # 制限と履歴は車体座標の予測値。補正後の輪差yawはモータ変換時だけ扱う。
+        # 小半径の実現に必要な内輪逆転は許容し、半径を暗黙に拡大しない。
+        radius = self.min_turn_radius
+        yaw_rate_limit = self.max_yaw_rate
+        yaw_accel_limit = self.max_yaw_accel
         lin_x, ang_z = float(lin_x), float(ang_z)
         # mode上限は絶対上限以下。Turbo解除時は速度ランプより通常上限を優先する。
         speed_limit = (self.max_linear_speed if speed_limit is None
@@ -574,18 +572,15 @@ class VehicleInterfaceNode(Node):
         target_v = self.clamp(lin_x, -speed_limit, speed_limit)
         if self.max_yaw_rate > 0.0:
             # p=4の滑らかな最小値。直進では減速せず、曲率が強いほど
-            # |v|を補正後にも実現可能なyaw_rate_limit/|curvature|以下へ近づける。
+            # |v|を車体yaw上限から求めるyaw_rate_limit/|curvature|以下へ近づける。
             ratio = abs(target_v * curvature) / yaw_rate_limit
             target_v /= math.hypot(1.0, ratio * ratio) ** 0.5
 
         # 遅延や時計巻き戻りで許容量を拡大しない。初回もゼロ履歴から立ち上げる。
         dt = self.clamp((now - self.prev_yaw_rate_time).nanoseconds * 1e-9, 0.0, 0.1)
         if self.max_yaw_accel > 0.0:
-            # 直進の加速は従来どおり。旋回時だけ、一定曲率でのyaw加速度にも
-            # 収まる前後加速度へ絞る。曲率変更そのものは下段のyaw slewで制限する。
+            # 前後加速度も車体yaw加速度から導く。曲率変更は下段のyaw slewで制限する。
             linear_accel = self.max_yaw_accel * self.min_turn_radius
-            if abs(curvature) > eps:
-                linear_accel = min(linear_accel, yaw_accel_limit / abs(curvature))
             delta_v = linear_accel * dt
             lin_x = self.clamp(target_v, self.prev_linear_speed_cmd - delta_v,
                                self.prev_linear_speed_cmd + delta_v)

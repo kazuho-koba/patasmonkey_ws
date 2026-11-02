@@ -67,3 +67,9 @@ colcon実行では、このworkspaceの既定値ファイルは自動適用さ�
 設定は`src`側を正本として管理する。`install`側をエディタで直接書き換えると、
 エディタの保存方式によってはリンクを通常ファイルに置き換えてしまうので、
 編集するパスは`src/pm_config/config`に統一する。
+
+`pm_core.launch.py`でのplanner previewは`pm_config/config/planner.yaml`を使う。
+単独の`pm_planner/preview.launch.py`には`pm_planner/config/planner.yaml`という別の
+コピーがあり、共通設定の変更は自動同期されない。車体の最小旋回半径は両方とも
+`pm_config/config/vehicle_control.yaml`から取得する。Coreで使うplanner設定も
+mission bagの設定snapshotに含まれる。
