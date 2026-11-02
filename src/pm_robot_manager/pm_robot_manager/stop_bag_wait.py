@@ -136,6 +136,30 @@ class BagStopWaiter(Node):
                 last_notice = now
 
 
+def saved_status_verified(profile, status_file, invocation_id):
+    """同じunit起動の保存証明があれば、ROS待機用nodeを作らず確認を終える。
+
+    GUI経由ではrecorder終了・検証後にExecStopが呼ばれる。起動IDが
+    不明な場合やファイルが不完全な場合は通常のROS待機へ進む。
+    """
+    if not invocation_id:
+        return False
+    try:
+        status = json.loads(Path(status_file).read_text(encoding='utf-8'))
+        if (status.get('profile') != profile
+                or status.get('invocation_id') != invocation_id
+                or not status.get('output')):
+            return False
+        data = json.loads((Path(status['output'])/'completion.json').read_text(
+            encoding='utf-8'))
+        return bool(data.get('invocation_id') == invocation_id
+                    and data.get('verified') is True
+                    and data.get('metadata_exists') is True
+                    and data.get('bag_info_returncode') == 0)
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 def main(args=None):
     rclpy.init(args=args)
     node = None
@@ -146,6 +170,9 @@ def main(args=None):
         profile = str(helper.get_parameter('profile').value)
         status_file = str(helper.get_parameter('status_file').value)
         helper.destroy_node()
+        # 保存済みbagの停止にservice探索用nodeとsubscriptionを作らない。
+        if saved_status_verified(profile, status_file, os.environ.get('INVOCATION_ID', '')):
+            return 0
         node = BagStopWaiter(
             profile, status_file, os.environ.get('INVOCATION_ID', ''))
         return node.wait_until_saved()
