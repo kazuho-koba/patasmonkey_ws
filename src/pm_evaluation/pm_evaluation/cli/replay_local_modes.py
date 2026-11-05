@@ -82,6 +82,7 @@ def main():
                 p.wait(timeout=10)
                 raise RuntimeError('SIGINTで停止しません: {}'.format(p.args))
     try:
+        start(['ros2','run','pm_localization','planar_twist_covariance_node','--ros-args','-p','use_sim_time:=true'], 'planar_covariance')
         for node in ['vio_vertical_gate_node', 'vio_twist_gate_node']:
             start(['ros2', 'run', 'pm_localization', node], node)
         config = CONFIG / 'ekf_local_horizontal_vio_twist.yaml'

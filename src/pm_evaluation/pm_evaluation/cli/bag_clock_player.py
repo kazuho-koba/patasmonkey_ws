@@ -23,11 +23,16 @@ from rclpy.serialization import deserialize_message
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import CameraInfo, Image, Imu, MagneticField, NavSatFix
 from tf2_msgs.msg import TFMessage
+from std_msgs.msg import String
 from ublox_msgs.msg import NavPVT
 
 
 MESSAGE_TYPES: Dict[str, Type] = {
     "/wheel/odometry": Odometry,
+    # VIO adapter単独の再生で、生姿勢と同時刻のlocal参照・初期化状態を渡す。
+    "/ov_msckf/odomimu": Odometry,
+    "/odometry/local": Odometry,
+    "/localization/initialization/status": String,
     "/vio/odometry": Odometry,
     "/wit/imu": Imu,
     # 地球基準の初期化と品質gateをbagから再現する。制御topicは含めない。

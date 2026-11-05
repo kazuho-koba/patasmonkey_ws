@@ -80,3 +80,9 @@ VIO高さゲートが閉じた後は保持値です。時刻差0.2秒を超え�
 `--local-ekf-config <yaml>`では本番設定を変更せず、異なるprocess noise等の
 local EKF設定をbag再生で比較できます。設定は出力先に保存されます。
 小さい共分散の出力は推定精度の証明ではなく、実走行で滑り・横移動を検証してください。
+
+## 一括bag比較
+
+複数試行の記録結果と５方式を比較する手順は
+[一括解析CLI](README_localization_batch.md)へまとめています。
+磁気方位offsetの有無と、OpenVINS外部校正ON/OFFを組み合わせて再計算できます。

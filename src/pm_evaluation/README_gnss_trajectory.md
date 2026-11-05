@@ -37,3 +37,8 @@ ros2 run pm_evaluation plot_recorded_local_global <bagディレクトリ> [<bag�
 記録済みzとGNSS高度を各bagに描画する。異なる基準の比較のため、初めのGNSS高度を
 同時刻のlocal zへ一致させ、別パネルに未補正の高度も表示する。これは真値校正ではない。
 `--overwrite`指定時のみ既存画像を上書きする。
+
+## 複数bagの自己位置推定をまとめて評価する
+
+記録図・磁気補正あり/なし・５方式・VO外部校正ON/OFFまで含める場合は、
+[一括解析CLI](README_localization_batch.md)を使用してください。

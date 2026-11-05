@@ -37,6 +37,7 @@ def generate_launch_description():
         Node(package='hwt905_rs485_driver', executable='wit_mag_corrector',
              parameters=[str(config/'hwt905_mag_calibration.yaml'), sim]),
         Node(package='pm_localization', executable='vio_twist_gate_node', parameters=[sim]),
+        Node(package='pm_localization', executable='planar_twist_covariance_node', parameters=[sim]),
         Node(package='pm_localization', executable='vio_vertical_gate_node', parameters=[sim]),
         Node(package='pm_localization', executable='gnss_fix_gate_node',
              parameters=[str(config/'gnss_fix_gate.yaml'), sim]),
