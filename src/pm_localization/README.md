@@ -191,3 +191,17 @@ docker exec --user 1000:1000 --env HOME=/tmp patasmonkey_foxy_dev bash -lc '
   colcon build --packages-select pm_localization pm_config pm_bringup
 '
 ```
+
+## VIO adapterの座標・共分散監査
+
+位置・姿勢・twist・共分散を同じ剛体変換で扱う検証候補を追加しています。
+[入力規約・変換式・制約と再現方法](README_vio_adapter_audit.md)を参照してください。
+監査で確認した共通変換を実行時adapterにも適用しています。
+[実行時の設定・初期化・診断・制約](README_vio_adapter_runtime.md)を参照してください。
+
+
+## 磁気校正の試験用既定値と切替
+
+2026-11-05のGNSS補助水平校正を試験用の既定値にした。従来値は同じYAML内に「一つ前の暫定校正値」としてコメントアウトで保持し、
+新旧のbias/scale/offsetのコメントを切り替えて使う。
+[設定値・GUIとの整合・今後の3D校正手順](README_magnetic_calibration.md)を参照。

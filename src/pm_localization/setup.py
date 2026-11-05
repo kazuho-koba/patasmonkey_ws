@@ -11,7 +11,7 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
-        ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name, ['package.xml', 'README.md', 'README_vio_adapter_audit.md', 'README_vio_adapter_runtime.md']),
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
@@ -30,7 +30,9 @@ setup(
         'console_scripts': [
             'wheel_odometry_node = pm_localization.wheel_odometry_node:main',
             'odom_to_path_node = pm_localization.odom_to_path_node:main',
+            'planar_twist_covariance_node = pm_localization.planar_twist_covariance_node:main',
             'vio_odom_adapter_node = pm_localization.vio_odom_adapter_node:main',
+            'vio_odom_adapter_legacy_node = pm_localization.vio_legacy_transform:main',
             'vio_vertical_gate_node = pm_localization.vio_vertical_gate_node:main',
             'vio_twist_gate_node = pm_localization.vio_twist_gate_node:main',
             'horizontal_velocity_projection_node = pm_localization.horizontal_velocity_projection_node:main',

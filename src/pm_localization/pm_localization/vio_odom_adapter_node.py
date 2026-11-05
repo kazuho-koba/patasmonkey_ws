@@ -1,1230 +1,301 @@
 #!/usr/bin/env python3
-
+"""OpenVINSのpose・twist・共分散を同一の取付変換でbase_linkへ変換する。"""
+from collections import deque
+import json
 import math
-import numpy as np
 
+import numpy as np
 import rclpy
 from rclpy.node import Node
-
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import TransformStamped
-from tf2_ros import (
-    Buffer,
-    TransformListener,
-    LookupException,
-    ConnectivityException,
-    ExtrapolationException,
+from std_msgs.msg import String
+from tf2_ros import Buffer, TransformListener, TransformException
+
+from pm_localization.vio_rigid_transform import transform_pose, transform_twist, yaw_alignment
+# 過去bagの監査と既存の評価CLIのimport先を維持する。実行時の変換には
+# 以下の旧式のpose/twist補正を呼ばない。旧nodeの起動も別entry pointに限定する。
+from pm_localization.vio_legacy_transform import (  # noqa: F401
+    quat_to_rot, rot_to_quat, rpy_from_rot, yaw_to_rot, rad2deg, stamp_to_sec,
+    wrap_to_pi, transform_to_matrix, odom_pose_to_matrix, openvins_odom_pose_to_matrix,
+    skew, so3_exp, so3_log, cov_list_to_mat6, cov_mat6_to_list,
+    transform_pose_covariance_ros_approx, calculate_corrected_output_rotation,
+    correct_pose_covariance_for_output_rotation, transform_twist_and_covariance_ros_approx,
+    twist_axis_fix_matrix3, twist_axis_fix_matrix6, correct_twist_velocity,
+    correct_twist_covariance,
 )
 
 
-def quat_to_rot(q):
-    """
-    geometry_msgs Quaternion -> 3x3 rotation matrix.
-    q order in ROS msg: x, y, z, w
-    """
-    x, y, z, w = q.x, q.y, q.z, q.w
-
-    n = x * x + y * y + z * z + w * w
-    if n < 1e-12:
-        return np.eye(3)
-
-    s = 2.0 / n
-
-    xx = x * x * s
-    yy = y * y * s
-    zz = z * z * s
-    xy = x * y * s
-    xz = x * z * s
-    yz = y * z * s
-    wx = w * x * s
-    wy = w * y * s
-    wz = w * z * s
-
-    return np.array(
-        [
-            [1.0 - (yy + zz), xy - wz, xz + wy],
-            [xy + wz, 1.0 - (xx + zz), yz - wx],
-            [xz - wy, yz + wx, 1.0 - (xx + yy)],
-        ],
-        dtype=float,
-    )
-
-
-def rot_to_quat(R):
-    """
-    3x3 rotation matrix -> quaternion tuple (x, y, z, w)
-    """
-    m00, m01, m02 = R[0, 0], R[0, 1], R[0, 2]
-    m10, m11, m12 = R[1, 0], R[1, 1], R[1, 2]
-    m20, m21, m22 = R[2, 0], R[2, 1], R[2, 2]
-
-    tr = m00 + m11 + m22
-
-    if tr > 0.0:
-        s = math.sqrt(tr + 1.0) * 2.0
-        w = 0.25 * s
-        x = (m21 - m12) / s
-        y = (m02 - m20) / s
-        z = (m10 - m01) / s
-    elif (m00 > m11) and (m00 > m22):
-        s = math.sqrt(1.0 + m00 - m11 - m22) * 2.0
-        w = (m21 - m12) / s
-        x = 0.25 * s
-        y = (m01 + m10) / s
-        z = (m02 + m20) / s
-    elif m11 > m22:
-        s = math.sqrt(1.0 + m11 - m00 - m22) * 2.0
-        w = (m02 - m20) / s
-        x = (m01 + m10) / s
-        y = 0.25 * s
-        z = (m12 + m21) / s
-    else:
-        s = math.sqrt(1.0 + m22 - m00 - m11) * 2.0
-        w = (m10 - m01) / s
-        x = (m02 + m20) / s
-        y = (m12 + m21) / s
-        z = 0.25 * s
-
-    norm = math.sqrt(x * x + y * y + z * z + w * w)
-    if norm < 1e-12:
-        return 0.0, 0.0, 0.0, 1.0
-
-    return x / norm, y / norm, z / norm, w / norm
-
-
-def rpy_from_rot(R):
-    """
-    Rotation matrix -> roll, pitch, yaw.
-    ROS convention approximation:
-      roll  around x
-      pitch around y
-      yaw   around z
-    """
-    sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
-
-    if sy > 1e-6:
-        roll = math.atan2(R[2, 1], R[2, 2])
-        pitch = math.atan2(-R[2, 0], sy)
-        yaw = math.atan2(R[1, 0], R[0, 0])
-    else:
-        roll = math.atan2(-R[1, 2], R[1, 1])
-        pitch = math.atan2(-R[2, 0], sy)
-        yaw = 0.0
-
-    return roll, pitch, yaw
-
-def yaw_to_rot(yaw):
-    """
-    Create a rotation matrix containing yaw only.
-
-    roll  = 0
-    pitch = 0
-    yaw   = input yaw
-    """
-    c = math.cos(yaw)
-    s = math.sin(yaw)
-
-    return np.array(
-        [
-            [c, -s, 0.0],
-            [s,  c, 0.0],
-            [0.0, 0.0, 1.0],
-        ],
-        dtype=float,
-    )
-
-def rad2deg(x):
-    return x * 180.0 / math.pi
-
-def stamp_to_sec(stamp):
-    return float(stamp.sec) + float(stamp.nanosec) * 1e-9
-
-def wrap_to_pi(x):
-    """
-    Normalize angle to [-pi, pi].
-    """
-    return (x + math.pi) % (2.0 * math.pi) - math.pi
-
-def transform_to_matrix(t: TransformStamped):
-    """
-    geometry_msgs TransformStamped -> 4x4 matrix.
-    Returned matrix represents T_target_source.
-    """
-    T = np.eye(4)
-    T[:3, :3] = quat_to_rot(t.transform.rotation)
-    T[:3, 3] = np.array(
-        [
-            t.transform.translation.x,
-            t.transform.translation.y,
-            t.transform.translation.z,
-        ],
-        dtype=float,
-    )
-    return T
-
-
-def odom_pose_to_matrix(msg: Odometry):
-    """
-    nav_msgs/Odometry pose -> 4x4 matrix.
-    Interpreted as T_header_child.
-    """
-    T = np.eye(4)
-    T[:3, :3] = quat_to_rot(msg.pose.pose.orientation)
-    T[:3, 3] = np.array(
-        [msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z],
-        dtype=float,
-    )
-    return T
-
-
-def openvins_odom_pose_to_matrix(msg: Odometry, invert_orientation: bool):
-    """
-    Convert OpenVINS Odometry pose to 4x4 matrix.
-
-    Position is assumed to be p_imu_in_global.
-
-    If invert_orientation is True:
-      msg.orientation is interpreted as R_imu_global, i.e. q_GtoI-like,
-      and converted to R_global_imu by transpose.
-
-    If invert_orientation is False:
-      msg.orientation is interpreted directly as R_global_imu.
-    """
-    T = np.eye(4)
-
-    R_msg = quat_to_rot(msg.pose.pose.orientation)
-
-    if invert_orientation:
-        R_global_imu = R_msg.T
-    else:
-        R_global_imu = R_msg
-
-    T[:3, :3] = R_global_imu
-    T[:3, 3] = np.array(
-        [
-            msg.pose.pose.position.x,
-            msg.pose.pose.position.y,
-            msg.pose.pose.position.z,
-        ],
-        dtype=float,
-    )
-
-    return T
-
-
-def skew(v):
-    """
-    Return skew-symmetric matrix [v]x such that [v]x @ w = v x w.
-    """
-    x, y, z = float(v[0]), float(v[1]), float(v[2])
-    return np.array(
-        [
-            [0.0, -z, y],
-            [z, 0.0, -x],
-            [-y, x, 0.0],
-        ],
-        dtype=float,
-    )
-
-def so3_exp(rotvec):
-    """
-    Exponential map from a 3D rotation vector to a 3x3 rotation matrix.
-
-    rotvec:
-      rotation axis * rotation angle [rad]
-    """
-    rotvec = np.asarray(rotvec, dtype=float)
-    theta = np.linalg.norm(rotvec)
-
-    if theta < 1e-12:
-        return np.eye(3) + skew(rotvec)
-
-    axis = rotvec / theta
-    K = skew(axis)
-
-    return (
-        np.eye(3)
-        + math.sin(theta) * K
-        + (1.0 - math.cos(theta)) * (K @ K)
-    )
-
-
-def so3_log(R):
-    """
-    Logarithmic map from a 3x3 rotation matrix to a 3D rotation vector.
-
-    Intended mainly for small rotations in covariance Jacobian calculation.
-    """
-    R = np.asarray(R, dtype=float)
-
-    cos_theta = 0.5 * (np.trace(R) - 1.0)
-    cos_theta = max(-1.0, min(1.0, cos_theta))
-    theta = math.acos(cos_theta)
-
-    vee = np.array(
-        [
-            R[2, 1] - R[1, 2],
-            R[0, 2] - R[2, 0],
-            R[1, 0] - R[0, 1],
-        ],
-        dtype=float,
-    )
-
-    if theta < 1e-8:
-        return 0.5 * vee
-
-    return theta / (2.0 * math.sin(theta)) * vee
-
-def cov_list_to_mat6(cov_list):
-    """
-    ROS covariance list, row-major length 36 -> 6x6 numpy matrix.
-    Ordering is assumed to be:
-      [x, y, z, rot_x, rot_y, rot_z]
-    """
-    return np.array(cov_list, dtype=float).reshape((6, 6))
-
-
-def cov_mat6_to_list(P):
-    """
-    6x6 numpy covariance matrix -> ROS covariance list.
-    Symmetrize to avoid small numerical asymmetry.
-    """
-    P = 0.5 * (P + P.T)
-    return P.reshape(-1).astype(float).tolist()
-
-
-def transform_pose_covariance_ros_approx(
-    pose_cov,
-    R_odom_global,
-    R_global_imu,
-    p_base_in_imu,
-):
-    """
-    Approximate transform of ROS Odometry pose covariance.
-
-    Input covariance:
-      Pose covariance of imu pose in global frame.
-      Ordering: [x, y, z, rot_x, rot_y, rot_z]
-
-    Pose transform:
-      p_global_base = p_global_imu + R_global_imu * p_imu_base
-      p_odom_base   = R_odom_global * p_global_base + t
-
-    Small-angle approximation:
-      δp_odom_base =
-          R_odom_global * δp_global_imu
-        - R_odom_global * skew(R_global_imu * p_base_in_imu) * δtheta_global_imu
-
-      δtheta_odom_base =
-          R_odom_global * δtheta_global_imu
-
-    Therefore:
-      P_out = J * P_in * J.T
-    """
-    P_in = cov_list_to_mat6(pose_cov)
-
-    lever_global = R_global_imu @ p_base_in_imu
-
-    J = np.zeros((6, 6), dtype=float)
-    J[0:3, 0:3] = R_odom_global
-    J[0:3, 3:6] = -R_odom_global @ skew(lever_global)
-    J[3:6, 3:6] = R_odom_global
-
-    P_out = J @ P_in @ J.T
-    return cov_mat6_to_list(P_out)
-
-
-def calculate_corrected_output_rotation(
-    R_current,
-    R_first,
-    R_initial_output,
-    align_output_orientation_to_initial_tf,
-    invert_relative_rotation,
-):
-    """
-    Stateless version of output orientation correction.
-
-    This function does not modify node state.
-
-    When alignment is enabled:
-    R_relative = R_first.T @ R_current
-
-    if invert_relative_rotation:
-        R_relative = R_relative.T
-
-    R_out = R_initial_output @ R_relative
-    """
-    if align_output_orientation_to_initial_tf:
-        if R_first is None:
-            raise ValueError(
-                "R_first must be initialized before covariance correction"
-            )
-
-        R_relative = R_first.T @ R_current
-
-        if invert_relative_rotation:
-            R_relative = R_relative.T
-
-        if R_initial_output is not None:
-            return R_initial_output @ R_relative
-
-        return R_relative
-
-    R_out = R_current
-
-    if invert_relative_rotation:
-        R_out = R_out.T
-
-    return R_out
-    
-
-def correct_pose_covariance_for_output_rotation(
-    pose_cov_base,
-    R_current,
-    R_first,
-    R_initial_output,
-    align_output_orientation_to_initial_tf,
-    invert_relative_rotation,
-    orientation_var_floor=0.03,
-    zero_position_orientation_cross=False,
-    jacobian_epsilon=1e-6,
-):
-    """
-    Correct pose covariance for the orientation transformation used by
-    correct_output_rotation().
-
-    Input covariance ordering:
-      [x, y, z, rot_x, rot_y, rot_z]
-
-    Position itself is not changed by correct_output_rotation().
-    Orientation is transformed as:
-
-      R_relative = R_first.T @ R_current
-
-      if invert_relative_rotation:
-          R_relative = R_relative.T
-
-      R_out = R_initial_output @ R_relative
-
-    A numerical Jacobian is used to map small fixed-axis orientation errors
-    from the uncorrected orientation to the published orientation.
-
-    The resulting 6x6 Jacobian is:
-
-      J_pose = block_diag(I_3, J_rotation)
-
-    This also transforms position-orientation cross covariance terms.
-    """
-    P = cov_list_to_mat6(pose_cov_base)
-
-    R_out_nominal = calculate_corrected_output_rotation(
-        R_current=R_current,
-        R_first=R_first,
-        R_initial_output=R_initial_output,
-        align_output_orientation_to_initial_tf=(
-            align_output_orientation_to_initial_tf
-        ),
-        invert_relative_rotation=invert_relative_rotation,
-    )
-
-    J_rotation = np.zeros((3, 3), dtype=float)
-
-    for axis_index in range(3):
-        delta = np.zeros(3, dtype=float)
-        delta[axis_index] = jacobian_epsilon
-
-        # Fixed-axis perturbation in the odom frame.
-        R_current_perturbed = so3_exp(delta) @ R_current
-
-        R_out_perturbed = calculate_corrected_output_rotation(
-            R_current=R_current_perturbed,
-            R_first=R_first,
-            R_initial_output=R_initial_output,
-            align_output_orientation_to_initial_tf=(
-                align_output_orientation_to_initial_tf
-            ),
-            invert_relative_rotation=invert_relative_rotation,
-        )
-
-        # Output orientation perturbation expressed in the output/odom frame.
-        dR_out = R_out_perturbed @ R_out_nominal.T
-        delta_out = so3_log(dR_out)
-
-        J_rotation[:, axis_index] = (
-            delta_out / jacobian_epsilon
-        )
-
-    J_pose = np.eye(6, dtype=float)
-    J_pose[3:6, 3:6] = J_rotation
-
-    P_out = J_pose @ P @ J_pose.T
-
-    if zero_position_orientation_cross:
-        P_out[0:3, 3:6] = 0.0
-        P_out[3:6, 0:3] = 0.0
-
-    if orientation_var_floor is not None:
-        for index in range(3, 6):
-            P_out[index, index] = max(
-                P_out[index, index],
-                float(orientation_var_floor),
-            )
-
-    return cov_mat6_to_list(P_out)
-
-
-def transform_twist_and_covariance_ros_approx(
-    twist,
-    twist_cov,
-    R_base_imu,
-    p_imu_in_base,
-):
-    """
-    Transform twist from imu frame/origin to base_link frame/origin.
-
-    Assumption:
-      input twist is expressed in imu frame at imu origin:
-        v_imu_origin_in_imu
-        w_imu_in_imu
-
-      output twist is expressed in base_link frame at base_link origin:
-        v_base_origin_in_base
-        w_base_in_base
-
-    Kinematics:
-      w_base = R_base_imu * w_imu
-
-      Let p_imu_in_base be vector from base origin to imu origin, expressed in base.
-      v_imu_origin = v_base_origin + w_base x p_imu_in_base
-      therefore:
-      v_base_origin = R_base_imu * v_imu - w_base x p_imu_in_base
-                    = R_base_imu * v_imu + skew(p_imu_in_base) * R_base_imu * w_imu
-
-    Jacobian:
-      [v_base]   [ R_base_imu   skew(p_imu_in_base) R_base_imu ] [v_imu]
-      [w_base] = [     0                 R_base_imu             ] [w_imu]
-    """
-    v_imu = np.array(
-        [
-            twist.linear.x,
-            twist.linear.y,
-            twist.linear.z,
-        ],
-        dtype=float,
-    )
-
-    w_imu = np.array(
-        [
-            twist.angular.x,
-            twist.angular.y,
-            twist.angular.z,
-        ],
-        dtype=float,
-    )
-
-    w_base = R_base_imu @ w_imu
-    v_base = R_base_imu @ v_imu + skew(p_imu_in_base) @ w_base
-
-    P_in = cov_list_to_mat6(twist_cov)
-
-    J = np.zeros((6, 6), dtype=float)
-    J[0:3, 0:3] = R_base_imu
-    J[0:3, 3:6] = skew(p_imu_in_base) @ R_base_imu
-    J[3:6, 3:6] = R_base_imu
-
-    P_out = J @ P_in @ J.T
-
-    return v_base, w_base, cov_mat6_to_list(P_out)
-
-
-def twist_axis_fix_matrix3():
-    """
-    Axis/sign correction for already-converted base_link twist components.
-
-    Observed mapping for both linear and angular velocity:
-      corrected x = - raw z
-      corrected y = - raw y
-      corrected z = - raw x
-
-    For linear velocity:
-      corrected vx = - raw vz
-      corrected vy = - raw vy
-      corrected vz = - raw vx
-
-    For angular velocity:
-      corrected wx = - raw wz
-      corrected wy = - raw wy
-      corrected wz = - raw wx
-    """
-    return np.array(
-        [
-            [0.0,  0.0, -1.0],
-            [0.0, -1.0,  0.0],
-            [-1.0, 0.0,  0.0],
-        ],
-        dtype=float,
-    )
-
-
-def twist_axis_fix_matrix6():
-    """
-    6x6 correction matrix for ROS Odometry twist covariance.
-
-    Ordering:
-      [vx, vy, vz, wx, wy, wz]
-
-    The same 3x3 axis/sign correction is applied to:
-      - linear velocity block
-      - angular velocity block
-      - linear-angular cross covariance blocks
-    """
-    A3 = twist_axis_fix_matrix3()
-
-    A6 = np.zeros((6, 6), dtype=float)
-    A6[0:3, 0:3] = A3
-    A6[3:6, 3:6] = A3
-
-    return A6
-
-
-def correct_twist_velocity(v_base, w_base):
-    """
-    Correct both linear and angular twist components.
-
-    Inputs:
-      v_base:
-        raw linear velocity after imu->base_link transform
-
-      w_base:
-        raw angular velocity after imu->base_link transform
-
-    Returns:
-      v_corrected, w_corrected
-    """
-    A3 = twist_axis_fix_matrix3()
-    return A3 @ v_base, A3 @ w_base
-
-
-def correct_twist_covariance(twist_cov_base):
-    """
-    Apply the full 6-axis twist correction to twist covariance.
-
-    P_corrected = A6 * P_raw * A6.T
-
-    Ordering:
-      [vx, vy, vz, wx, wy, wz]
-    """
-    P = cov_list_to_mat6(twist_cov_base)
-    A6 = twist_axis_fix_matrix6()
-
-    P_out = A6 @ P @ A6.T
-    return cov_mat6_to_list(P_out)
-
-
 class VioOdomAdapterNode(Node):
+    """固定の世界座標整列と固定の取付変換を使用するVIO adapter。
+
+    poseはheader.frame_id、twistはchild_frame_idの成分でpublishする。
+    共分散は取付・初期配置を条件とした値であり、それらの校正誤差や
+    推定間の未公開相関を含む絶対精度の保証ではない。
     """
-    Convert OpenVINS odometry:
-      /ov_msckf/odomimu, frame_id=global, child_frame_id=imu
-
-    into robot odometry:
-      /vio/odometry, frame_id=odom, child_frame_id=base_link
-
-    Mathematical model:
-      T_global_imu  : from OpenVINS
-      T_base_imu    : from TF lookup base_link <- oakd_imu_link
-      T_imu_base    : inverse(T_base_imu)
-
-      T_global_base = T_global_imu * T_imu_base
-
-    If zero_initial_pose is true:
-      T_odom_global = inverse(T_global_base at first message)
-      T_odom_base   = T_odom_global * T_global_base
-    """
-
-    def __init__(self):
-        super().__init__("vio_odom_adapter_node")
-
-        self.declare_parameter("input_topic", "/ov_msckf/odomimu")
-        self.declare_parameter("output_topic", "/vio/odometry")
-
-        self.declare_parameter("output_frame_id", "odom")
-        self.declare_parameter("output_child_frame_id", "base_link")
-
-        self.declare_parameter("base_frame_id", "base_link")
-        self.declare_parameter("oak_imu_frame_id", "oakd_imu_link")
-
-        self.declare_parameter("zero_initial_pose", True)
-        self.declare_parameter("publish_tf", False)
-
-        self.declare_parameter("invert_openvins_orientation", True)
-        self.declare_parameter("align_initial_to_tf", True)
-
-        # Output orientation correction.
-        # Position is kept as-is; only pose.orientation is corrected.
-        self.declare_parameter("align_output_orientation_to_initial_tf", True)
-        self.declare_parameter("invert_relative_rotation", True)
-
-        self.declare_parameter("enable_diagnostics", False)
-        self.declare_parameter("diagnostics_interval_sec", 1.0)
-
-        self.input_topic = self.get_parameter("input_topic").value
-        self.output_topic = self.get_parameter("output_topic").value
-
-        self.output_frame_id = self.get_parameter("output_frame_id").value
-        self.output_child_frame_id = self.get_parameter("output_child_frame_id").value
-
-        self.base_frame_id = self.get_parameter("base_frame_id").value
-        self.oak_imu_frame_id = self.get_parameter("oak_imu_frame_id").value
-
-        self.zero_initial_pose = bool(self.get_parameter("zero_initial_pose").value)
-        self.invert_openvins_orientation = bool(
-            self.get_parameter("invert_openvins_orientation").value
-        )
-        self.align_initial_to_tf = bool(self.get_parameter("align_initial_to_tf").value)
-
-        self.align_output_orientation_to_initial_tf = bool(
-        self.get_parameter("align_output_orientation_to_initial_tf").value
-        )
-        self.invert_relative_rotation = bool(
-            self.get_parameter("invert_relative_rotation").value
-        )
-
-        self.enable_diagnostics = bool(self.get_parameter("enable_diagnostics").value)
-        self.diagnostics_interval_sec = float(
-            self.get_parameter("diagnostics_interval_sec").value
-        )
-
+    def __init__(self, **kwargs):
+        super().__init__('vio_odom_adapter_node', **kwargs)
+        defaults = {
+            'input_topic': '/ov_msckf/odomimu', 'output_topic': '/vio/odometry',
+            'input_frame_id': 'global', 'input_child_frame_id': 'imu',
+            'output_frame_id': 'odom', 'output_child_frame_id': 'base_link',
+            'base_frame_id': 'base_link', 'oak_imu_frame_id': 'openvins_imu_link',
+            'publish_tf': False, 'align_initial_to_tf': True, 'zero_initial_pose': True,
+            'initial_reference_topic': '/odometry/local', 'reference_time_tolerance_sec': .1,
+            'require_heading_ready': False,
+            'initialization_status_topic': '/localization/initialization/status',
+            'mount_rotation_source': 'parameter',
+            'mount_rotation': [0., 0., -1., 0., -1., 0., -1., 0., 0.],
+            'pose_covariance_orientation_frame': 'imu',
+            'input_timeout_sec': 1., 'clock_reset_threshold_sec': 1.,
+            'enable_diagnostics': False, 'diagnostics_interval_sec': 1.,
+            'diagnostics_topic': '/vio/adapter/diagnostics',
+            # 旧launchのparameter受理を維持するが、rigid変換では使わない。
+            'invert_openvins_orientation': False,
+            'align_output_orientation_to_initial_tf': False,
+            'invert_relative_rotation': False,
+        }
+        for name, value in defaults.items():
+            self.declare_parameter(name, value)
+        self.p = {name: self.get_parameter(name).value for name in defaults}
+        if self.p['publish_tf']:
+            raise ValueError('odom→base TFはEKFの担当。publish_tf=falseが必要')
+        if self.p['output_child_frame_id'] != self.p['base_frame_id']:
+            raise ValueError('output_child_frame_idとbase_frame_idを一致させてください')
+        if self.p['mount_rotation_source'] not in ('tf', 'parameter'):
+            raise ValueError('mount_rotation_sourceはtfまたはparameter')
+        if self.p['pose_covariance_orientation_frame'] not in ('imu', 'global'):
+            raise ValueError('pose_covariance_orientation_frameはimuまたはglobal')
+        for name in ('reference_time_tolerance_sec', 'input_timeout_sec',
+                     'clock_reset_threshold_sec', 'diagnostics_interval_sec'):
+            if not math.isfinite(self.p[name]) or self.p[name] <= 0:
+                raise ValueError(name + 'は有限正数で指定してください')
+        if any(self.p[n] for n in ('invert_openvins_orientation',
+               'align_output_orientation_to_initial_tf', 'invert_relative_rotation')):
+            self.get_logger().warn('旧姿勢反転parameterは無視します。ROS quaternionと単一の剛体変換を使用します')
+        self.mount = np.asarray(self.p['mount_rotation'], dtype=float).reshape(3, 3)
+        # 回転行列・パラメータの誤りは、最初のdataを待たず起動時に検出する。
+        transform_twist(np.zeros(6), np.eye(6), self.mount, np.zeros(3))
+        self.T_base_imu = None
+        self.A = None
+        self.b = None
+        self.references = deque(maxlen=300)  # 50Hzで約6秒、画像は保持しない。
+        self.heading_ready = not self.p['require_heading_ready']
+        self.reset_required = False
+        self.last_stamp = None
+        self.last_received = None
+        self.last_warning = -math.inf
+        self.received = self.forwarded = self.rejected = 0
+        self.reason = '取付TFと初回入力待ち'
+        self.state = 'waiting'
+        self.alignment_stamp = None
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.pub = self.create_publisher(Odometry, self.p['output_topic'], 10)
+        self.diagnostics = self.create_publisher(DiagnosticArray, self.p['diagnostics_topic'], 10)
+        self.create_subscription(Odometry, self.p['input_topic'], self.odom_callback, 50)
+        self.create_subscription(Odometry, self.p['initial_reference_topic'], self.reference_callback, 50)
+        self.create_subscription(String, self.p['initialization_status_topic'], self.heading_callback, 10)
+        self.create_timer(self.p['diagnostics_interval_sec'], self.publish_diagnostics)
+        self.get_logger().info('rigid VIO adapter起動。取付回転のsource=' + self.p['mount_rotation_source'])
 
-        self.T_base_imu = None
-        self.T_imu_base = None
-        self.T_odom_global = None
+    def reference_callback(self, msg):
+        """初回整列用のlocal poseを有界履歴に保持。以後の追従には使わない。"""
+        self.references.append(msg)
 
-        self.R_odom_base_first_for_output = None
-        # Initial full orientation obtained from the existing
-        # odom -> base_link TF.
-        self.R_output_initial_orientation = None
-
-        self.T_global_imu_first = None
-        self.T_global_base_first = None
-        self.T_odom_base_first = None
-        self.last_diag_time = self.get_clock().now()
-
-        # Previous corrected output pose for velocity diagnostics.
-        # This is only for diagnostics, not for publishing.
-        self.prev_diag_T_odom_base_pub = None
-        self.prev_diag_stamp_sec = None
-
-        self.pub = self.create_publisher(Odometry, self.output_topic, 10)
-        self.sub = self.create_subscription(
-            Odometry, self.input_topic, self.odom_callback, 50
-        )
-
-        self.get_logger().info(
-            f"VIO odom adapter started: {self.input_topic} -> {self.output_topic}"
-        )
-        self.get_logger().info(
-            f"Using static transform: {self.base_frame_id} -> {self.oak_imu_frame_id}"
-        )
-
-    def try_update_static_transform(self):
-        if self.T_base_imu is not None:
-            return True
-
+    def heading_callback(self, msg):
+        """地球基準yawのset_poseより前にVIO世界座標を固定しない。"""
+        if not self.p['require_heading_ready']:
+            return
         try:
-            # lookup_transform(target, source, time)
-            # This returns T_target_source.
-            tf_msg = self.tf_buffer.lookup_transform(
-                self.base_frame_id, self.oak_imu_frame_id, rclpy.time.Time()
-            )
-            self.T_base_imu = transform_to_matrix(tf_msg)
-            self.T_imu_base = np.linalg.inv(self.T_base_imu)
+            state = json.loads(msg.data)['state']
+        except (ValueError, KeyError, TypeError):
+            return
+        if self.A is not None and self.heading_ready and state != 'READY':
+            # 動作中の再初期化でlocalの世界座標が変わる場合、黙ってVIOを
+            # 再配置するとposeが飛ぶため明示的に保護状態へ入る。
+            self.reset_required = True
+            self.reason = 'heading初期化状態がREADYから変化。adapter再起動が必要'
+        self.heading_ready = state == 'READY'
 
-            self.get_logger().info(
-                f"Got TF: {self.base_frame_id} -> {self.oak_imu_frame_id}"
-            )
+    def _mount(self):
+        if self.T_base_imu is not None:
+            return self.T_base_imu
+        try:
+            msg = self.tf_buffer.lookup_transform(self.p['base_frame_id'],
+                    self.p['oak_imu_frame_id'], rclpy.time.Time())
+            self._check_quaternion(msg.transform.rotation)
+            matrix = transform_to_matrix(msg)
+        except TransformException:
+            self.reason = 'base→IMUの固定TF待ち'
+            return None
+        if self.p['mount_rotation_source'] == 'parameter':
+            # parameterは実効R_base_imuそのもの。TF回転へ追加乗算しないため、
+            # 後日TFを校正しても、同じ回転を二度適用しない。
+            matrix[:3, :3] = self.mount
+        transform_twist(np.zeros(6), np.eye(6), matrix[:3, :3], matrix[:3, 3])
+        self.T_base_imu = matrix
+        return matrix
+
+    def _initialize(self, position, rotation, mount, stamp):
+        if self.A is not None:
             return True
-
-        except (LookupException, ConnectivityException, ExtrapolationException) as e:
-            self.get_logger().warn(
-                f"Waiting for TF {self.base_frame_id} -> {self.oak_imu_frame_id}: {str(e)}",
-                throttle_duration_sec=2.0,
-            )
+        if not self.heading_ready:
+            self.reason = 'heading初期化のREADY待ち'
             return False
-
-    def try_initialize_odom_global(self, T_global_base):
-        """
-        Initialize T_odom_global.
-
-        Preferred:
-          align first VIO pose to current EKF TF: odom -> base_link
-
-        Fallback:
-          if zero_initial_pose is true, make first VIO pose identity.
-        """
-        if self.T_odom_global is not None:
-            return True
-
-        if self.align_initial_to_tf:
-            try:
-                tf_msg = self.tf_buffer.lookup_transform(
-                    self.output_frame_id, self.output_child_frame_id, rclpy.time.Time()
-                )
-                T_odom_base_ref = transform_to_matrix(tf_msg)
-
-                self.T_odom_global = T_odom_base_ref @ np.linalg.inv(T_global_base)
-
-                # Store the full initial roll/pitch/yaw orientation from the
-                # existing odom -> base_link TF.
-                self.R_output_initial_orientation = T_odom_base_ref[:3, :3].copy()
-
-                initial_roll, initial_pitch, initial_yaw = rpy_from_rot(
-                    self.R_output_initial_orientation
-                )
-
-                self.get_logger().info(
-                    f"Initialized T_odom_global from TF "
-                    f"{self.output_frame_id} -> {self.output_child_frame_id}; "
-                    f"initial output RPY="
-                    f"[{rad2deg(initial_roll):+.1f}, "
-                    f"{rad2deg(initial_pitch):+.1f}, "
-                    f"{rad2deg(initial_yaw):+.1f}] deg"
-                )
-                return True
-
-            except (
-                LookupException,
-                ConnectivityException,
-                ExtrapolationException,
-            ) as e:
-                self.get_logger().warn(
-                    f"Waiting for initial TF "
-                    f"{self.output_frame_id} -> {self.output_child_frame_id}: {str(e)}",
-                    throttle_duration_sec=2.0,
-                )
+        if self.p['align_initial_to_tf']:
+            # 最新TFの無時刻lookupではなく、raw headerと近いlocal poseを使う。
+            # 同じフレームのlocal出力はodom→base TFと同じposeである。
+            references = [m for m in self.references
+                if m.header.frame_id == self.p['output_frame_id']
+                and m.child_frame_id == self.p['output_child_frame_id']]
+            if not references:
+                self.reason = '初回整列用local odometry待ち'
                 return False
-
-        if self.zero_initial_pose:
-            self.T_odom_global = np.eye(4)
-            self.T_odom_global[:3, 3] = -T_global_base[:3, 3]
-            self.get_logger().info(
-                "Initialized T_odom_global with translation-only zeroing"
-            )   
+            reference = min(references, key=lambda m: abs(stamp_to_sec(m.header.stamp)-stamp))
+            if abs(stamp_to_sec(reference.header.stamp)-stamp) > self.p['reference_time_tolerance_sec']:
+                self.reason = '初回local参照のheader時刻差が許容範囲外'
+                return False
+            q = reference.pose.pose.orientation
+            self._check_quaternion(q)
+            reference_position = reference.pose.pose.position
+            reference_position = np.array([reference_position.x, reference_position.y, reference_position.z])
+            reference_rotation = quat_to_rot(q)
         else:
-            self.T_odom_global = np.eye(4)
-            self.get_logger().info("Initialized T_odom_global as identity")
-
+            # 独立VIOの原点はodomとは異なる。独立frameを明示させる。
+            if self.p['output_frame_id'] == 'odom':
+                raise ValueError('align_initial_to_tf=falseでは独立frame（例vio_odom）を指定してください')
+            reference_position = np.zeros(3)
+            reference_rotation = np.eye(3)
+            if not self.p['zero_initial_pose']:
+                self.A, self.b = np.eye(3), np.zeros(3)
+        if self.A is None:
+            self.A, self.b = yaw_alignment(position, rotation, mount[:3, :3],
+                mount[:3, 3], reference_position, reference_rotation)
+        if not np.isfinite(self.b).all():
+            self.A = self.b = None
+            raise ValueError('初回参照位置が非有限')
+        self.alignment_stamp = stamp
+        self.get_logger().info('VIOの位置・yawを１回だけ整列。roll/pitchは重力方向を維持')
         return True
 
+    @staticmethod
+    def _check_quaternion(q):
+        norm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w
+        if not math.isfinite(norm) or norm < 1e-12:
+            raise ValueError('無効なquaternion')
 
-    def correct_output_rotation(self, R_odom_base):
-        """
-        Correct pose.orientation.
+    def odom_callback(self, msg):
+        """入力を検査し、同じ取付・初期配置でposeと全共分散を生成する。"""
+        self.received += 1
+        self.last_received = self.get_clock().now().nanoseconds * 1e-9
+        try:
+            if self.reset_required:
+                self.state = 'reset_required'
+                self.rejected += 1
+                return
+            if (msg.header.frame_id != self.p['input_frame_id']
+                    or msg.child_frame_id != self.p['input_child_frame_id']):
+                raise ValueError('入力frame_id/child_frame_idが設定と異なる')
+            stamp = stamp_to_sec(msg.header.stamp)
+            if not math.isfinite(stamp) or stamp <= 0:
+                raise ValueError('入力header時刻は有限正数であることが必要')
+            if self.last_stamp is not None and stamp <= self.last_stamp:
+                if self.last_stamp-stamp > self.p['clock_reset_threshold_sec']:
+                    self.reset_required = True
+                    self.state = 'reset_required'
+                    self.reason = '入力時刻が逆行。VIO epochを確認しadapter再起動が必要'
+                else:
+                    self.reason = '入力headerが重複または順序逆転'
+                self.rejected += 1
+                return
+            self.last_stamp = stamp
+            self._check_quaternion(msg.pose.pose.orientation)
+            rotation = quat_to_rot(msg.pose.pose.orientation)
+            point = msg.pose.pose.position
+            position = np.array([point.x, point.y, point.z])
+            if not np.isfinite(position).all():
+                raise ValueError('入力位置が非有限')
+            mount = self._mount()
+            if mount is None:
+                return
+            linear, angular = msg.twist.twist.linear, msg.twist.twist.angular
+            twist = np.array([linear.x, linear.y, linear.z, angular.x, angular.y, angular.z])
+            # 初回の入力共分散まで検査してから整列を確定する。不正な最初の
+            # サンプルを基準として後続の正常dataまで汚染しない。
+            if self.A is None:
+                transform_pose(position, rotation, msg.pose.covariance, mount[:3, :3],
+                    mount[:3, 3], np.eye(3), np.zeros(3), self.p['pose_covariance_orientation_frame'])
+            velocity, twist_cov, _ = transform_twist(twist, msg.twist.covariance,
+                mount[:3, :3], mount[:3, 3])
+            if not self._initialize(position, rotation, mount, stamp):
+                return
+            point_out, rotation_out, pose_cov, _ = transform_pose(position, rotation,
+                msg.pose.covariance, mount[:3, :3], mount[:3, 3], self.A, self.b,
+                self.p['pose_covariance_orientation_frame'])
+            out = Odometry()
+            out.header.stamp = msg.header.stamp
+            out.header.frame_id = self.p['output_frame_id']
+            out.child_frame_id = self.p['output_child_frame_id']
+            out.pose.pose.position.x, out.pose.pose.position.y, out.pose.pose.position.z = map(float, point_out)
+            q = rot_to_quat(rotation_out)
+            out.pose.pose.orientation.x, out.pose.pose.orientation.y, out.pose.pose.orientation.z, out.pose.pose.orientation.w = q
+            out.twist.twist.linear.x, out.twist.twist.linear.y, out.twist.twist.linear.z = map(float, velocity[:3])
+            out.twist.twist.angular.x, out.twist.twist.angular.y, out.twist.twist.angular.z = map(float, velocity[3:])
+            out.pose.covariance = pose_cov.reshape(-1).tolist()
+            out.twist.covariance = twist_cov.reshape(-1).tolist()
+            self.pub.publish(out)
+            self.forwarded += 1
+            self.state = 'forwarding'
+            self.reason = '剛体変換済み。共分散は固定取付・初期配置を条件とする'
+        except (ValueError, np.linalg.LinAlgError) as exc:
+            self.rejected += 1
+            self.reason = str(exc)
+            self.state = 'rejected'
+            now = self.get_clock().now().nanoseconds*1e-9
+            if now-self.last_warning >= 2.:
+                self.last_warning = now
+                self.get_logger().warn(self.reason)
 
-        When align_output_orientation_to_initial_tf is True:
-        - use the first VIO orientation as the relative-rotation reference
-        - use the full initial orientation obtained from odom -> base_link TF
-        - apply subsequent VIO relative rotation to that initial orientation
-
-        Output model:
-        R_out = R_initial_tf @ R_relative
-
-        invert_relative_rotation:
-        Invert the observed OpenVINS relative rotation direction.
-        """
-        R_current = R_odom_base
-
-        if self.align_output_orientation_to_initial_tf:
-            if self.R_odom_base_first_for_output is None:
-                self.R_odom_base_first_for_output = R_current.copy()
-
-                self.get_logger().info(
-                    "Initialized VIO relative rotation reference"
-                )
-
-            # Relative VIO rotation from the first received orientation.
-            R_relative = (
-                self.R_odom_base_first_for_output.T
-                @ R_current
-            )
-
-            # Compensate the observed OpenVINS rotation direction.
-            if self.invert_relative_rotation:
-                R_relative = R_relative.T
-
-            # Apply the full initial roll/pitch/yaw orientation from TF.
-            if self.R_output_initial_orientation is not None:
-                R_out = (
-                    self.R_output_initial_orientation
-                    @ R_relative
-                )
-            else:
-                # Fallback if the initial TF orientation is unavailable.
-                R_out = R_relative
-
-            return R_out
-
-        R_out = R_current
-
-        if self.invert_relative_rotation:
-            R_out = R_out.T
-
-        return R_out
-    
-
-    def compute_pose_diff_velocity_for_diagnostics(self, msg, T_odom_base_pub):
-        """
-        Compute finite-difference velocity from corrected published pose.
-
-        This function is called only when diagnostics are actually printed.
-        Therefore, pose_diff_dt should be close to diagnostics_interval_sec,
-        not the raw OpenVINS callback period.
-
-        Returns:
-          v_pose_odom:
-            Linear velocity from position difference, expressed in odom frame.
-
-          rpy_rate_pose:
-            Approximate roll/pitch/yaw rate from corrected output RPY.
-            This is not a strict body angular velocity, but it is useful for
-            sign/axis diagnosis in low-speed single-axis tests.
-
-          pose_diff_dt:
-            Time interval used for finite difference.
-        """
-        stamp_sec = stamp_to_sec(msg.header.stamp)
-
-        if self.prev_diag_T_odom_base_pub is None:
-            self.prev_diag_T_odom_base_pub = T_odom_base_pub.copy()
-            self.prev_diag_stamp_sec = stamp_sec
-            return None, None, None
-
-        pose_diff_dt = stamp_sec - self.prev_diag_stamp_sec
-
-        if pose_diff_dt <= 1e-6:
-            return None, None, pose_diff_dt
-
-        prev_T = self.prev_diag_T_odom_base_pub
-
-        # Linear velocity from corrected output position.
-        dp = T_odom_base_pub[:3, 3] - prev_T[:3, 3]
-        v_pose_odom = dp / pose_diff_dt
-
-        # RPY-rate approximation from corrected output orientation.
-        r_prev, p_prev, y_prev = rpy_from_rot(prev_T[:3, :3])
-        r_now, p_now, y_now = rpy_from_rot(T_odom_base_pub[:3, :3])
-
-        dr = wrap_to_pi(r_now - r_prev)
-        dpitch = wrap_to_pi(p_now - p_prev)
-        dyaw = wrap_to_pi(y_now - y_prev)
-
-        rpy_rate_pose = np.array([dr, dpitch, dyaw], dtype=float) / pose_diff_dt
-
-        # Update previous pose only after computing the diagnostic finite difference.
-        self.prev_diag_T_odom_base_pub = T_odom_base_pub.copy()
-        self.prev_diag_stamp_sec = stamp_sec
-
-        return v_pose_odom, rpy_rate_pose, pose_diff_dt
-    
-
-    def maybe_print_diagnostics(
-        self,
-        msg,
-        T_global_imu,
-        T_global_base,
-        T_odom_base,
-        v_base=None,
-        w_base=None,
-        v_base_corrected=None,
-        w_base_corrected=None,
-    ):
-        if not self.enable_diagnostics:
-            return
-
+    def publish_diagnostics(self):
+        """１秒程度でカウンタと状態を出す。通常は多行consoleを出さない。"""
         now = self.get_clock().now()
-        dt = (now - self.last_diag_time).nanoseconds * 1e-9
-        if dt < self.diagnostics_interval_sec:
-            return
-        self.last_diag_time = now
-
-        v_pose_odom, rpy_rate_pose, pose_diff_dt = (
-            self.compute_pose_diff_velocity_for_diagnostics(
-                msg,
-                T_odom_base,
-            )
-        )        
-
-        if self.T_global_imu_first is None:
-            self.T_global_imu_first = T_global_imu.copy()
-            self.T_global_base_first = T_global_base.copy()
-            self.T_odom_base_first = T_odom_base.copy()
-            self.get_logger().info("[VIO_DIAG] Initialized diagnostic reference pose")
-            return
-
-        # Raw OpenVINS global delta
-        dp_global_imu = T_global_imu[:3, 3] - self.T_global_imu_first[:3, 3]
-
-        # Converted base pose delta in odom frame
-        dp_odom_base = T_odom_base[:3, 3] - self.T_odom_base_first[:3, 3]
-
-        # Relative rotations
-        dR_global_imu = self.T_global_imu_first[:3, :3].T @ T_global_imu[:3, :3]
-        dR_odom_base = self.T_odom_base_first[:3, :3].T @ T_odom_base[:3, :3]
-
-        r_raw, p_raw, y_raw = rpy_from_rot(dR_global_imu)
-        r_out, p_out, y_out = rpy_from_rot(dR_odom_base)
-
-        # Current absolute orientation too
-        r_abs, p_abs, y_abs = rpy_from_rot(T_odom_base[:3, :3])
-
-        twist_text = ""
-        if v_base is not None and w_base is not None:
-            twist_text = (
-                f"\n  raw twist linear     = "
-                f"[{v_base[0]:+.3f}, {v_base[1]:+.3f}, {v_base[2]:+.3f}] m/s\n"
-                f"  raw twist angular    = "
-                f"[{rad2deg(w_base[0]):+.1f}, "
-                f"{rad2deg(w_base[1]):+.1f}, "
-                f"{rad2deg(w_base[2]):+.1f}] deg/s"
-            )
-
-            if v_base_corrected is not None:
-                twist_text += (
-                    f"\n  corrected twist lin  = "
-                    f"[{v_base_corrected[0]:+.3f}, "
-                    f"{v_base_corrected[1]:+.3f}, "
-                    f"{v_base_corrected[2]:+.3f}] m/s"
-                )
-
-            if w_base_corrected is not None:
-                twist_text += (
-                    f"\n  corrected twist ang  = "
-                    f"[{rad2deg(w_base_corrected[0]):+.1f}, "
-                    f"{rad2deg(w_base_corrected[1]):+.1f}, "
-                    f"{rad2deg(w_base_corrected[2]):+.1f}] deg/s"
-                )
-
-        pose_diff_text = ""
-        if v_pose_odom is not None and rpy_rate_pose is not None:
-            pose_diff_text = (
-                f"\n  pose diff dt         = {pose_diff_dt:.4f} s\n"
-                f"  pose diff linear    = "
-                f"[{v_pose_odom[0]:+.3f}, {v_pose_odom[1]:+.3f}, {v_pose_odom[2]:+.3f}] m/s\n"
-                f"  pose diff rpy_rate  = "
-                f"[{rad2deg(rpy_rate_pose[0]):+.1f}, "
-                f"{rad2deg(rpy_rate_pose[1]):+.1f}, "
-                f"{rad2deg(rpy_rate_pose[2]):+.1f}] deg/s"
-            )
-
-        twist_diff_text = ""
-        if (
-            v_pose_odom is not None
-            and rpy_rate_pose is not None
-        ):
-            if v_base_corrected is not None:
-                dv = v_base_corrected - v_pose_odom
-            elif v_base is not None:
-                dv = v_base - v_pose_odom
-            else:
-                dv = None
-
-            if w_base_corrected is not None:
-                dw = w_base_corrected - rpy_rate_pose
-            elif w_base is not None:
-                dw = w_base - rpy_rate_pose
-            else:
-                dw = None
-
-            if dv is not None and dw is not None:
-                twist_diff_text = (
-                    f"\n  twist - pose linear = "
-                    f"[{dv[0]:+.3f}, {dv[1]:+.3f}, {dv[2]:+.3f}] m/s\n"
-                    f"  twist - pose angular= "
-                    f"[{rad2deg(dw[0]):+.1f}, "
-                    f"{rad2deg(dw[1]):+.1f}, "
-                    f"{rad2deg(dw[2]):+.1f}] deg/s"
-                )
-
-        self.get_logger().info(
-            "[VIO_DIAG]\n"
-            f"  raw dp_global_imu     = "
-            f"[{dp_global_imu[0]:+.3f}, {dp_global_imu[1]:+.3f}, {dp_global_imu[2]:+.3f}] m\n"
-            f"  out dp_odom_base      = "
-            f"[{dp_odom_base[0]:+.3f}, {dp_odom_base[1]:+.3f}, {dp_odom_base[2]:+.3f}] m\n"
-            f"  raw dRPY              = "
-            f"[{rad2deg(r_raw):+.1f}, {rad2deg(p_raw):+.1f}, {rad2deg(y_raw):+.1f}] deg\n"
-            f"  out dRPY              = "
-            f"[{rad2deg(r_out):+.1f}, {rad2deg(p_out):+.1f}, {rad2deg(y_out):+.1f}] deg\n"
-            f"  out abs RPY           = "
-            f"[{rad2deg(r_abs):+.1f}, {rad2deg(p_abs):+.1f}, {rad2deg(y_abs):+.1f}] deg"
-            f"{twist_text}"
-            f"{pose_diff_text}"
-            f"{twist_diff_text}\n"
-            f"  msg frame             = {msg.header.frame_id} -> {msg.child_frame_id}\n"
-            f"  adapter frame         = {self.output_frame_id} -> {self.output_child_frame_id}\n"
-            f"  tf used               = {self.base_frame_id} -> {self.oak_imu_frame_id}\n"
-            f"  invert_orientation    = {self.invert_openvins_orientation}\n"
-            f"  align_output_orientation_to_initial_tf = {self.align_output_orientation_to_initial_tf}\n"
-            f"  invert_rel_rotation   = {self.invert_relative_rotation}"
-        )
-
-
-    def odom_callback(self, msg: Odometry):
-        if not self.try_update_static_transform():
-            return
-
-        # OpenVINS output.
-        # Important:
-        #   OpenVINS may publish q_GtoI-like orientation.
-        #   In that case, invert_openvins_orientation must be True.
-        T_global_imu = openvins_odom_pose_to_matrix(
-            msg,
-            self.invert_openvins_orientation,
-        )
-
-        # Convert IMU pose to base_link pose.
-        # T_global_base = T_global_imu * T_imu_base
-        T_global_base = T_global_imu @ self.T_imu_base
-
-        # Align first VIO pose to current odom -> base_link TF.
-        # This prevents VIO yaw from pulling the EKF at startup.
-        if not self.try_initialize_odom_global(T_global_base):
-            return
-
-        T_odom_base = self.T_odom_global @ T_global_base
-
-        # Publish pose uses corrected orientation.
-        # Translation remains unchanged because x/y/z have already been validated.
-        T_odom_base_pub = T_odom_base.copy()
-        T_odom_base_pub[:3, :3] = self.correct_output_rotation(T_odom_base[:3, :3])
-
-        out = Odometry()
-        out.header.stamp = msg.header.stamp
-        out.header.frame_id = self.output_frame_id
-        out.child_frame_id = self.output_child_frame_id
-
-        out.pose.pose.position.x = float(T_odom_base_pub[0, 3])
-        out.pose.pose.position.y = float(T_odom_base_pub[1, 3])
-        out.pose.pose.position.z = float(T_odom_base_pub[2, 3])
-
-        qx, qy, qz, qw = rot_to_quat(T_odom_base_pub[:3, :3])
-        out.pose.pose.orientation.x = qx
-        out.pose.pose.orientation.y = qy
-        out.pose.pose.orientation.z = qz
-        out.pose.pose.orientation.w = qw
-
-        # ------------------------------------------------------------
-        # Pose covariance transform
-        # ------------------------------------------------------------
-        #
-        # msg.pose.covariance:
-        #   covariance of OpenVINS imu pose in global frame
-        #
-        # out.pose.covariance:
-        #   covariance of base_link pose in odom frame
-        #
-        # T_odom_base = T_odom_global * T_global_imu * T_imu_base
-        #
-        R_odom_global = self.T_odom_global[:3, :3]
-        R_global_imu = T_global_imu[:3, :3]
-
-        # Translation of base_link origin expressed in imu frame.
-        # T_imu_base maps base_link coordinates into imu coordinates.
-        p_base_in_imu = self.T_imu_base[:3, 3]
-
-        pose_cov_base_raw = transform_pose_covariance_ros_approx(
-            msg.pose.covariance,
-            R_odom_global,
-            R_global_imu,
-            p_base_in_imu,
-        )
-        out.pose.covariance = correct_pose_covariance_for_output_rotation(
-            pose_cov_base_raw,
-            R_current=T_odom_base[:3, :3],
-            R_first=self.R_odom_base_first_for_output,
-            R_initial_output=self.R_output_initial_orientation,
-            align_output_orientation_to_initial_tf=(
-                self.align_output_orientation_to_initial_tf
-            ),
-            invert_relative_rotation=self.invert_relative_rotation,
-            orientation_var_floor=0.05,
-            zero_position_orientation_cross=False,
-        )
-
-        # ------------------------------------------------------------
-        # Twist and twist covariance transform
-        # ------------------------------------------------------------
-        #
-        # ROS Odometry convention:
-        #   twist is expressed in child_frame_id.
-        #
-        # Input:
-        #   msg.child_frame_id = imu
-        #   twist at imu origin, expressed in imu frame
-        #
-        # Output:
-        #   out.child_frame_id = base_link
-        #   twist at base_link origin, expressed in base_link frame
-        #
-        R_base_imu = self.T_base_imu[:3, :3]
-
-        # Translation of imu origin expressed in base_link frame.
-        # T_base_imu maps imu coordinates into base_link coordinates.
-        p_imu_in_base = self.T_base_imu[:3, 3]
-
-        v_base_raw, w_base_raw, twist_cov_base_raw = transform_twist_and_covariance_ros_approx(
-            msg.twist.twist,
-            msg.twist.covariance,
-            R_base_imu,
-            p_imu_in_base,
-        )
-
-        # Correct both linear and angular velocity axes/signs.
-        v_base_corrected, w_base_corrected = correct_twist_velocity(
-            v_base_raw,
-            w_base_raw,
-        )      
-
-        # Apply the same 6-axis correction to twist covariance.
-        twist_cov_corrected = correct_twist_covariance(twist_cov_base_raw)
-
-        self.maybe_print_diagnostics(
-            msg,
-            T_global_imu,
-            T_global_base,
-            T_odom_base_pub,
-            v_base_raw,
-            w_base_raw,
-            v_base_corrected,
-            w_base_corrected,
-        )
-
-        out.twist.twist.linear.x = float(v_base_corrected[0])
-        out.twist.twist.linear.y = float(v_base_corrected[1])
-        out.twist.twist.linear.z = float(v_base_corrected[2])
-
-        out.twist.twist.angular.x = float(w_base_corrected[0])
-        out.twist.twist.angular.y = float(w_base_corrected[1])
-        out.twist.twist.angular.z = float(w_base_corrected[2])
-
-        out.twist.covariance = twist_cov_corrected
-
-        self.pub.publish(out)
+        age = None if self.last_received is None else now.nanoseconds*1e-9-self.last_received
+        state = self.state
+        if age is None or age > self.p['input_timeout_sec']:
+            state = 'stale'
+        if self.reset_required:
+            state = 'reset_required'
+        status = DiagnosticStatus()
+        status.name = 'vio_rigid_adapter'
+        status.hardware_id = 'openvins'
+        status.level = DiagnosticStatus.OK if state == 'forwarding' else DiagnosticStatus.WARN
+        status.message = self.reason
+        values = dict(state=state, received=self.received, forwarded=self.forwarded,
+            rejected=self.rejected, waiting=self.received-self.forwarded-self.rejected, age_sec=age, alignment_stamp=self.alignment_stamp,
+            mount_rotation_source=self.p['mount_rotation_source'],
+            pose_covariance_orientation_frame=self.p['pose_covariance_orientation_frame'],
+            covariance_condition='fixed mounting and initial alignment; unpublished correlations unavailable')
+        status.values = [KeyValue(key=k, value=str(v)) for k, v in values.items()]
+        array = DiagnosticArray()
+        array.header.stamp = now.to_msg()
+        array.status = [status]
+        self.diagnostics.publish(array)
+        if self.p['enable_diagnostics']:
+            self.get_logger().info(json.dumps(values, ensure_ascii=False))
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = VioOdomAdapterNode()
-
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
-    node.destroy_node()
-    rclpy.shutdown()
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

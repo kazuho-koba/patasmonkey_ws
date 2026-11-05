@@ -11,6 +11,7 @@ from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import TwistWithCovarianceStamped
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
+from pm_localization.planar_twist_covariance_node import planar_twist_covariance
 
 
 def stamp_seconds(stamp):
@@ -113,6 +114,8 @@ class HorizontalVelocityProjectionNode(Node):
             return
         full = np.zeros((6, 6)); full[3:, 3:] = c
         _, projected = project_twist([0., 0., 0., *omega], full, roll, pitch, cov)
+        # このtopicは2D専用。wx/wyの仮想ゼロ観測とwzの相関を分離する。
+        projected = planar_twist_covariance(projected)
         out.angular_velocity_covariance = projected[3:, 3:].reshape(-1).tolist()
         self.imu_pub.publish(out)
 
@@ -147,6 +150,9 @@ class HorizontalVelocityProjectionNode(Node):
         out.header.frame_id = 'base_level'
         out.twist.twist.linear.x, out.twist.twist.linear.y, out.twist.twist.linear.z = map(float, rotated[:3])
         out.twist.twist.angular.x, out.twist.twist.angular.y, out.twist.twist.angular.z = map(float, rotated[3:])
+        # 投影すると、車輪の大きいvy/vz不確かさからxz等の相関も生じる。
+        # VIOだけでなく車輪にも2D周辺化が必要。平面内の主小行列は保持する。
+        out_cov = planar_twist_covariance(out_cov)
         out.twist.covariance = out_cov.reshape(-1).tolist()
         publisher.publish(out)
         self.counts['wheel' if wheel else 'vio'] += 1
@@ -157,6 +163,9 @@ def main(args=None):
     node = HorizontalVelocityProjectionNode()
     try:
         rclpy.spin(node)
+    except KeyboardInterrupt:
+        # 正常なSIGINT終了を失敗コードへ変換しない。計算例外は握り潰さない。
+        pass
     finally:
         node.destroy_node()
         rclpy.shutdown()
