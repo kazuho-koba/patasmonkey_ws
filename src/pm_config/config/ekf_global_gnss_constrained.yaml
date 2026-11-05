@@ -45,7 +45,8 @@ ekf_global_gnss_constrained_node:
 
     # VIOは健全性ゲート通過後の相対水平速度だけを与える。pose、orientation、z、vzは
     # global filterから除外する。
-    odom1: /vio/odometry/twist_gated
+    # 2D用の周辺共分散。Foxy forceTwoDで平面外の交差項を残さない。
+    odom1: /vio/odometry/twist_planar
     odom1_config: [
       false, false, false,
       false, false, false,

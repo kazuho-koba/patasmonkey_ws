@@ -119,7 +119,8 @@ def generate_launch_description():
     )
     vio_odom_adapter_node = Node(
         package='pm_localization',
-        executable='vio_odom_adapter_node',
+        # 過去launchの再現性を保つため、旧adapterを明示的に使用する。
+        executable='vio_odom_adapter_legacy_node',
         name='vio_odom_adapter_node',
         output='screen',
         parameters=[{

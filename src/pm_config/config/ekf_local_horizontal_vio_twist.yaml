@@ -40,7 +40,8 @@ ekf_local_horizontal_node:
 
     # VIO poseは意図して除外する。twist gateは破綻・再起動したVIOを隔離し、安定した
     # 相対vx/vy観測だけを再投入できる。
-    odom1: /vio/odometry/twist_gated
+    # 2D用の周辺共分散。Foxy forceTwoDで平面外の交差項を残さない。
+    odom1: /vio/odometry/twist_planar
     odom1_config: [
       false, false, false,
       false, false, false,

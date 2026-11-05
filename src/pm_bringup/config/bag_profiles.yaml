@@ -25,6 +25,7 @@ mission:
   - /wit/imu/horizontal
   - /vio/odometry
   - /vio/odometry/gated
+  - /vio/odometry/twist_planar
   - /vio/odometry/twist_gated
   - /vio/odometry/twist_horizontal
   - /localization/horizontal_projection/diagnostics
@@ -76,6 +77,8 @@ mission:
   - /rosout
   - /vio/vertical_gate/diagnostics
   - /vio/twist_gate/diagnostics
+  # 取付・初回整列・棄却件数を１秒程度で保存する。
+  - /vio/adapter/diagnostics
   - /gnss/fix_gate/diagnostics
   - /parameter_events
   - /tf

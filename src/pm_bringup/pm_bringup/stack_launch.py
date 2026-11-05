@@ -21,6 +21,7 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
 from pm_bringup.dds_transport import launch_transport_actions
+from pm_bringup.magnetic_calibration import prepare_magnetic_calibration
 
 
 def create_launch_description(legacy_recording=False, drive_default=True):
@@ -85,10 +86,11 @@ def create_launch_description(legacy_recording=False, drive_default=True):
     # configファイル等
     urdf_file = pm_description_share / "urdf" / "pm.urdf"
     imu_config_file = pm_config_share / "config" / "hwt905_imu.yaml"
-    mag_calibration_file = pm_config_share / "config" / "hwt905_mag_calibration.yaml"
-    # GUIと同一の真北offsetを用いる。bias/scaleは磁気補正ノードが適用済み。
-    with mag_calibration_file.open(encoding="utf-8") as calibration_stream:
-        mag_calibration = yaml.safe_load(calibration_stream)["wit_mag_corrector"]["ros__parameters"]
+    # 校正は1つのYAMLへ集約する。旧暫定値は同じファイル内のコメントに保持する。
+    # 磁場補正・初期化offset・GUIが同じ値を使うよう、ファイル名は共通にする。
+    mag_calibration_file = PathJoinSubstitution([
+        str(pm_config_share), "config", "hwt905_mag_calibration.yaml",
+    ])
     wheel_odom_config_file = pm_config_share / "config" / "wheel_odometry.yaml"
     with wheel_odom_config_file.open(encoding="utf-8") as wheel_stream:
         legacy_wheel_yaw = bool(yaml.safe_load(wheel_stream)["wheel_odometry_node"]
@@ -155,6 +157,10 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                 )
             )
 
+        # bias/scaleと初期方位offsetを同じ選択ファイルから確定させる。
+        # 異常な校正値があれば、センサ・車両nodeの起動前に停止する。
+        selected_mag_calibration = prepare_magnetic_calibration(context, mag_calibration_file)
+
         # legacy modeではCLIで指定された設定ファイル名を実パスへ解決する。
         # YAMLが存在しないままEKFを無設定で起動する事態を、他nodeの起動前に防ぐ。
         mode = localization_mode.perform(context)
@@ -188,7 +194,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                 "arguments": redact(dict(context.launch_configurations)),
                 "runtime_directory": str(resolved_directory),
                 "configuration_paths": [str(path) for path in (
-                    urdf_file, imu_config_file, mag_calibration_file, wheel_odom_config_file,
+                    urdf_file, imu_config_file, selected_mag_calibration, wheel_odom_config_file,
                     vehicle_geometry_file, vehicle_control_file, pm_config_share / 'config' / 'planner.yaml', openvins_config_file,
                     ekf_global_config_file, ekf_horizontal_config_file,
                     pm_config_share / 'config' / 'ekf_local_horizontal_projected.yaml',
@@ -451,7 +457,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         executable="wit_mag_corrector",
         name="wit_mag_corrector",
         output="screen",
-        parameters=[str(mag_calibration_file)],
+        parameters=[mag_calibration_file],
     )
     wheel_odometry_node = Node(
         package="pm_localization",
@@ -567,12 +573,17 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             'base_frame_id': 'base_link',
             'oak_imu_frame_id': 'openvins_imu_link',
 
-            'invert_openvins_orientation': True,
-            'align_initial_to_tf': False,
+            # 実効R_base_imuを明示し、TFの平行移動と一体でpose/twist/共分散を変換。
+            # 実測校正済みではなく、小さな実機動作で支持された仮の取付回転。
+            'mount_rotation_source': 'parameter',
+            'mount_rotation': [0.0, 0.0, -1.0, 0.0, -1.0, 0.0, -1.0, 0.0, 0.0],
+            'pose_covariance_orientation_frame': 'imu',
+            # 初回だけlocalの同時刻位置・yawへ整列し、その後は固定する。
+            # GNSSを使う通常走行ではheading set_pose完了前の整列を避ける。
+            'align_initial_to_tf': True,
+            'initial_reference_topic': '/odometry/local',
+            'require_heading_ready': ParameterValue(use_gnss, value_type=bool),
             'zero_initial_pose': True,
-
-            'align_output_orientation_to_initial_tf': True,
-            'invert_relative_rotation': True,
 
             # 詳細な多行診断はodometryの変換・publishには不要。
             # 通常OFFとし、必要時だけ周期[秒]とともに明示して有効化する。
@@ -587,6 +598,12 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         }]
     )
 
+    # 元の3D VIOは維持し、2D EKFにだけ平面内の周辺共分散を渡す。
+    # Foxy forceTwoDの微小分散置換と3D交差項の組合せによる不定行列化を防ぐ。
+    planar_covariance_node = Node(
+        package='pm_localization', executable='planar_twist_covariance_node',
+        name='planar_vio_covariance', output='screen',
+    )
     # off-road local-EKF profileがVIO z poseを使う前にgateする。正常dataはそのまま通し、
     # VIO reset/divergence後は閉状態をlatchする。legacy EKF profileは引き続き
     # `/vio/odometry`を直接使う。
@@ -672,8 +689,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
         package="pm_localization", executable="heading_initializer_node",
         name="heading_initializer_node", output="screen",
         parameters=[str(heading_initializer_config_file), {
-            "offset_deg": float(mag_calibration["offset_deg"]),
-            "declination_deg": float(mag_calibration["declination_deg"]),
+            "offset_deg": ParameterValue(LaunchConfiguration("_mag_offset_deg"), value_type=float),
+            "declination_deg": ParameterValue(LaunchConfiguration("_mag_declination_deg"), value_type=float),
             "require_gnss": ParameterValue(use_gnss, value_type=bool),
         }],
         remappings=[('/odometry/local_horizontal', PythonExpression([
@@ -897,6 +914,7 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                 vio_odom_adapter_node,
                 vio_vertical_gate_node,
                 vio_twist_gate_node,
+                planar_covariance_node,
             ],
         ),
         TimerAction(
