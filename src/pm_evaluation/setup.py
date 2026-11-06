@@ -70,6 +70,8 @@ setup(
             "seed_local_comparison = pm_evaluation.cli.seed_local_comparison:main",
             "plot_local_modes_map = pm_evaluation.cli.plot_local_modes_map:main",
             "bag_clock_player = pm_evaluation.cli.bag_clock_player:main",
+            "perception_bag_player = pm_evaluation.perception_bag_player:main",
+            "perception_preview_probe = pm_evaluation.planning_probe:main",
             "replay_separated_localization = pm_evaluation.cli.replay_separated_localization:main",
             "replay_global_localization = pm_evaluation.cli.replay_global_localization:main",
             "plot_global_localization_replay = pm_evaluation.cli.plot_global_localization_replay:main",
