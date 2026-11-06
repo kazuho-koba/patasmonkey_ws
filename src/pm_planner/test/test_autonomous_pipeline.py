@@ -33,14 +33,14 @@ from pm_planner.io import read_anchor,read_vehicle_parameters
 
 
 class Rig:
-    def __init__(self,tmp_path):
+    def __init__(self,tmp_path,manager_parameters=()):
         self.ws=Path(__file__).resolve().parents[3]
         self.executor=SingleThreadedExecutor();self.permission=False;self.calls=[];self.command=(0.,0.)
         self.time=100.;self.x=self.y=self.yaw=self.v=self.w=0.;self.commands=[];self.trajectories=[];self.paths=[]
         sim=Parameter('use_sim_time',value=True)
         self.receiver=MissionReceiver([Parameter('output_directory',value=str(tmp_path))])
         self.manager=ExecutionManager([sim,Parameter('operator_timeout_sec',value=.3),
-            Parameter('tracking_mode',value='corridor'),Parameter('max_deviation_m',value=2.)])
+            Parameter('tracking_mode',value='corridor'),Parameter('max_deviation_m',value=2.)]+list(manager_parameters))
         self.preview=PreviewNode([sim,Parameter('managed_mission_enabled',value=True),
              Parameter('navsat_world_frame',value='map'),Parameter('planning_frame',value='map'),
              Parameter('pose_topic',value='/odometry/global')])
@@ -55,7 +55,7 @@ class Rig:
         self.operator=self.helper.create_publisher(String,'/pm/planner/operator_heartbeat',1)
         self.vehicle=self.helper.create_publisher(String,'/pm/vehicle/status',10)
         self.joy=self.helper.create_publisher(Twist,'/cmd_vel_joy',10)
-        self.helper.create_service(SetBool,'/pm/vehicle/set_autonomy_enabled',self.allow)
+        self.permission_service=self.helper.create_service(SetBool,'/pm/vehicle/set_autonomy_enabled',self.allow)
         anchor=read_anchor(self.ws/'src/pm_planner/config/home_preview_anchor.yaml')
         def convert(req,res):
             res.map_point.x,res.map_point.y=anchor.project(req.ll_point.latitude,req.ll_point.longitude)
@@ -194,9 +194,12 @@ def test_manual_pose_and_gui_loss_latch_until_explicit_start(rig):
     r.v=r.w=0.
     end=time.monotonic()+.4
     while time.monotonic()<end:r.feed(heartbeat=False,move=False)
-    assert r.manager.state=='DISABLED' and r.command==(0.,0.),r.manager.reason
+    # 期限切れが計算前ならDISABLED、計算終了後ならFAULT。
+    # どちらでもゼロ・許可解除・明示再開が必要という契約を確認する。
+    assert r.manager.state in ('DISABLED','FAULT') and r.command==(0.,0.),r.manager.reason
+    assert 'heartbeat' in r.manager.reason and not r.manager.desired_permission
     for _ in range(3):r.feed(move=True)
-    assert r.manager.state=='DISABLED'
+    assert r.manager.state in ('DISABLED','FAULT')
     r.begin()
     stop=r.stop.call_async(Trigger.Request());r.until(stop.done,move=True)
     assert stop.result().success
@@ -298,8 +301,8 @@ def test_terrain_mode_requires_fresh_clear_map_and_stops_on_unknown(rig):
     r.begin()
     msg.data=[-1]*(120*120);msg.header.stamp=r.manager.get_clock().now().to_msg();r.manager.install_terrain(msg)
     r.feed()
-    assert r.manager.state=='DISABLED' and r.command==(0.,0.)
-    assert 'footprint' in r.manager.reason
+    assert r.manager.state=='WAITING' and r.command==(0.,0.)
+    assert r.permission and 'footprint' in r.manager.reason
     for _ in range(12):r.feed()
     assert '期限切れ' in r.manager.readiness()
 
@@ -412,3 +415,96 @@ def test_assessment_rejects_invalid_or_old_and_does_not_refresh_duplicate(rig):
     r.feed();msg.header.stamp=r.manager.get_clock().now().to_msg();msg.schema_version=9
     r.manager.on_assessment(msg);assert r.manager.terrain is None
     assert 'schema' in r.manager.terrain_error
+
+
+def prepare_blocked_wait_case(r):
+    """健全な専用mapの前提を用意する。mapの配送自体は別のDDS結合試験で検証済み。"""
+    from nav_msgs.msg import OccupancyGrid
+    r.until(lambda:r.upload.service_is_ready() and r.start.service_is_ready() and r.manager.vehicle_client.service_is_ready())
+    r.send(load_document(r.ws/'src/pm_planner/examples/demo_mission.yaml'))
+    r.manager.set_perception_mode(SetPlannerMode.Request(mode='obstacle_only'),SetPlannerMode.Response())
+    def terrain(value):
+        msg=OccupancyGrid();msg.header.frame_id='map';msg.header.stamp=r.manager.get_clock().now().to_msg()
+        msg.info.width=120;msg.info.height=120;msg.info.resolution=.05
+        msg.info.origin.position.x=-3.;msg.info.origin.position.y=-3.;msg.info.origin.orientation.w=1.
+        msg.data=[value]*14400;r.manager.install_terrain(msg)
+    terrain(0);r.begin()
+    return terrain
+
+
+@pytest.mark.parametrize('blocker',['footprint','trajectory'])
+def test_blocked_wait_keeps_permission_and_recovers_without_start(rig,monkeypatch,blocker):
+    from pm_planner.mppi_poc import NoValidTrajectoryError
+    r=rig;terrain=prepare_blocked_wait_case(r)
+    assert r.manager.get_parameter('keep_autonomy_on_blocked').value is True
+    original=r.manager.follower.solver.step
+    def blocked(*args,**kwargs):raise NoValidTrajectoryError('test: 有効候補なし')
+    if blocker=='trajectory':monkeypatch.setattr(r.manager.follower.solver,'step',blocked)
+    else:terrain(100)
+    calls=list(r.calls);r.manager.last_permission_time-=2.;r.feed()
+    assert r.manager.state=='WAITING' and r.command==(0.,0.) and r.permission
+    for _ in range(20):
+        terrain(100 if blocker=='footprint' else 0);r.feed()
+        assert r.manager.state=='WAITING' and r.command==(0.,0.) and r.permission
+    assert r.calls==calls  # 長時間待機でも許可false/trueの再要求はしない
+    monkeypatch.setattr(r.manager.follower.solver,'step',original)
+    terrain(0);r.v=.05;r.w=.06;r.feed()
+    assert r.manager.state=='WAITING' and r.command==(0.,0.)
+    r.v=r.w=0.;terrain(0);r.feed()
+    assert r.manager.state=='RUNNING' and r.command[0]>0. and r.permission
+
+
+@pytest.mark.parametrize('blocker',['footprint','trajectory'])
+def test_disable_wait_option_retains_explicit_restart(rig,monkeypatch,blocker):
+    from pm_planner.mppi_poc import NoValidTrajectoryError
+    r=rig;r.manager.p['keep_autonomy_on_blocked']=False
+    terrain=prepare_blocked_wait_case(r)
+    if blocker=='footprint':terrain(100)
+    else:
+        def blocked(*args,**kwargs):raise NoValidTrajectoryError('test: 有効候補なし')
+        monkeypatch.setattr(r.manager.follower.solver,'step',blocked)
+    r.feed();r.until(lambda:not r.permission)
+    assert r.manager.state==('DISABLED' if blocker=='footprint' else 'FAULT')
+    terrain(0);r.feed();assert r.manager.state!='RUNNING' and r.command==(0.,0.)
+
+
+@pytest.mark.parametrize('interruption',['stop','joy','pose','map_timeout','invalid_map','vehicle','gui','emergency','mode','watchdog'])
+def test_waiting_still_disables_on_safety_or_manual_interruption(rig,interruption):
+    r=rig;terrain=prepare_blocked_wait_case(r);terrain(100);r.feed()
+    assert r.manager.state=='WAITING'
+    if interruption=='stop':r.manager.stop(Trigger.Request(),Trigger.Response())
+    elif interruption=='joy':r.joy.publish(Twist());r.pump()
+    elif interruption=='pose':
+        for _ in range(7):terrain(100);r.feed(pose=False)
+    elif interruption=='map_timeout':
+        for _ in range(12):r.feed()
+    elif interruption=='invalid_map':
+        from pm_msgs.msg import TerrainAssessment
+        r.manager.on_assessment(TerrainAssessment(schema_version=99))
+    elif interruption=='vehicle':
+        r.manager.on_vehicle(String(data=json.dumps(dict(connected=True,armed=True,emergency_stop=False,autonomy_enabled=False))))
+    elif interruption=='gui':
+        r.manager.operator_received=time.monotonic()-2.;r.manager.tick()
+    elif interruption=='emergency':
+        from std_msgs.msg import Bool
+        r.manager.on_emergency(Bool(data=True))
+    elif interruption=='mode':
+        r.manager.set_perception_mode(SetPlannerMode.Request(mode='off'),SetPlannerMode.Response())
+    else:
+        r.manager.last_command_time=time.monotonic()-2.;r.manager.tick()
+    r.feed()
+    assert r.manager.state=='DISABLED' and r.command==(0.,0.)
+    r.until(lambda:not r.permission)
+    terrain(0);r.feed();assert r.manager.state=='DISABLED'
+
+
+def test_mapper_margin_parameter_reaches_environment(tmp_path):
+    """ROSの起動parameterを上書きし、実際のcostmap膨張へ渡ることを確認する。"""
+    if os.environ.get('ROS_DOMAIN_ID')!='213':pytest.skip('隔離DDS domainで実行する')
+    rclpy.init(args=[]);r=Rig(tmp_path,[Parameter('footprint_margin_m',value=.23)])
+    try:
+        prepare_blocked_wait_case(r)
+        assert r.manager.get_parameter('footprint_margin_m').value==pytest.approx(.23)
+        assert r.manager.terrain.margin_m==pytest.approx(.23)
+        assert r.manager.terrain.inflation_radius==pytest.approx(r.manager.p['footprint_radius_m']+.23)
+    finally:r.close();rclpy.shutdown()

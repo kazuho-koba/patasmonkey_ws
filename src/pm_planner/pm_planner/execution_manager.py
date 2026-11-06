@@ -22,7 +22,7 @@ from std_srvs.srv import SetBool,Trigger
 from ament_index_python.packages import get_package_share_directory
 from pm_mission.model import validate
 from .io import read_limits,read_vehicle_parameters
-from .mppi_poc import MppiConfig
+from .mppi_poc import MppiConfig,NoValidTrajectoryError
 from .follower import RouteFollower
 
 
@@ -33,7 +33,10 @@ class ExecutionManager(Node):
     SetBoolの非同期応答と実車statusの両方を確認してから出力を許可する。
     """
     def __init__(self,parameter_overrides=None):
-        super().__init__('execution_manager',namespace='/pm/planner',parameter_overrides=parameter_overrides)
+        # FoxyのTransformListenerは相対名tf/tf_staticで購読する。
+        # plannerのnamespaceへ閉じ込めず、車両全体のTFを購読する。
+        super().__init__('execution_manager',namespace='/pm/planner',parameter_overrides=parameter_overrides,
+            cli_args=['--ros-args','-r','tf:=/tf','-r','tf_static:=/tf_static'])
         defaults=dict(vehicle_config=get_package_share_directory('pm_config')+'/config/vehicle_control.yaml',
             pose_topic='/odometry/global',base_frame='base_link',controller_rate_hz=10.,
             pose_timeout_sec=.5,operator_timeout_sec=1.5,vehicle_timeout_sec=1.5,preview_timeout_sec=1.5,
@@ -42,9 +45,9 @@ class ExecutionManager(Node):
             jump_slack_m=.3,max_pose_gap_sec=1.,stop_speed_mps=.03,heading_tolerance_rad=.52,resume_ambiguity_distance_m=.15,resume_ambiguity_station_m=1.,
             pose_max_position_std_m=1.,pose_max_yaw_std_rad=.5,pose_jump_slack_m=.3,
             pose_yaw_jump_slack_rad=.2,resume_max_yaw_rate=.05,
-            perception_mode='',perception_costmap_topic='/depth_elevation_mapper/planner_costmap',
+            keep_autonomy_on_blocked=True,perception_mode='',perception_costmap_topic='/depth_elevation_mapper/planner_costmap',
             allow_legacy_full_hazard=False,perception_enabled=False,terrain_topic='/depth_elevation_mapper/terrain_hazard_debug',
-            terrain_timeout_sec=1.,footprint_radius_m=.4,terrain_lethal_threshold=100)
+            terrain_timeout_sec=1.,footprint_radius_m=.4,footprint_margin_m=.1,terrain_lethal_threshold=100)
         defaults.update({k:v for k,v in asdict(MppiConfig()).items() if k not in
                          ('min_radius','max_speed','max_yaw_rate','max_yaw_accel','dt','yaw_response_gain')})
         defaults['target_speed']=1.
@@ -56,6 +59,7 @@ class ExecutionManager(Node):
                   'pose_max_yaw_std_rad','pose_jump_slack_m','pose_yaw_jump_slack_rad','resume_max_yaw_rate',
                   'terrain_timeout_sec','footprint_radius_m'):
             if not math.isfinite(self.p[k]) or self.p[k]<=0:raise ValueError(k+'は正の有限値が必要です')
+        if not math.isfinite(self.p['footprint_margin_m']) or self.p['footprint_margin_m']<0:raise ValueError('footprint_margin_mは非負の有限値[m]が必要です')
         if not 1<=self.p['controller_rate_hz']<=20:raise ValueError('controller_rate_hzは1〜20です')
         self.limits=read_limits(self.p['vehicle_config']);self.follower=RouteFollower(self.limits,self.p)
         if read_vehicle_parameters(self.p['vehicle_config']).get('cmd_vel_topic','/cmd_vel_autonomy')!='/cmd_vel_autonomy':
@@ -69,6 +73,7 @@ class ExecutionManager(Node):
         self.operator_received=None;self.operator_session=None;self.running_session=None
         self.state='DISABLED';self.reason='ミッション未受領';self.last_rejection=''
         self.permission_future=None;self.stop_future=None;self.desired_permission=False;self.permission_ack=False
+        self.waiting_since=None
         self.last_command_time=None;self.last_compute_ms=None;self.last_permission_time=0.;self.last_status_time=0.
         self.pending_reference=None
         self.terrain=None;self.terrain_received=None;self.terrain_stamp=None;self.terrain_frame=None
@@ -158,7 +163,7 @@ class ExecutionManager(Node):
             data=json.loads(message.data)
             if not isinstance(data.get('autonomy_enabled'),bool):raise ValueError('車両自律許可が不正')
             self.vehicle=data;self.vehicle_received=time.monotonic()
-            if self.state=='RUNNING' and not data['autonomy_enabled']:self.halt('車両側で自律許可が解除されました')
+            if self.state in ('RUNNING','WAITING') and not data['autonomy_enabled']:self.halt('車両側で自律許可が解除されました')
         except (ValueError,TypeError,AttributeError):
             self.vehicle=None;self.vehicle_received=None
 
@@ -198,7 +203,7 @@ class ExecutionManager(Node):
             if self.terrain is not None:self.last_assessment_stamp=stamp
         except Exception as exc:
             self.terrain=None;self.terrain_error='専用costmap使用不可: '+str(exc)
-        if self.terrain is None and self.state in ('STARTING','RUNNING'):self.halt(self.terrain_error)
+        if self.terrain is None and self.state in ('STARTING','RUNNING','WAITING'):self.halt(self.terrain_error)
 
     def on_terrain(self,message):
         """旧debug総合mapの明示opt-in用。障害物未知を区別できないため既定では使わない。"""
@@ -230,7 +235,7 @@ class ExecutionManager(Node):
                 angle=self.planar_yaw(tf.rotation);c=math.cos(angle);s=math.sin(angle)
                 x,y=c*x-s*y+tf.translation.x,s*x+c*y+tf.translation.y;yaw+=angle
             terrain=TerrainCost(message.data,message.info.width,message.info.height,message.info.resolution,
-                                (x,y,yaw),self.p['footprint_radius_m'],self.p['terrain_lethal_threshold'])
+                                (x,y,yaw),self.p['footprint_radius_m'],self.p['terrain_lethal_threshold'],margin_m=self.p['footprint_margin_m'])
             self.terrain=terrain;self.terrain_stamp=stamp;self.terrain_received=time.monotonic()
             self.terrain_frame=frame;self.terrain_error=''
         except Exception as exc:
@@ -239,12 +244,12 @@ class ExecutionManager(Node):
 
     def on_operator(self,message):
         if not message.data:return
-        if self.state in ('STARTING','RUNNING') and message.data!=self.running_session:
+        if self.state in ('STARTING','RUNNING','WAITING') and message.data!=self.running_session:
             self.halt('操作GUIのセッションが変わりました')
         self.operator_session=message.data;self.operator_received=time.monotonic()
 
     def on_joy(self,message):
-        if self.state in ('STARTING','RUNNING'):self.halt('手動介入。GUIから明示的な再開が必要です')
+        if self.state in ('STARTING','RUNNING','WAITING'):self.halt('手動介入。GUIから明示的な再開が必要です')
 
     def on_emergency(self,message):
         self.emergency=bool(message.data)
@@ -292,11 +297,11 @@ class ExecutionManager(Node):
             self.pose=pose;self.pose_received=time.monotonic();self.pose_error=''
         except (ValueError,TypeError) as exc:
             self.pose=None;self.pose_received=None;self.pose_error=str(exc)
-            if self.state in ('STARTING','RUNNING'):self.halt(self.pose_error)
+            if self.state in ('STARTING','RUNNING','WAITING'):self.halt(self.pose_error)
 
     def fresh(self,stamp,timeout):return stamp is not None and time.monotonic()-stamp<timeout
 
-    def readiness(self):
+    def readiness(self,check_footprint=True):
         """開始・継続の両方に使う条件。停止中の車両許可OFFは準備不足ではない。"""
         if not self.mission:return 'ミッション未受領'
         if self.pose_fault:return self.pose_fault
@@ -318,13 +323,32 @@ class ExecutionManager(Node):
         if not self.fresh(self.pose_received,self.p['pose_timeout_sec']) or self.pose is None:return self.pose_error or '自己位置が期限切れ'
         age=self.get_clock().now().nanoseconds/1e9-self.pose[0]
         if not -.1<=age<=self.p['pose_timeout_sec']:return '自己位置stampが期限切れ/未来'
+        if check_footprint:
+            blocked=self.footprint_block_reason()
+            if blocked:return blocked
+        return ''
+
+    def footprint_block_reason(self):
+        """入力の健全性を検査した後に、現在の車体範囲だけの通行可否を調べる。"""
         if self.p['perception_enabled'] and self.terrain.sample(self.pose[1],self.pose[2])>=self.p['terrain_lethal_threshold']:
             return '現在のfootprintが危険または評価不能です'
         return ''
 
+    def wait_on_blocked(self,reason,legacy_state='FAULT'):
+        """健全な入力での通行不可だけを待機扱いにし、車両許可は維持する。"""
+        if not self.p['keep_autonomy_on_blocked']:
+            self.halt(reason,legacy_state);return
+        self.follower.hold(self.pose[:5])
+        entering=self.state!='WAITING'
+        self.state='WAITING';self.reason='障害物待機（自律許可維持）: '+reason
+        if entering:
+            self.waiting_since=time.monotonic();self.clear_local_path()
+        # tick末尾でゼロを送信する。待機中も指令期限を監視し、executor停止は別途無効化する。
+        self.last_command_time=time.monotonic()
+
     def start(self,request,response):
         reason=self.readiness()
-        if self.state in ('STARTING','RUNNING'):reason='自律走行は開始済みです'
+        if self.state in ('STARTING','RUNNING','WAITING'):reason='自律走行は開始済みです'
         if self.permission_future and not self.permission_future.done():reason='車両許可の応答待ちです'
         if not self.vehicle_client.service_is_ready():reason=reason or '車両許可サービス未接続'
         if not reason and abs(self.pose[5])>self.p['resume_max_yaw_rate']:reason='開始・再開には旋回停止の確認が必要です'
@@ -345,9 +369,9 @@ class ExecutionManager(Node):
         return response
 
     def halt(self,reason,state='DISABLED'):
-        was_active=self.state in ('STARTING','RUNNING')
+        was_active=self.state in ('STARTING','RUNNING','WAITING')
         self.state=state;self.reason=reason;self.desired_permission=False;self.permission_ack=False
-        self.last_command_time=None;self.follower.pause(reason)
+        self.last_command_time=None;self.waiting_since=None;self.follower.pause(reason)
         if hasattr(self,'command_publisher'):
             self.command_publisher.publish(Twist());self.clear_local_path()
         if was_active:self.request_permission()
@@ -391,36 +415,46 @@ class ExecutionManager(Node):
 
     def tick(self):
         now=time.monotonic();command=Twist()
-        if self.state=='RUNNING' and self.last_command_time is not None and now-self.last_command_time>self.p['command_timeout_sec']:
+        if self.state in ('RUNNING','WAITING') and self.last_command_time is not None and now-self.last_command_time>self.p['command_timeout_sec']:
             self.halt('制御周期が期限切れ。明示再開が必要です')
-        if self.state in ('STARTING','RUNNING'):
-            reason=self.readiness()
+        if self.state in ('STARTING','RUNNING','WAITING'):
+            # 入力欠落・自己位置異常・手動停止は待機へ緩和しない。
+            reason=self.readiness(check_footprint=False)
             if reason:self.halt(reason)
             elif self.state=='STARTING':
                 if self.permission_ack and self.vehicle.get('autonomy_enabled'):
                     self.state='RUNNING';self.reason='経路追従中'
                 elif now-self.last_permission_time>self.p['permission_timeout_sec']:
                     self.halt('車両許可確認が期限切れ')
-            if self.state=='RUNNING':
+            if self.state in ('RUNNING','WAITING'):
                 try:
-                    started=time.monotonic();result=self.follower.step(self.pose[:5],self.pose[5],self.terrain if self.p['perception_enabled'] else None)
-                    self.last_compute_ms=(time.monotonic()-started)*1000.
-                    # 計算終了後にも鮮度を検査し、古い計算結果を送らない。
-                    reason=self.readiness()
-                    if reason or time.monotonic()-started>self.p['command_timeout_sec']:
-                        raise ValueError(reason or 'MPPI計算結果が期限切れ')
-                    command.linear.x,command.angular.z=result['command']
-                    if not all(math.isfinite(v) for v in (command.linear.x,command.angular.z)):raise ValueError('速度指令が非有限')
-                    if not 0.<=command.linear.x<=self.limits.max_speed+1e-8 or abs(command.angular.z)>min(self.limits.max_yaw_rate,command.linear.x/self.limits.radius)+1e-8:
-                        raise ValueError('速度指令が車体制約を超えています')
-                    if self.follower.progress.state=='COMPLETE':
-                        self.halt('全waypoint通過・停止を確認しました','COMPLETED');command=Twist()
+                    blocked=self.footprint_block_reason()
+                    if blocked:
+                        self.wait_on_blocked(blocked,'DISABLED')
+                    elif self.state=='WAITING' and (abs(self.pose[4])>self.p['stop_speed_mps'] or abs(self.pose[5])>self.p['resume_max_yaw_rate']):
+                        self.wait_on_blocked('停止確認待ち')
                     else:
-                        self.last_command_time=time.monotonic();self.publish_trajectory(result)
+                        started=time.monotonic();result=self.follower.step(self.pose[:5],self.pose[5],self.terrain if self.p['perception_enabled'] else None)
+                        self.last_compute_ms=(time.monotonic()-started)*1000.
+                        reason=self.readiness(check_footprint=False)
+                        if reason or time.monotonic()-started>self.p['command_timeout_sec']:
+                            raise ValueError(reason or 'MPPI計算結果が期限切れ')
+                        command.linear.x,command.angular.z=result['command']
+                        if not all(math.isfinite(v) for v in (command.linear.x,command.angular.z)):raise ValueError('速度指令が非有限')
+                        if not 0.<=command.linear.x<=self.limits.max_speed+1e-8 or abs(command.angular.z)>min(self.limits.max_yaw_rate,command.linear.x/self.limits.radius)+1e-8:
+                            raise ValueError('速度指令が車体制約を超えています')
+                        if self.follower.progress.state=='COMPLETE':
+                            self.halt('全waypoint通過・停止を確認しました','COMPLETED');command=Twist()
+                        else:
+                            self.state='RUNNING';self.waiting_since=None;self.reason='経路追従中'
+                            self.last_command_time=time.monotonic();self.publish_trajectory(result)
+                except NoValidTrajectoryError as exc:
+                    try:self.wait_on_blocked(str(exc))
+                    except (ValueError,ArithmeticError) as error:self.halt('待機中の進捗異常: '+str(error),'FAULT')
+                    command=Twist()
                 except (ValueError,ArithmeticError,KeyError,TypeError) as exc:
                     self.halt('追従停止: '+str(exc),'FAULT');command=Twist()
-        if self.state!='RUNNING':
-            # 停止中でも車両許可が残る場合は解除を再試行する。
+        if self.state not in ('STARTING','RUNNING','WAITING'):
             if self.vehicle and self.vehicle.get('autonomy_enabled') and now-self.last_permission_time>1.:
                 self.desired_permission=False;self.request_permission()
         self.command_publisher.publish(command)
@@ -431,7 +465,7 @@ class ExecutionManager(Node):
         preview_fresh=self.fresh(self.preview_received,self.p['preview_timeout_sec'])
         preview=self.preview if preview_fresh else None
         reason=self.readiness()
-        can_start=not reason and self.state not in ('STARTING','RUNNING') and self.follower.progress is not None and self.follower.progress.state in ('READY','MANUAL_PAUSED')
+        can_start=not reason and self.state not in ('STARTING','RUNNING','WAITING') and self.follower.progress is not None and self.follower.progress.state in ('READY','MANUAL_PAUSED')
         if self.permission_future and not self.permission_future.done():can_start=False
         input_ready=False
         if self.p['perception_enabled'] and self.terrain is not None and self.pose is not None and self.follower.snapshot:
@@ -442,7 +476,9 @@ class ExecutionManager(Node):
                 and self.terrain.sample(self.pose[1],self.pose[2])<self.p['terrain_lethal_threshold'])
         status=dict(state=self.state,reason=self.reason,mission=self.mission,last_rejection=self.last_rejection,
             controller_ready=self.follower.solver is not None,drive_ready=bool(can_start),readiness_reason=reason,
-            enabled=self.state=='RUNNING',vehicle_fresh=vehicle_fresh,
+            enabled=self.state in ('RUNNING','WAITING'),waiting_for_obstacle=self.state=='WAITING',
+            keep_autonomy_on_blocked=self.p['keep_autonomy_on_blocked'],
+            waiting_sec=0. if self.waiting_since is None else time.monotonic()-self.waiting_since,vehicle_fresh=vehicle_fresh,
             vehicle_autonomy_enabled=self.vehicle.get('autonomy_enabled') if vehicle_fresh else None,
             path_state=preview.get('load_state','UNKNOWN') if preview else 'WAITING_FOR_PREVIEW' if self.mission else 'NO_MISSION',
             path_error=preview.get('load_error','') if preview else '',path_frame=preview.get('frame_id') if preview else None,

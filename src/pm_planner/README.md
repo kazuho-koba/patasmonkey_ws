@@ -244,7 +244,7 @@ Operator ConsoleはQt更新が継続している間だけheartbeatを発行す�
 | /pm/planner/preview/reference | Pathとイベント・座標根拠・mission/Path hashを同梱したsnapshot |
 | /pm/planner/execution_manager/local_path | MPPIの採用予測位置列、nav_msgs/Path |
 | /pm/planner/execution_manager/trajectory | 同じ予測の時刻・x/y/yaw・v/w、std_msgs/StringのJSON |
-| /pm/planner/execution_manager/status | DISABLED/STARTING/RUNNING/FAULT/COMPLETED、理由・進捗・車両許可 |
+| /pm/planner/execution_manager/status | DISABLED/STARTING/RUNNING/WAITING/FAULT/COMPLETED、理由・進捗・車両許可 |
 | /cmd_vel_autonomy | 有効時の自律Twist。無効時はゼロ |
 
 `trajectory.points`はtime_from_start_sec[s]、x/y[m]、yaw[rad]、v[m/s]、w[rad/s]を持つ。
@@ -291,12 +291,19 @@ GOAL/VISITが予測範囲に入った場合は、必須到達を保つため不�
 走行開始／終了とは独立し、OFFでも従来の経路追従は可能。perception自体は止めない。
 モード変更時は停止し、変更後の新しい入力とGUIの明示開始を必要とする。
 
+車体と追加余裕は`footprint_radius_m: 0.3`、`footprint_margin_m: 0.1`で設定する。
+膨張半径は和の0.4 mで、追加余裕はセル幅と独立。0も指定できる。
+
 入力は`pm_msgs/msg/TerrainAssessment`の独立したobstacle_cost／terrain_cost。
 一つの総合hazardや最大要因ラベルからobstacleだけを復元しない。
 fullは必要な片側がunknownならunknownを保ち、障害物未知を他のcueの0で隠さない。
-unknown・map外・既知の危険は候補を除外し、有効候補なしや入力期限切れでは停止する。
+unknown・map外・既知の危険は候補を除外する。
+`keep_autonomy_on_blocked: true`（既定）では、有効候補なし・現在footprintの危険/unknownは
+WAITINGとし、ゼロ指令を継続して自律許可を維持する。停止確認と有効候補が揃えば自動続行する。
+falseは従来の無効化・GUI明示再開。入力期限切れ・自己位置異常・手動介入・GUI停止等は
+どちらの設定でも許可解除する。初回開始の安全確認は変更しない。
 
-並行修正中のperception本体は変更しておらず、専用出力の追加が必要。
+標準Coreのplanner_mapper_nodeが専用出力を発行し、GUIの障害物回避modeから接続できる。
 旧debug総合hazardへの自動fallbackは行わない。producerの契約・設定・GUI・検証は
 [perception接続仕様](README_perception_input.md)を参照。
 
@@ -555,3 +562,6 @@ Path発行をテストします。実車走行・実GNSS座標の精度はこの
 次Stageでは座標整合の実測確認、回り込みの運動・環境条件、遅延予測、Jetson上の負荷と
 車両応答を検証します。
 perception cost接続は以下の任意機能で提供します。3 modeのGUIと実機での回避性能検証は後続です。
+
+障害物・unknown付近の希望離隔と低速化は`clearance_distance_m`、`clearance_cost_weight`、
+`clearance_min_speed_mps`で設定する。意味・式・負荷対策は[認識入力の説明](README_perception_input.md#希望離隔と接近時の低速化)を参照。

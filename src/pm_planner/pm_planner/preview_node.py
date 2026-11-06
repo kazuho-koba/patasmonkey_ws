@@ -49,7 +49,10 @@ def yaw_from_quaternion(q):
 
 class PreviewNode(Node):
     def __init__(self,parameter_overrides=None):
-        super().__init__('preview',namespace='/pm/planner',parameter_overrides=parameter_overrides)
+        # FoxyのTransformListenerは相対名tf/tf_staticで購読する。
+        # plannerのnamespaceへ閉じ込めず、車両全体のTFを購読する。
+        super().__init__('preview',namespace='/pm/planner',parameter_overrides=parameter_overrides,
+            cli_args=['--ros-args','-r','tf:=/tf','-r','tf_static:=/tf_static'])
         defaults=dict(mission_file='',managed_mission_enabled=False,coordinate_mode='navsat',anchor_file='',planning_frame='map',
             navsat_world_frame='',navsat_service='/fromLL',navsat_odom_topic='/odometry/gps',gnss_topic='/fix/gated',
             pose_topic='/odometry/local',base_frame='base_link',pose_timeout_sec=.5,gnss_timeout_sec=2.5,

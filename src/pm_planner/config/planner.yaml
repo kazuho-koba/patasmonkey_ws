@@ -65,6 +65,10 @@
     path_tolerance_m: 1.0               # 横ずれcostを付けない帯の半幅[m]。左右1 m。
     corridor_cost_weight: 0.25          # 帯外の横ずれcost。重み×max(0,横ずれ-半幅)^2。
     progress_cost_weight: 0.5           # 前進を誘導する弱いcost
+    # 必須余裕の外側に希望する追加離隔。候補ごとの不足率をcostと速度上限へ反映。
+    clearance_distance_m: 0.6          # 希望追加離隔[m]。0で離隔cost・減速を無効化
+    clearance_cost_weight: 3.0         # 不足率²に掛ける重み。0でも減速は有効
+    clearance_min_speed_mps: 0.2       # 最大不足時の上限[m/s]。停止を妨げる下限ではない
     terrain_cost_weight: 20.0           # 非致命的なhazardの回避cost
     # perception処理自体は継続。このフラグはplannerがhazardを使うかだけを切り替える。
     perception_enabled: false          # 旧起動互換。perception_mode指定が優先。
@@ -74,5 +78,10 @@
     allow_legacy_full_hazard: false
     terrain_topic: /depth_elevation_mapper/terrain_hazard_debug
     terrain_timeout_sec: 1.0            # stamp/受信の両方で有効期限を検査[s]
-    footprint_radius_m: 0.4             # 車体外接円＋余裕を実測して設定する[m]
+    footprint_radius_m: 0.3             # 円形で近似する車体半径[m]
+    footprint_margin_m: 0.1             # 追加余裕[m]。膨張半径=車体半径+追加余裕。セル幅と独立、0も可。
     terrain_lethal_threshold: 100       # 以上は候補不採用。unknownとmap外も不採用
+
+    # 有効軌道なし／現在footprint危険・unknownではゼロ指令で許可維持し、解消後は自動続行。
+    # falseなら従来の無効化・GUI明示再開。入力途絶・自己位置異常・手動介入は常に無効化。
+    keep_autonomy_on_blocked: true

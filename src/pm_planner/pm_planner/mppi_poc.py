@@ -9,6 +9,10 @@ import numpy as np
 from .speed_profile import build_speed_profile
 
 
+class NoValidTrajectoryError(ValueError):
+    """新鮮な環境入力に対して衝突しない候補がない。入力異常とは区別する。"""
+
+
 @dataclass(frozen=True)
 class MppiConfig:
     """負荷と予測範囲を調整するPoC設定。乱数seedは再現可能性のため明示する。"""
@@ -44,6 +48,10 @@ class MppiConfig:
     corridor_cost_weight: float = 0.25  # 通常の帯外だけ弱く戻す。必須点の重みとは分ける。
     progress_cost_weight: float = 0.5
     terrain_cost_weight: float = 20.0
+    # 必須footprint膨張の外側に希望する追加余裕[m]。0なら離隔評価を無効化。
+    clearance_distance_m: float = 0.6
+    clearance_cost_weight: float = 3.0
+    clearance_min_speed_mps: float = 0.2  # 最大不足時の速度上限。旋回・終点はさらに低速可。
 
     def __post_init__(self):
         if not (2 <= self.batch_size <= 10000 and 2 <= self.steps <= 200 and 1 <= self.iterations <= 10):
@@ -59,7 +67,7 @@ class MppiConfig:
         if self.target_speed > self.max_speed:raise ValueError('target_speedが上限を超えています')
         if self.tracking_mode not in ('point','corridor'):raise ValueError('tracking_modeはpoint/corridorです')
         if not math.isfinite(self.path_tolerance_m) or self.path_tolerance_m<0:raise ValueError('path_tolerance_mが不正')
-        for name in ('corridor_cost_weight','progress_cost_weight','terrain_cost_weight','path_cost_weight','heading_cost_weight','speed_cost_weight','yaw_cost_weight','terminal_cost_weight'):
+        for name in ('corridor_cost_weight','progress_cost_weight','terrain_cost_weight','path_cost_weight','heading_cost_weight','speed_cost_weight','yaw_cost_weight','terminal_cost_weight','clearance_distance_m','clearance_cost_weight','clearance_min_speed_mps'):
             if not math.isfinite(getattr(self,name)) or getattr(self,name)<0:
                 raise ValueError(name+'は非負の有限値が必要です')
 
@@ -166,8 +174,15 @@ class MppiPoc:
             if iteration==c.iterations-1 and c.candidate_sample_count:
                 candidate_trace=np.empty((c.candidate_sample_count,c.steps,2),dtype=np.float64)
             for k in range(c.steps):
+                # 現在位置の離隔不足に応じて速度上限を下げる。減速度制約を守り、
+                # 境界への接近で上限が急変しても速度を瞬時に飛ばさない。
+                speed_cap=c.max_speed
+                if environment is not None:
+                    risk=environment.clearance_risk(x,y,c.clearance_distance_m)
+                    slow=min(c.clearance_min_speed_mps,c.target_speed)
+                    speed_cap=np.minimum(c.max_speed,c.target_speed-(c.target_speed-slow)*risk)
                 v=np.clip(controls[:,k,0],np.maximum(0.,v-c.max_yaw_accel*c.min_radius*c.dt),
-                          np.minimum(c.max_speed,v+c.max_yaw_accel*c.min_radius*c.dt))
+                          np.maximum(np.maximum(0.,v-c.max_yaw_accel*c.min_radius*c.dt),np.minimum(speed_cap,v+c.max_yaw_accel*c.min_radius*c.dt)))
                 w=np.clip(controls[:,k,1],w-c.max_yaw_accel*c.dt,w+c.max_yaw_accel*c.dt)
                 # 両制約が両立しない減速時は、vehicle interface同様に半径・停止を優先する。
                 # この場合yawの変化量が加速度上限を超え得るため、滑らかな走行軌道ではない。
@@ -197,6 +212,8 @@ class MppiPoc:
                     terrain=environment.segment(old_x,old_y,x,y)
                     valid&=terrain<100
                     cost+=c.terrain_cost_weight*(terrain/100.)**2
+                    risk=environment.clearance_risk(x,y,c.clearance_distance_m)
+                    cost+=c.clearance_cost_weight*risk*risk
                 cost+=c.speed_cost_weight*(v-target_speed[k])**2+c.yaw_cost_weight*w*w
             if c.tracking_mode=='point' or required_active:
                 cost+=c.terminal_cost_weight*((x-tx[-1])**2+(y-ty[-1])**2)
@@ -205,7 +222,7 @@ class MppiPoc:
                 along=(x-tx[-1])*math.cos(target_yaw[-1])+(y-ty[-1])*math.sin(target_yaw[-1])
                 cost+=c.progress_cost_weight*along**2
             if not np.isfinite(cost).all():raise ValueError('候補costが非有限です')
-            if not valid.any():raise ValueError('hazard・unknown・map外を避ける候補軌道がありません')
+            if not valid.any():raise NoValidTrajectoryError('hazard・unknown・map外を避ける候補軌道がありません')
             weights=np.zeros(c.batch_size)
             weights[valid]=np.exp(-(cost[valid]-np.min(cost[valid]))/c.temperature);weights/=np.sum(weights)
             self.nominal=np.einsum('n,ntc->tc',weights,controls)
@@ -215,14 +232,19 @@ class MppiPoc:
         for plan in (self.nominal,controls[best]):
             x,y,yaw=map(float,pose);v=max(0.,float(previous_command[0]));w=float(previous_command[1]);traj=[];safe=[]
             for desired_v,desired_w in plan:
-                v=float(np.clip(desired_v,max(0.,v-c.max_yaw_accel*c.min_radius*c.dt),min(c.max_speed,v+c.max_yaw_accel*c.min_radius*c.dt)))
+                speed_cap=c.max_speed
+                if environment is not None:
+                    risk=float(environment.clearance_risk(x,y,c.clearance_distance_m))
+                    slow=min(c.clearance_min_speed_mps,c.target_speed)
+                    speed_cap=min(c.max_speed,c.target_speed-(c.target_speed-slow)*risk)
+                v=float(np.clip(desired_v,max(0.,v-c.max_yaw_accel*c.min_radius*c.dt),max(max(0.,v-c.max_yaw_accel*c.min_radius*c.dt),min(speed_cap,v+c.max_yaw_accel*c.min_radius*c.dt))))
                 w=float(np.clip(desired_w,w-c.max_yaw_accel*c.dt,w+c.max_yaw_accel*c.dt))
                 w=float(np.clip(w,-min(c.max_yaw_rate,v/c.min_radius),min(c.max_yaw_rate,v/c.min_radius)))
                 safe.append((v,w));yaw+=w*c.yaw_response_gain*c.dt;x+=v*math.cos(yaw)*c.dt;y+=v*math.sin(yaw)*c.dt;traj.append((x,y,yaw))
             if environment is None:break
             previous_xy=np.vstack((np.asarray(pose[:2]),np.asarray(traj)[:-1,:2]))
             if np.all(environment.segment(previous_xy[:,0],previous_xy[:,1],np.asarray(traj)[:,0],np.asarray(traj)[:,1])<100):break
-        else:raise ValueError('採用軌道がhazardまたはunknownに接触します')
+        else:raise NoValidTrajectoryError('採用軌道がhazardまたはunknownに接触します')
         command=safe[0];self.nominal=np.vstack((np.asarray(safe[1:]),np.asarray(safe[-1:])))
         if not np.isfinite(self.nominal).all():raise ValueError('指令が非有限です')
         return dict(command=command,trajectory=np.asarray(traj),trajectory_controls=np.asarray(safe),candidate_trajectories=candidate_trace,

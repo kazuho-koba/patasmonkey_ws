@@ -79,6 +79,16 @@ class RouteFollower:
         self.previous=(0.,0.)
         if self.solver:self.solver.nominal.fill(0.)
 
+    def hold(self,pose):
+        """障害物待機中もpose・経路逸脱を監視し、旧指令と最適解は破棄する。
+
+        Progressをpauseしないため、健全な入力と有効軌道が戻れば手動開始なしで続行できる。
+        毎回poseを追うことで、長時間の待機をpose欠落と誤判定しない。
+        """
+        self.progress.update(pose)
+        if self.progress.state=='FAULT':raise ValueError(self.progress.reason)
+        self.previous=(0.,0.);self.solver.nominal.fill(0.)
+
     def step(self,pose,yaw_rate,environment=None):
         self.progress.update(pose)
         if self.progress.state=='FAULT':raise ValueError(self.progress.reason)
