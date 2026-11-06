@@ -306,7 +306,9 @@ Operator Consoleの認識modeをOFF／障害物回避／障害物＋路面評価
 走行開始・終了とは別操作。OFFでも経路追従は可能で、路面評価ONは障害物回避も包含する。
 適用によるmode変更では停止し、UGVの実modeと入力準備を確認して明示的に走行開始する。
 選択しただけの値を有効とは表示しない。開始ボタンのtooltipにも拒否理由を表示する。
-専用のperception出力が未提供なら認識ONでの開始は拒否される。
+標準Coreのplanner_mapper_nodeが専用のperception出力を発行する。mission・自己位置・入力準備と
+車両走行許可・中立確認が揃った状態で、障害物回避modeを適用し走行開始を操作する。
+入力が未到達・期限切れ・現在footprintがunknown/危険の場合は開始を拒否する。
 詳しい受け渡し仕様はpm_planner/README_perception_input.mdを参照。
 
 ## Bag Inspector
@@ -315,3 +317,7 @@ MISSION PLANNER横のBAG INSPECTORで独立した検査アプリを開きます�
 既定はJetson上の停止済みbagの解析で、LANでbag本文をコピーしません。
 PC上のbagの解析・複数bag一括解析にも対応します。
 遠隔受付の起動とbuild手順は[pm_inspector](../pm_inspector/README.md)を参照してください。
+
+障害物で有効軌道が得られない場合の既定動作はWAITING（自律許可を維持してゼロ指令）。
+状況解消と停止確認後は自動続行する。GUI終了・Joy・入力異常による無効化は自動再開しない。
+planner.yamlのkeep_autonomy_on_blocked=falseで従来の許可解除動作へ戻せる。

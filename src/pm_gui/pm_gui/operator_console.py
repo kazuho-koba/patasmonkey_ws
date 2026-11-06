@@ -311,7 +311,7 @@ class OperatorWindow(QMainWindow):
         self._update_core_action(connected, state)
         execution = status['telemetry'].get('execution_manager', {})
         info=execution.get('value') or {}
-        self.autonomy_start.setEnabled(bool(execution.get('fresh') and info.get('drive_ready') and info.get('state') not in ('STARTING','RUNNING')))
+        self.autonomy_start.setEnabled(bool(execution.get('fresh') and info.get('drive_ready') and info.get('state') not in ('STARTING','RUNNING','WAITING')))
         self.autonomy_stop.setEnabled(bool(execution.get('fresh')))
         self.autonomy_start.setToolTip(info.get('readiness_reason','UGV状態の受信待ち'))
         reported=info.get('perception_mode')

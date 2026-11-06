@@ -27,6 +27,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
+            "motor_state_observer = pm_control.motor_state_observer:main",
             "vehicle_interface_node = pm_control.vehicle_interface_node:main",
             "wheel_odometry_node = pm_control.wheel_odometry_node:main",
             'dummy_jointstate_pub = pm_control.tools.dummy_jointstate_pub:main',

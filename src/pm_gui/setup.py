@@ -25,6 +25,7 @@ setup(
     license='MIT',
     entry_points={
         'console_scripts': [
+            'perception_lab = pm_gui.perception_lab:main',
             'operator_console = pm_gui.operator_console:main',
         ],
     },

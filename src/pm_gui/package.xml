@@ -7,6 +7,7 @@
   <maintainer email="kazuho.kobayashi.ynu@gmail.com">kazuho</maintainer>
   <license>MIT</license>
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
   <exec_depend>pm_msgs</exec_depend>
   <exec_depend>pm_ui_common</exec_depend>
   <exec_depend>pm_mission</exec_depend>
