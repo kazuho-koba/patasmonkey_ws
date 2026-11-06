@@ -20,16 +20,15 @@ def test_first_hit_and_missing():
     assert m.cells[(0,0)]['obstacle']==100
 
 
-def test_background_ray_clear_and_reappearance():
+def test_low_window_clear_and_reappearance():
     m=IndependentObstacles(size=2.)
     base=floor_points();hit=np.array([[.05,.05,.2]])
     m.update(np.vstack((base,hit)),[-1.,.05,.2],[0,0],1)
-    # rayは保存高点の先まで届く。背景点はgrid外でも可視性検査に使う。
-    background=np.array([[2.,.05,.2]])
+    # 背景rayは要求しない。同じセルの低い再観測だけで窓を更新する。
     for stamp in (2,):
-        m.update(np.vstack((base,background)),[-1.,.05,.2],[0,0],stamp)
+        m.update(base,[-1.,.05,.2],[0,0],stamp)
         assert m.cells[(0,0)]['active']
-    m.update(np.vstack((base,background)),[-1.,.05,.2],[0,0],3)
+    m.update(base,[-1.,.05,.2],[0,0],3)
     assert not m.cells[(0,0)]['active']
     m.update(np.vstack((base,hit)),[-1.,.05,.2],[0,0],5)
     assert m.cells[(0,0)]['active']

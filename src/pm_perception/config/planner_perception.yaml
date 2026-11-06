@@ -1,4 +1,4 @@
-# 新producerだけの設定。通常mapperの既定値は変更しない。
+# パッケージ単独試験用。UGV通常起動はpm_config/config/planner_perception.yamlを使う。
 /**:
   ros__parameters:
     depth_subscription_reliability: reliable
@@ -11,7 +11,7 @@
     pixel_stride: 4
     debug_publish_rate: 2.0
     hazard_obstacle_height_limit: 0.08  # 暫定試験値[m]。実車限界ではない
-    confirmation_window: 3           # セル支持と解除の有効観測数
+    confirmation_window: 3           # 解除窓の画像数（欠測も1要素）。初回危険判定は待たない
     clear_min_points: 3
     clear_count_ratio: 0.75          # 最終高点観測のセル点数に対する最低比
     clear_ground_tolerance: 0.03     # 最終高点観測時のセル最小zとの許容差[m]

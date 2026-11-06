@@ -16,7 +16,7 @@ class IndependentObstacles:
             raise ValueError('parameterは有限値が必要')
         if not 0<count_ratio<=1 or ground_tolerance<=0:raise ValueError('解除品質条件が不正')
         if resolution<=0 or size<=0 or height<=0 or window<1 or min_points<1:
-            raise ValueError('grid／閾値／窓／点数／budgetは正値が必要')
+            raise ValueError('grid／閾値／窓／点数は正値が必要')
         self.res=resolution;self.width=int(round(size/resolution));self.height=self.width
         self.limit=height;self.window=window;self.min_points=min_points
         self.witness_spacing=.03

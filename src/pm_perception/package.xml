@@ -12,6 +12,8 @@
   <depend>pm_msgs</depend>
   <depend>python3-numpy</depend>
   <depend>rclpy</depend>
+  <depend>rcl_interfaces</depend>
+  <depend>std_srvs</depend>
   <depend>sensor_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
