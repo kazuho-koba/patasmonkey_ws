@@ -19,6 +19,7 @@ import yaml
 
 # 上下限はproducerの実行中変更契約と同じ。単位を画面にも明記する。
 FIELDS=(('map_size_x','map一辺 [m]',1.,30.,8.),
+    ('map_forward_offset_m','保持範囲の前方offset [m]',-15.,15.,2.),
     ('resolution','セル幅 [m]',.05,.5,.1),
     ('min_depth','depth下限 [m]',.1,10.,.4),('max_depth','depth上限 [m]',.2,20.,7.),
     ('pixel_stride','pixel stride',1,16,4),
@@ -104,6 +105,9 @@ class LabWindow(QWidget):
             box=QSpinBox() if isinstance(value,int) else QDoubleSpinBox()
             if isinstance(box,QDoubleSpinBox):box.setDecimals(3);box.setSingleStep(.01)
             box.setRange(lo,hi);box.setValue(value);self.widgets[name]=box;form.addRow(label,box)
+        self.retention=QComboBox();self.retention.addItem('車体の向きに追従','body_aligned')
+        self.retention.addItem('従来：odom軸固定・車体中心','odom_aligned')
+        form.addRow('map保持範囲の向き',self.retention)
         self.mode=QComboBox();self.mode.addItem('obstacleのみ','obstacle_only')
         self.mode.addItem('obstacle＋terrain','full_terrain');form.addRow('表示・予測に使うcost',self.mode)
         self.reference_mode=QComboBox();self.reference_mode.addItem('初期位置の直線を固定','fixed_start')
@@ -154,7 +158,7 @@ class LabWindow(QWidget):
             rclpy.spin_once(self.node,timeout_sec=0.)
             if time.monotonic()>until:break
         if not self.perception_loaded and self.pending is None and self.get.service_is_ready():
-            req=GetParameters.Request();req.names=[row[0] for row in FIELDS]
+            req=GetParameters.Request();req.names=[row[0] for row in FIELDS]+['map_retention_mode']
             future=self.get.call_async(req);self.pending=future
             def done(f):
                 self.pending=None
@@ -163,6 +167,8 @@ class LabWindow(QWidget):
                     for (name,*_),value in zip(FIELDS,values):
                         self.widgets[name].setValue(Parameter.from_parameter_msg(
                             self._parameter_message(name,value)).value)
+                    mode=Parameter.from_parameter_msg(self._parameter_message('map_retention_mode',values[-1])).value
+                    self.retention.setCurrentIndex(self.retention.findData(mode))
                     self.perception_loaded=True;self.result.setText('認識parameter読込済み、planner設定を取得中')
                 except Exception as exc:self.result.setText(str(exc))
             future.add_done_callback(done)
@@ -201,6 +207,7 @@ class LabWindow(QWidget):
 
     def values(self):
         values={name:box.value() for name,box in self.widgets.items()}
+        values['map_retention_mode']=self.retention.currentData()
         values['map_size_y']=values['map_size_x'];return values
 
     def send(self,client,values,callback):

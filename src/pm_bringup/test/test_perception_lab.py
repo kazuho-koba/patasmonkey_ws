@@ -77,6 +77,36 @@ def test_producer_live_parameter_validation_and_reset(ros,monkeypatch):
         result=node.set_parameters_atomically([Parameter('max_depth',value=7.),Parameter('resolution',value=.2)])
         assert result.successful and node.grid is not before
         assert node.max_depth==7. and node.grid.width==40 and not node.grid.model.cells
+        result=node.set_parameters_atomically([Parameter('map_retention_mode',value='body_aligned'),
+                                               Parameter('map_forward_offset_m',value=2.)])
+        assert result.successful and node.grid.model.retention_mode=='body_aligned'
+        assert node.grid.model.forward_offset_m==2.
+        before=node.grid
+        assert not node.set_parameters_atomically([Parameter('map_forward_offset_m',value=5.)]).successful
+        assert node.grid is before
+        assert not node.set_parameters_atomically([Parameter('map_retention_mode',value='bad')]).successful
+        # yaw依存の外接矩形と、配信metadataの寸法・原点・data長を一致させる。
+        import time
+        from nav_msgs.msg import OccupancyGrid
+        from visualization_msgs.msg import Marker
+        helper=Node('retention_map_test');messages=[];boundaries=[]
+        helper.create_subscription(OccupancyGrid,'/depth_elevation_mapper/obstacle_costmap',messages.append,10)
+        helper.create_subscription(Marker,'/depth_elevation_mapper/retention_boundary',boundaries.append,10)
+        try:
+            until=time.monotonic()+.3
+            while time.monotonic()<until:rclpy.spin_once(helper,timeout_sec=.01)
+            node.grid.model.update(np.array([[4.1,4.1,0.],[4.1,4.1,.2]]),[0,0,.4],[0,0],1,np.pi/4)
+            node.publish_debug(node.get_clock().now().to_msg())
+            until=time.monotonic()+.2
+            while time.monotonic()<until:rclpy.spin_once(helper,timeout_sec=.01)
+            msg=messages[-1];model=node.grid.model
+            assert len(msg.data)==msg.info.width*msg.info.height==model.width*model.height
+            assert msg.info.width>node.grid.width and msg.info.origin.orientation.w==1.
+            assert msg.info.origin.position.x==model.origin[0]
+            assert len(boundaries[-1].points)==5
+        finally:helper.destroy_node()
+        node.reset_map(None,SimpleNamespace())
+        assert node.grid.model.retention_mode=='body_aligned'
         assert not node.set_parameters_atomically([Parameter('depth_subscription_queue_depth',value=20)]).successful
     finally:node.destroy_node()
 
@@ -197,11 +227,16 @@ def test_gui_reads_effective_parameters_and_applies_atomic_change(ros,monkeypatc
         assert window.widgets['max_depth'].value()==7.
         assert window.radius.value()==preview.get_parameter('footprint_radius_m').value
         assert window.margin.value()==preview.get_parameter('footprint_margin_m').value
+        assert window.retention.currentData()==producer.get_parameter('map_retention_mode').value
         assert window.clearance['clearance_distance_m'].value()==preview.get_parameter('clearance_distance_m').value
         window.widgets['hazard_obstacle_height_limit'].setValue(.12)
+        window.retention.setCurrentIndex(window.retention.findData('body_aligned'))
+        window.widgets['map_forward_offset_m'].setValue(2.)
         window.apply()
         until(lambda:window.pending is None and '認識・preview設定を反映' in window.result.text())
         assert producer.hazard_obstacle_height_limit==.12
+        assert producer.grid.model.retention_mode=='body_aligned'
+        assert producer.grid.model.forward_offset_m==2.
         before=producer.grid
         window.radius.setValue(.25);window.margin.setValue(0.)
         window.clearance['clearance_distance_m'].setValue(.8)

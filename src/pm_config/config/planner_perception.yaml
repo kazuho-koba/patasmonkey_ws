@@ -6,6 +6,9 @@
     depth_subscription_queue_depth: 3
     map_size_x: 8.0
     map_size_y: 8.0
+    # セルはodom固定。保持する8m四方だけ車体yawへ追従する。
+    map_retention_mode: body_aligned  # odom_alignedで従来の車体中心・軸固定へ戻す
+    map_forward_offset_m: 2.0        # [m] 前方6m／後方2m。odom_alignedでは適用しない
     resolution: 0.1
     min_depth: 0.4
     max_depth: 7.0

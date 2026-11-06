@@ -132,8 +132,13 @@ GUIに「hazardまたはunknownを避ける候補軌道がありません」等�
 旧方式の`observation_decay_time`や`feature_max_observation_age`は、新方式の保持TTLではない。
 previewには別に受信／stampのtimeout（既定1秒）があるが、これは古い入力でパスを出さないためのもの。
 
-map一辺8mなら、車体中心から前方約4mまでのXYセルしか保持しない。
-depth上限7mでも、7m前方まで全て表示できる意味ではない。必要ならGUIで一辺16m等へ拡大する。
+現在は保持方式`body_aligned`、map一辺8m、前方offset=2m。
+車体の向きに追従し、前方約6m・後方約2m・左右約4mを保持する。
+従来の`odom_aligned`へGUIで戻せる（この方式ではoffsetを適用しない）。
+設定変更時はmapをリセットする。実際の保持範囲をRVizで橙色の輪郭として表示する。
+出力はodom軸固定の外接矩形なので、旋回でmessageのwidth/heightが変わり、角部分はunknownとなる。
+詳細は[perceptionの保持範囲](../pm_perception/README_planner_perception.md#保持範囲と旋回)を参照。
+depth上限7mでも、全域のdepthやhazard評価が有効になる保証ではない。
 計算量とメモリはセル数・有効投影点数に応じて増える。
 
 ## 起動・終了の補足

@@ -11,18 +11,63 @@ from pm_perception.terrain_features import compute_terrain_features
 class IndependentObstacles:
     def __init__(self, resolution=.1, size=8., height=.08, window=3,
                  min_points=3,
-                 count_ratio=.75, ground_tolerance=.03):
+                 count_ratio=.75, ground_tolerance=.03,
+                 retention_mode='odom_aligned', forward_offset_m=0.):
         if not np.isfinite([resolution,size,height,window,min_points,count_ratio,ground_tolerance]).all():
             raise ValueError('parameterは有限値が必要')
         if not 0<count_ratio<=1 or ground_tolerance<=0:raise ValueError('解除品質条件が不正')
         if resolution<=0 or size<=0 or height<=0 or window<1 or min_points<1:
             raise ValueError('grid／閾値／窓／点数は正値が必要')
         self.res=resolution;self.width=int(round(size/resolution));self.height=self.width
+        if retention_mode not in ('odom_aligned','body_aligned'):
+            raise ValueError('保持方式はodom_alignedまたはbody_alignedです')
+        if not np.isfinite(forward_offset_m) or abs(forward_offset_m)>self.width*resolution/2:
+            raise ValueError('前方offsetはmap半辺以内の有限値[m]が必要です')
+        self.size=self.width*resolution
+        self.retention_mode=retention_mode;self.forward_offset_m=forward_offset_m
+        self.retention_corners=None
         self.limit=height;self.window=window;self.min_points=min_points
         self.witness_spacing=.03
         self.count_ratio=count_ratio;self.ground_tolerance=ground_tolerance
         self.cells={};self.origin=np.zeros(2);self.last_stamp=-1
         self.counters=dict(hits=0,cleared=0,overflow=0)
+
+    def retention_window(self, center, yaw):
+        """保持領域と、それを包むodom軸固定の配列範囲を撮像時刻のposeから求める。
+
+        body_alignedではセル中心を車体系へ変換して正方形内外を判定する。
+        高さや履歴を回転・補間せず、同じ絶対XYセルの状態を再利用する。
+        配列は現在の外接矩形だけを確保し、外側の角部分はunknownのままにする。
+        """
+        center=np.asarray(center[:2],dtype=float)
+        if not np.isfinite(center).all() or not np.isfinite(yaw):
+            raise ValueError('保持領域のposeは有限値が必要です')
+        half=self.size/2
+        if self.retention_mode=='odom_aligned':
+            # 従来の丸めと原点を完全に維持。offsetはこの方式では適用しない。
+            self.width=self.height=int(round(self.size/self.res))
+            origin=np.floor(center/self.res).astype(int)-self.width//2
+            self.retention_corners=origin*self.res+np.array([[0,0],[self.size,0],
+                [self.size,self.size],[0,self.size]])
+            mask=np.ones((self.height,self.width),dtype=bool)
+        else:
+            c,s=np.cos(yaw),np.sin(yaw)
+            rotation=np.array([[c,-s],[s,c]])
+            local=np.array([[-half,-half],[half,-half],[half,half],[-half,half]])
+            local[:,0]+=self.forward_offset_m
+            self.retention_corners=local@rotation.T+center
+            origin=np.floor(self.retention_corners.min(axis=0)/self.res).astype(int)
+            upper=np.ceil(self.retention_corners.max(axis=0)/self.res).astype(int)
+            self.width,self.height=map(int,upper-origin)
+            dx=(origin[0]+np.arange(self.width)+.5)*self.res-center[0]
+            dy=(origin[1]+np.arange(self.height)+.5)*self.res-center[1]
+            forward=c*dx[None,:]+s*dy[:,None]-self.forward_offset_m
+            lateral=-s*dx[None,:]+c*dy[:,None]
+            # 半開区間で境界セルを一意に選ぶ。1nmだけ境界を揃え、直角旋回時の
+            # sin/cos丸めによる採否の揺れを防ぐ（実質的な領域拡大ではない）。
+            mask=(forward>=-half-1e-9)&(forward<half-1e-9)&(lateral>=-half-1e-9)&(lateral<half-1e-9)
+        self.origin=origin*self.res
+        return origin,mask
 
     def update(self, points, camera, center, stamp, yaw=0., slope=20., rough=.03, step=.07):
         """点はodom座標[m]。同じ撮像stampのcamera位置とbase中心を入力する。"""
@@ -32,13 +77,16 @@ class IndependentObstacles:
         if points.ndim!=2 or points.shape[1]!=3 or not np.isfinite(camera).all():
             raise ValueError('有限のcameraとNx3点が必要')
         points=points[np.isfinite(points).all(axis=1)]
-        origin=np.floor(np.asarray(center[:2])/self.res).astype(int)-self.width//2
-        self.origin=origin*self.res
+        origin,retained=self.retention_window(center,yaw)
         # rolling領域外は破棄する。時間経過だけでは危険を解除しない。
         self.cells={k:v for k,v in self.cells.items() if
-                    origin[0]<=k[0]<origin[0]+self.width and origin[1]<=k[1]<origin[1]+self.height}
+                    origin[0]<=k[0]<origin[0]+self.width and origin[1]<=k[1]<origin[1]+self.height
+                    and retained[k[1]-origin[1],k[0]-origin[0]]}
         ids=np.floor(points[:,:2]/self.res).astype(int)-origin
         inside=(ids[:,0]>=0)&(ids[:,0]<self.width)&(ids[:,1]>=0)&(ids[:,1]<self.height)
+        # 画素単位でなくセル中心で採否を統一し、保存済みセルと新観測の境界を揃える。
+        indices=np.flatnonzero(inside)
+        inside[indices]=retained[ids[indices,1],ids[indices,0]]
         q=points[inside];ids=ids[inside];slots=ids[:,1]*self.width+ids[:,0]
         total=self.width*self.height
         low=np.full(total,np.inf);high=np.full(total,-np.inf)

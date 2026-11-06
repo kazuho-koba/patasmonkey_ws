@@ -9,6 +9,13 @@ Visualization Manager:
     Fixed Frame: odom
     Background Color: 60; 65; 70
   Displays:
+    - Class: rviz_default_plugins/Marker
+      Name: Retention boundary (orange)
+      Enabled: true
+      Marker Topic:
+        Value: /depth_elevation_mapper/retention_boundary
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
     - Class: rviz_default_plugins/Grid
       Name: 1m Grid
       Enabled: true
