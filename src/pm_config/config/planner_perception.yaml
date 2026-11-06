@@ -1,0 +1,20 @@
+# UGV通常運用の環境認識設定。pm_coreはこのファイルを使用する。
+# pm_perception/configの同名YAMLはパッケージ単独試験用で、独立に変更できる。
+/**:
+  ros__parameters:
+    depth_subscription_reliability: reliable
+    depth_subscription_queue_depth: 3
+    map_size_x: 8.0
+    map_size_y: 8.0
+    resolution: 0.1
+    min_depth: 0.4
+    max_depth: 7.0
+    pixel_stride: 4
+    debug_publish_rate: 2.0
+    hazard_obstacle_height_limit: 0.08  # 暫定値[m]。車体通過限界の保証ではない
+    confirmation_window: 3           # 解除窓の画像数。欠測も1要素、初回危険は即時反映
+    clear_min_points: 3
+    clear_count_ratio: 0.75          # 最終高点観測のセル点数に対する最低比
+    clear_ground_tolerance: 0.03     # 最終高点観測時のセル最小zとの許容差[m]
+    allow_fallback_intrinsics: false # CameraInfoを待つ。旧bag用の値は明示的に設定する
+    publish_debug_pointcloud: false

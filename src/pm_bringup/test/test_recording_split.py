@@ -11,6 +11,19 @@ from pm_bringup.record_trial import parameter_value
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_core_defaults_to_independent_planner_perception():
+    """センサを起動せず、新producer・RELIABLE・設定YAMLの既定選択を確認する。"""
+    from launch import LaunchContext
+    from launch.actions import DeclareLaunchArgument
+    from pm_bringup.stack_launch import create_launch_description
+    context = LaunchContext()
+    for action in create_launch_description(drive_default=False).entities:
+        if isinstance(action, DeclareLaunchArgument): action.execute(context)
+    assert context.launch_configurations['mapper_executable'] == 'planner_mapper_node'
+    assert context.launch_configurations['mapper_config_file'].endswith('/pm_config/config/planner_perception.yaml')
+    assert context.launch_configurations['mapper_depth_subscription_reliability'] == 'reliable'
+
+
 def test_core_planner_config_uses_shared_package(monkeypatch):
     """Coreは共通YAML、単独previewは独自YAMLを用いる。"""
     import importlib.util

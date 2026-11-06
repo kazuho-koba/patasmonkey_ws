@@ -90,6 +90,8 @@ debug:
   - /pm/planner/execution_manager/local_path
   - /pm/planner/execution_manager/trajectory
   - /depth_elevation_mapper/elevation_debug
+  - /depth_elevation_mapper/obstacle_costmap
+  - /depth_elevation_mapper/terrain_costmap
   - /depth_elevation_mapper/relative_elevation_debug
   - /depth_elevation_mapper/elevation_variance_debug
   - /depth_elevation_mapper/observation_count_debug

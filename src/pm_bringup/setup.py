@@ -15,6 +15,8 @@ setup(
             'package.xml',
             'README_vio_recording.md',
             'README_recording.md',
+            'README_perception_lab.md',
+            'README_perception_bag_lab.md',
         ]),
         # launch ファイルをインストール
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),

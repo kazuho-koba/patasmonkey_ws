@@ -1,5 +1,8 @@
 # 制御・必須記録・任意記録を分離した起動
 
+実機の環境認識と表示用MPPIを一括起動する場合は
+[環境認識確認ツール](README_perception_lab.md)を参照してください。
+
 ## 遠隔カメラ表示
 
 OAK起動時は `oak_preview_node` も別プロセスで起動し、GUI向けに
@@ -415,4 +418,22 @@ systemd起動はPAM設定だけでは変わらないため、対象unit側の`Li
 
 ```bash
 ps -C hwt905_imu_node -o pid,ni,args
+```
+
+## 環境認識producerの既定値
+
+Coreは`planner_mapper_node`と`pm_config/config/planner_perception.yaml`を使う。
+UGV通常運用の認識設定はpm_configに集約する。pm_perception/configの同名YAMLは
+パッケージ単独試験用で、通常起動からは参照しない。
+depth購読はRELIABLE、履歴3。GUIの障害物回避modeは専用
+`/depth_elevation_mapper/planner_costmap`をplannerへ接続する。
+mode初期値OFFと自律開始の操作は変更しない。
+設定ファイルはmission bagの実効設定収集対象となり、独立した二つの表示用mapはdebug bagに記録する。
+
+従来の時間融合方式を比較する場合は両引数を指定する。
+
+```bash
+ros2 launch pm_bringup pm_core.launch.py \
+  mapper_executable:=depth_elevation_mapper_node \
+  mapper_config_file:=/workspaces/patasmonkey_ws/src/pm_perception/config/depth_elevation_mapper.yaml
 ```

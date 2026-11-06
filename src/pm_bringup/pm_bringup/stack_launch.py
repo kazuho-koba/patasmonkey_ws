@@ -123,9 +123,9 @@ def create_launch_description(legacy_recording=False, drive_default=True):
     openvins_config_file = (
         pm_config_share / "config" / "oak_d_s2" / "estimator_config1.yaml"
     )
-    terrain_mapper_config_file = (
-        pm_perception_share / "config" / "depth_elevation_mapper.yaml"
-    )
+    # Core・GUIの認識入力は独立画像評価を既定とする。旧方式は実行名とYAMLを
+    # 明示して比較できるように残し、二つのproducerを同時起動しない。
+    terrain_mapper_config_file = LaunchConfiguration("mapper_config_file")
 
     # rosbag保存先
     bag_output_directory = (Path.home() / "patasmonkey_ws" / "bags" if legacy_recording
@@ -202,8 +202,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
                     pm_config_share / 'config' / 'ekf_local_3d_accel.yaml',
                     heading_initializer_config_file, gnss_fix_gate_config_file,
                     navsat_config_file, navsat_heading_initialized_config_file,
-                    pm_perception_share / 'config' / 'depth_elevation_mapper.yaml',
-                )] + [ekf_local_config_file.perform(context)],
+                )] + [ekf_local_config_file.perform(context),
+                      terrain_mapper_config_file.perform(context)],
             }
             (resolved_directory / 'openvins').mkdir(parents=True)
             runtime_actions = [Node(
@@ -514,11 +514,11 @@ def create_launch_description(legacy_recording=False, drive_default=True):
     )
     terrain_mapper_node = Node(
         package="pm_perception",
-        executable="depth_elevation_mapper_node",
+        executable=LaunchConfiguration("mapper_executable"),
         name="depth_elevation_mapper",
         output="screen",
         parameters=[
-            str(terrain_mapper_config_file),
+            terrain_mapper_config_file,
             {
                 # YAMLと同じwildcard scopeで試験overrideを後から渡し、Foxyで既定値を
                 # queue深度・診断parameterが上書きできるようにする。
@@ -1019,6 +1019,14 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             description="モーター制御可能な車両interfaceを起動する。センサ単独試験ではfalseにする",
         ),
         DeclareLaunchArgument(
+            "mapper_executable", default_value="planner_mapper_node",
+            description="環境認識producer。旧高さ融合方式はdepth_elevation_mapper_nodeを明示する",
+        ),
+        DeclareLaunchArgument(
+            "mapper_config_file", default_value=str(pm_config_share / "config" / "planner_perception.yaml"),
+            description="UGV認識設定はpm_configへ集約。単独試験・旧方式比較時は別YAMLを明示する",
+        ),
+        DeclareLaunchArgument(
             "mapper_callback_diagnostics",
             default_value="false",
             description=(
@@ -1035,8 +1043,8 @@ def create_launch_description(legacy_recording=False, drive_default=True):
             ),
         ),
         DeclareLaunchArgument(
-            "mapper_depth_subscription_reliability", default_value="best_effort",
-            description="depth受信の比較用QoS: best_effort / reliable。既定は従来どおり",
+            "mapper_depth_subscription_reliability", default_value="reliable",
+            description="depth受信QoS: best_effort / reliable。既定はRELIABLE",
         ),
         DeclareLaunchArgument(
             "mapper_publish_stage2_debug_layers",

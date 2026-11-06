@@ -34,6 +34,8 @@
   <exec_depend>pm_description</exec_depend>
   <exec_depend>pm_config</exec_depend>
   <exec_depend>pm_perception</exec_depend>
+  <exec_depend>pm_gui</exec_depend>
+  <exec_depend>pm_evaluation</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>robot_localization</exec_depend>
   <exec_depend>hwt905_rs485_driver</exec_depend>
