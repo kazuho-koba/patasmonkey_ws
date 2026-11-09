@@ -81,7 +81,16 @@ backendが違うため混用しません。再生したgraphの組合せによ�
 
 VO条件ごとの失敗を残し、成功条件だけを後段のVO入力とします。VOが両方失敗しても
 `sources`を選択していればwheel＋IMUの計算を続行し、VOのない重畳図へ理由を注記します。
-失敗条件があればCLI全体は非0で終了します。速度warningも成功と区別します。
+1bagが失敗しても理由を保存して次のbagへ進みます。起動時には検出したbag候補数を
+表示し、各bagにも進捗番号を付けます。全件処理後、失敗条件があればCLI全体は非0で
+終了します。速度warningも成功と区別します。
+
+metadata.yamlがないのにMCAP/DB3だけ存在するdirectoryは、未完了候補として一覧に
+含め、理由付きでスキップします。分割ファイルを別試行として解析することはありません。
+未停止・転送途中・metadataのコピー不足などを自動判定できないため、元bagの
+metadata生成・修復は行いません。recorder停止と転送完了を確認し、元のmetadataも
+揃えてから再実行してください。metadataがあってもwheel等の必要入力がないbagは、
+その試行の失敗として記録します。結果はsummary.jsonとREADMEの失敗理由で確認できます。
 
 `resources.json`は追加ROS購読を作らず、５秒ごとの/procによるprocess treeのRSS・
 CPU累積秒・空きメモリ・loadを記録します。`delivery.json`は配信件数と最大スケジュール遅延です。

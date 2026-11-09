@@ -25,6 +25,30 @@ def discover(root, excluded=()):
                    if not any(e == p.parent.resolve() or e in p.parent.resolve().parents for e in excluded)})
 
 
+
+def discover_incomplete(root, excluded=()):
+    """storageはあるがmetadataのない候補を返す。解析単位はファイルでなくdirectory。
+
+    未停止・コピー途中・metadata不足を区別できないため、自動修復や再生はしない。
+    正常bag内部の付帯ファイルと出力directoryは、独立した試行として数えない。
+    """
+    root = Path(root).resolve()
+    if (root / 'metadata.yaml').is_file():
+        return []
+    excluded = [Path(p).resolve() for p in excluded]
+    candidates = {p.parent.resolve() for pattern in ('*.mcap', '*.db3')
+                  for p in root.rglob(pattern) if p.is_file()}
+    result = []
+    for parent in candidates:
+        if any(e == parent or e in parent.parents for e in excluded):
+            continue
+        if any((p / 'metadata.yaml').is_file()
+               for p in (parent, *parent.parents) if p == root or root in p.parents):
+            continue
+        result.append(parent)
+    return sorted(result)
+
+
 def metadata(bag):
     """metadataのファイル順を尊重し、範囲外参照・不足ファイルを拒否する。"""
     bag = Path(bag).resolve()

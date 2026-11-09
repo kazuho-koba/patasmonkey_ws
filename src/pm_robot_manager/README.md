@@ -7,6 +7,7 @@ Jetson上でRobot Coreとbag recorderのsystemd unitを操作し、ROS 2 service
 - `start-pm.service` は `pm_bringup pm_core.launch.py` を起動します。
 - `pm-mission-bag.service` は `pm_bringup mission_bag.launch.py` を起動します。boot targetからCoreの後に開始し、GUIからのCore起動には連動しません。Core停止時は先にbagの終了処理を行います。
 - `pm-debug-bag.service` は `pm_bringup debug_bag.launch.py` を起動します。Core稼働中にGUIから個別に開始できます。
+- `pm-vehicle-control.service` は `pm_bringup pm_drive.launch.py` を起動します。boot時のローカル操縦とGUIの走行許可で共用します。
 - `pm-robot-manager.service` は常駐し、上記3 unitの状態と操作serviceを提供します。
 
 Core停止serviceは、Debug、Missionの順でrecording stop serviceを呼びます。各recorderがrosbag processへSIGINTを送り、`metadata.yaml`の存在、`ros2 bag info`の終了コード、`completion.json`の`verified`を確認した後にunitが終了します。Managerはbag unitのinactive状態とcompletion fileの検証を待ってからCoreを停止します。検証が失敗したりrecorder応答が失われた場合は、bagへの強制signalを送らずCore停止を中断します。
@@ -39,13 +40,14 @@ sudo install -m 0644 "$SYSTEMD_SHARE/start-pm.service" /etc/systemd/system/
 sudo install -m 0644 "$SYSTEMD_SHARE/pm-mission-bag.service" /etc/systemd/system/
 sudo install -m 0644 "$SYSTEMD_SHARE/pm-debug-bag.service" /etc/systemd/system/
 sudo install -m 0644 "$SYSTEMD_SHARE/pm-robot-manager.service" /etc/systemd/system/
+sudo install -m 0644 "$SYSTEMD_SHARE/pm-vehicle-control.service" /etc/systemd/system/
 sudo install -m 0440 "$SYSTEMD_SHARE/pm-robot-manager.sudoers" /etc/sudoers.d/pm-robot-manager
 sudo visudo -cf /etc/sudoers.d/pm-robot-manager
 sudo systemctl daemon-reload
-sudo systemctl enable start-pm.service pm-robot-manager.service pm-mission-bag.service
+sudo systemctl enable start-pm.service pm-robot-manager.service pm-mission-bag.service pm-vehicle-control.service
 ```
 
-boot時はmulti-user.targetからManager、Core、Mission bagを開始します。Mission bagにはAfter=start-pm.serviceを指定してCoreの後に起動します。GUIからCoreだけを開始してもMission bagはOFFのままです。Mission/Debugは各記録ボタンで独立して開始します。GUIを閉じても管理対象のlaunchは継続します。Core unitはSIGINTで正常停止し、wrapperのsignal由来の終了コード130/143をSuccessExitStatusとして扱うため、正常停止をfailedと表示しません。
+boot時はmulti-user.targetからManager、Core、Mission bag、走行制御を開始します。Mission bagと走行制御にはAfter=start-pm.serviceを指定してCoreの後に起動します。GUIからCoreだけを開始してもMission bagと走行制御はOFFのままです。Mission/Debugと走行制御は各ボタンで独立して開始します。GUIを閉じても管理対象のlaunchは継続します。Core unitはSIGINTで正常停止し、wrapperのsignal由来の終了コード130/143をSuccessExitStatusとして扱うため、正常停止をfailedと表示しません。
 
 初回配置やunit更新はJetson上で別途実施します。このrepository内のunit template変更だけでは稼働中Jetsonへ反映されません。
 
@@ -78,12 +80,14 @@ Mission/Debug停止時、Managerはrecorderのoutputとsystemd起動IDを照合�
 
 Core、bag、走行許可は別々に操作する。`pm_core.launch.py`は既定で
 `use_teleop:=false use_vehicle_interface:=false`となり、joy入力nodeだけを残す。
-CoreやMission bagがbootで起動しても、モーター制御は起動しない。
+systemd登録後はbootでCore・Mission bag・モーター制御を起動する。
+F710のUSB受信機をJetsonに挿しておけば、ネットやノートPC、GUIなしで操縦できる。
+CoreとManagerは`network-online.target`を待たずに起動する。
 従来の単体teleop/vehicle launchと旧一括launchの既定動作は維持する。
 
 走行許可には独立した`pm-vehicle-control.service`を使う。このunitは
 `pm_bringup/pm_drive.launch.py`から速度指令変換とvehicle interfaceを起動し、
-既存の`/pm/joy`入力を再利用する。`Install`節を持たず、bootでenableしない。
+既存の`/pm/joy`入力を再利用する。`Install`節によりbootでenableできる。
 Coreへの`BindsTo`依存により、Core終了時は走行用unitも停止する。
 `Restart=no`により、走行用nodeの異常終了後に自動で再許可しない。
 
@@ -122,9 +126,30 @@ GUI終了や通信断だけでは走行許可を解除しないため、GUIな�
 `pm_control`、`pm_teleop`、`pm_bringup`、`pm_robot_manager`を反映・ビルドする。
 Coreとbagと走行用unitを正常停止した後、従来の
 `sudo bash scripts/install_robot_manager_systemd.sh`で新unit、Core unit、sudoersを更新する。
-このスクリプトはManagerだけを再起動し、走行用unitはenableも起動もしない。
-旧unit/drop-inが独自の起動設定を持つ場合は、走行nodeを自動起動していないことを確認する。
+このスクリプトはManagerだけを再起動し、Core・Mission bag・走行用unitを
+次回boot用にenableする。走行用unitをその場で起動する処理はない。
+旧unit/drop-inが独自の起動設定を持つ場合は、重複する走行nodeがないことを確認する。
 GUI側は`pm_gui`を反映する。開発PCのmockでは実機やsystemdを操作しない。
+
+### ネットワークなしでの起動・操縦・記録
+
+1. F710のUSB受信機をJetsonへ接続し、スティックを中立にして電源を入れる。
+2. bootでCore・Mission bag・走行制御が開始する。ODrive接続後の新しい中立指令を
+   受けるまで出力を許可しない。GUIのSTART操作は不要。
+3. 通常操縦は既存のenableボタン（番号4）を押してスティックを操作する。
+   Turboボタン（番号1）も既存設定どおり有効。物理配置はF710のモード設定に依存する。
+4. ゲームパッド指令が0.3秒以上途絶えた場合は既存処理で停止する。
+   自律走行は明示的な開始が必要で、bootだけでは開始しない。
+5. 記録はMission bagの保存先へ継続する。NTP未同期でも時計の年が2020以上なら
+   最大45秒の待機後に復元済み時計で開始する。待機中のデータは記録されず、
+   UTC精度も保証されない。ディスク容量・センサ故障で記録できない場合はある。
+6. 電源断前はJetsonを通常のOS shutdownで終了し、bagの保存完了を待つ。
+   電源を直接切ることは正常終了の代わりにならない。
+
+`Restart=no`とCoreへの`BindsTo`は維持する。走行node異常終了やCore停止後は
+自動で再許可せず、GUIのSTARTまたはローカルのサービス開始で復帰する。
+次回bootの自動走行制御を無効化する場合は
+`sudo systemctl disable pm-vehicle-control.service`（現在の稼働は停止しない）。
 
 ## 接続status待受timeoutと制御DDS経路
 

@@ -64,3 +64,106 @@ def test_domain_partition_does_not_split_the_input_iterator_plan(tmp_path):
     assert len(plan['branches'])==6
     assert sum(len(p['outputs']) for p in plan['partitions'])==len(plan['outputs'])
     assert sum(p['expected_subscriptions']['/wheel/odometry'] for p in plan['partitions'])==plan['expected_subscriptions']['/wheel/odometry']
+
+
+def test_incomplete_storage_directories_are_visible_without_splitting_files(tmp_path):
+    """metadata欠落を隠さず、分割storageは同じ試行として数える。"""
+    from pm_evaluation.localization_batch_io import discover, discover_incomplete
+    complete = tmp_path / 'complete'
+    writer = BagWriter(complete, {'std_msgs/msg/String': b'string data\n'})
+    writer.write(100, '/example', 'std_msgs/msg/String', b'data')
+    writer.close()
+    attached = complete / 'provenance'
+    attached.mkdir()
+    (attached / 'auxiliary.mcap').write_bytes(b'auxiliary')
+    incomplete = tmp_path / 'incomplete'
+    incomplete.mkdir()
+    (incomplete / 'data_0.mcap').write_bytes(b'partial')
+    (incomplete / 'data_1.mcap').write_bytes(b'partial')
+    output = tmp_path / 'results'
+    output.mkdir()
+    (output / 'derived.db3').write_bytes(b'not input')
+    assert discover(tmp_path, [output]) == [complete]
+    assert discover_incomplete(tmp_path, [output]) == [incomplete]
+    assert discover_incomplete(complete) == []
+
+
+def test_missing_wheel_does_not_stop_next_bag(tmp_path, monkeypatch):
+    """実際の必須入力検査で1件目が失敗しても、2件目の計画を最後まで作る。"""
+    import json
+    import sys
+    import pytest
+    from nav_msgs.msg import Odometry
+    from sensor_msgs.msg import Imu
+    from tf2_msgs.msg import TFMessage
+    from pm_evaluation.cli import analyze_localization_batch_twopass as cli
+    root = tmp_path / 'input'
+    root.mkdir()
+    for name in ('01_missing_wheel', '02_valid'):
+        writer = BagWriter(root / name, {'std_msgs/msg/String': b'string data\n'})
+        writer.write(100, '/example', 'std_msgs/msg/String', b'data')
+        writer.close()
+    # 最後にmetadata欠落の候補も置き、一覧から消えず失敗理由が保存されることを確認。
+    incomplete = root / '03_incomplete'
+    incomplete.mkdir()
+    (incomplete / 'data_0.mcap').write_bytes(b'partial')
+    visited = []
+
+    def load(bag, *args):
+        visited.append(bag.name)
+        if bag.name == '01_missing_wheel':
+            return {}
+        return {'/wheel/odometry': [(100, Odometry())],
+                '/wit/imu': [(100, Imu())], '/tf_static': [(100, TFMessage())]}
+
+    monkeypatch.setattr(cli, 'load', load)
+    output = tmp_path / 'output'
+    monkeypatch.setattr(sys, 'argv', ['analyze_localization_batch_twopass', str(root),
+        '--output-root', str(output), '--plan-only', '--stages', 'sources',
+        '--vio-variants', 'recorded', '--magnetic', 'on', '--initial-yaw-deg', '0'])
+    with pytest.raises(SystemExit) as error:
+        cli.main()
+    assert error.value.code == 1  # 全件を処理した後でも、失敗があれば終了codeへ残す。
+    results = json.loads((output / 'summary.json').read_text())
+    assert [r['status'] for r in results] == ['failed', 'planned', 'failed']
+    assert '必要入力なし: /wheel/odometry' in results[0]['reason']
+    wheel_jobs = [j for j in results[1]['jobs'] if j['stage'] == 'sources']
+    assert wheel_jobs and all(j['status'] == 'planned' for j in wheel_jobs)
+    assert 'metadata.yamlなし' in results[2]['reason']
+    assert visited == ['01_missing_wheel', '02_valid']
+    assert all(r['replays'] == {'vo': 0, 'ekf': 0} for r in results)
+
+
+def test_index_write_error_does_not_stop_following_bag(tmp_path, monkeypatch):
+    """索引保存失敗が例外処理から漏れて後続試行を止めないことを確認する。"""
+    import json
+    import sys
+    import pytest
+    from pm_evaluation.cli import analyze_localization_batch_twopass as cli
+    root = tmp_path / 'input'
+    root.mkdir()
+    for name in ('01', '02'):
+        writer = BagWriter(root / name, {'std_msgs/msg/String': b'string data\n'})
+        writer.write(100, '/example', 'std_msgs/msg/String', b'data')
+        writer.close()
+    original = cli.update_index
+    calls = []
+
+    def update_index(folder, results):
+        calls.append(len(results))
+        if len(calls) == 1:
+            raise OSError('索引の一時書込エラー')
+        original(folder, results)
+
+    monkeypatch.setattr(cli, 'update_index', update_index)
+    monkeypatch.setattr(cli, 'load', lambda *args: {})
+    output = tmp_path / 'output'
+    monkeypatch.setattr(sys, 'argv', ['batch', str(root), '--output-root', str(output),
+                                    '--plan-only', '--stages', 'recorded'])
+    with pytest.raises(SystemExit) as error:
+        cli.main()
+    assert error.value.code == 1
+    assert calls == [1, 2]
+    results = json.loads((output / 'summary.json').read_text())
+    assert [r['status'] for r in results] == ['failed', 'planned']
+    assert results[0]['index_error'] == '索引の一時書込エラー'

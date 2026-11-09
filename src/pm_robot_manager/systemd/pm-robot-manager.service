@@ -1,7 +1,6 @@
 [Unit]
 Description=Patasmonkey Robot Manager ROS 2 node
-After=network-online.target
-Wants=network-online.target
+# ローカル操作と記録をネットワーク未接続でも開始できるよう、接続完了を待たない。
 
 [Service]
 Type=simple

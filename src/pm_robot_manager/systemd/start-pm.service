@@ -1,7 +1,8 @@
 [Unit]
 Description=Patasmonkey UGV Core launch
-Wants=network-online.target pm-robot-manager.service
-After=network-online.target pm-robot-manager.service
+# joy・センサ・制御はJetson内で通信する。Wi-Fi/IP取得を起動条件にしない。
+Wants=pm-robot-manager.service
+After=pm-robot-manager.service
 Before=pm-mission-bag.service
 
 [Service]

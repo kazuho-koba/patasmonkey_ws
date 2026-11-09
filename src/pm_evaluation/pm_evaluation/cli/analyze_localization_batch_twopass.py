@@ -16,7 +16,7 @@ import numpy as np
 import yaml
 from ament_index_python.packages import get_package_share_directory
 
-from pm_evaluation.localization_batch_io import (discover, metadata, read_snapshot,
+from pm_evaluation.localization_batch_io import (discover, discover_incomplete, metadata, read_snapshot,
                                                 fingerprint, MODES, header_sec, TOPICS)
 from pm_evaluation.localization_batch_plan import create_job, config_values
 from pm_evaluation.localization_batch_plot import (load, fixes, map_cache, placement,
@@ -188,9 +188,14 @@ def main():
     output=(args.output_root or results/(root.name+'_batch_twopass')).resolve()
     if output==root or output in root.parents:parser.error('出力で入力階層を覆えない')
     output.mkdir(parents=True,exist_ok=True)
-    bags=discover(root,excluded=[output])
+    complete_bags=discover(root,excluded=[output])
+    incomplete_bags=discover_incomplete(root,excluded=[output])
+    # metadataなしの候補も一覧へ含め、未検出を「先頭失敗で中断」と誤認させない。
+    # 不完全なstorageを修復・再生せず、bag単位の失敗として記録して次へ進む。
+    bags=sorted(set(complete_bags+incomplete_bags))
     if args.bag:bags=[p for p in bags if p.name in args.bag or str(p.relative_to(root)) in args.bag]
-    if not bags:parser.error('解析対象metadataなし')
+    if not bags:parser.error('解析対象のmetadataまたはbag storageなし')
+    print('対象bag候補: '+str(len(bags))+'件（metadataなし: '+str(sum(b in incomplete_bags for b in bags))+'件）',flush=True)
     config=Path(get_package_share_directory('pm_config'))/'config'
     code=cache.stage_code_files();package=Path(__file__).resolve().parent.parent
     backend=[Path(__file__),package/'localization_batch_twopass.py',package/'localization_batch_twopass_parallel.py',
@@ -201,17 +206,20 @@ def main():
     native=Path(get_package_prefix('ov_msckf'))/'lib'
     vo_code=code['vo']+[backend[1],backend[4],native/'ov_msckf/run_subscribe_msckf']+list(native.glob('libov*.so'))
     all_results=[]
-    for bag in bags:
+    for bag_index,bag in enumerate(bags,1):
         relative=bag.relative_to(root) if bag!=root else Path(bag.name)
-        target=output/relative;target.mkdir(parents=True,exist_ok=True)
+        target=output/relative
         result=dict(bag=str(bag),relative=str(relative),jobs=[],replays=dict(vo=0,ekf=0),backend='two_pass')
-        all_results.append(result);print('解析開始: '+str(relative),flush=True)
+        all_results.append(result);print('解析開始: '+str(relative)+' ('+str(bag_index)+'/'+str(len(bags))+')',flush=True)
         stamp=cache.analysis_timestamp().strftime('%Y%m%d_%H%M');folders={}
         def folder_for(parent,key,ready=None):
             lookup=(str(parent),key)
             if lookup not in folders:folders[lookup]=cache.analysis_directory(parent,key,stamp,args.resume,ready)
             return folders[lookup]
         try:
+            target.mkdir(parents=True,exist_ok=True)
+            if not (bag/'metadata.yaml').is_file():
+                raise ValueError('metadata.yamlなし。記録未完了・コピー不足などを確認してください（自動修復せずスキップ）')
             lowband=bag
             if not args.plan_only:
                 lowband,report=cache.extract_lowband(bag,target/'cache/lowband');result['lowband_cache']=report
@@ -418,8 +426,19 @@ def main():
         except Exception as exc:
             result.update(status='failed',reason=str(exc));print('試行失敗: '+str(exc),flush=True)
         finally:
-            (target/'summary.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
-            update_index(output,all_results)
+            # 1件の出力directoryや索引の書込失敗も、後続bagの解析を中断させない。
+            # 結果保存失敗を成功扱いにはせず、最後の終了codeへ反映する。
+            try:
+                (target/'summary.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+            except OSError as exc:
+                result.update(status='failed',report_error=str(exc))
+                print('結果保存失敗: '+str(relative)+': '+str(exc),flush=True)
+            try:
+                update_index(output,all_results)
+            except OSError as exc:
+                result.update(status='failed',index_error=str(exc))
+                print('索引保存失敗: '+str(relative)+': '+str(exc),flush=True)
+    print('全bag候補の処理終了: '+str(len(all_results))+'件',flush=True)
     print('結果: '+str(output/'README.md'),flush=True)
     if any(r['status'] in ('failed','partial_failure') for r in all_results):raise SystemExit(1)
 
@@ -438,6 +457,7 @@ def update_index(output,results):
             '- [記録local/global]('+rel+'/recorded/xy_gnss_area.png)',
             '- [入力・欠測]('+rel+'/input_topics.json)',
             '- [条件・失敗理由]('+rel+'/summary.json)','']
+        if result.get('reason'):lines.append('- 失敗理由: '+result['reason'])
         for job in result['jobs']:
             if job.get('path'):
                 p=job['path'];lines.append('- '+job.get('vio_variant','recorded')+' / '+job['stage']+' / '+job['mode']+' / mag_'+job['magnetic']+' / '+job['status']+

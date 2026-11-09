@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Jetsonでbuild済みのunitを登録する。Coreとbagはenableだけ行い、今回は起動しない。
+# Jetsonでbuild済みのunitを登録する。Core・bag・走行制御は次回boot用にenableする。
+# enableには--nowを付けず、この登録操作ではモーター制御を開始しない。
 set -euo pipefail
 if [[ "$EUID" -ne 0 ]]; then
     echo 'sudo bash scripts/install_robot_manager_systemd.sh で実行してください' >&2
@@ -34,12 +35,12 @@ install -m 0440 "$deployment_share/pm-robot-manager.sudoers" /etc/sudoers.d/pm-r
 visudo -cf /etc/sudoers.d/pm-robot-manager
 systemctl daemon-reload
 systemctl reset-failed start-pm.service
-# 走行許可unitにはInstall節がなく、bootで自動起動させない。
-systemctl enable start-pm.service pm-robot-manager.service pm-mission-bag.service
+# GUIやネットワークなしでもF710で操縦・記録できる。実際の出力は既存の中立確認後。
+systemctl enable start-pm.service pm-robot-manager.service pm-mission-bag.service pm-vehicle-control.service
 # missionはboot targetから独立して開始する。GUIのCore startには連動しない。
 # 更新したManagerのコードを反映する。Coreとbagは起動しない。
 systemctl restart pm-robot-manager.service
-systemctl is-enabled start-pm.service pm-robot-manager.service pm-mission-bag.service
+systemctl is-enabled start-pm.service pm-robot-manager.service pm-mission-bag.service pm-vehicle-control.service
 systemctl is-active pm-robot-manager.service
 echo "バックアップ: $deployment_backup"
-echo 'Coreとbagは起動していません。次回boot時にCoreとMission bagが開始します。'
+echo 'Core・bag・走行制御は起動していません。次回boot時に全て開始します。'
