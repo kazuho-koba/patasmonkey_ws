@@ -1,0 +1,18 @@
+ntrip_client_node:
+  ros__parameters:
+    host: "ntrip1.bizstation.jp"
+    port: 2101
+    mountpoint: "981D3822"
+    username: "kazu"
+    password: "password"
+    rtcm_topic: "/rtcm"
+    reconnect_sec: 5.0
+
+    # RTK-GNSS基準局に自身の概略位置を送付するかどうか？（送付することで、それに応じた適切なRTK信号の提供を受ける）
+    send_gga: true
+    gga_interval_sec: 5.0
+    gga_source: "fix_with_fallback"
+
+    fallback_gga_latitude: 36.11158889
+    fallback_gga_longitude: 140.08005390
+    fallback_gga_altitude: 50.0
